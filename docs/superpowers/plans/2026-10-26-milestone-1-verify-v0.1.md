@@ -250,7 +250,12 @@ pub fn unix_now() -> i64 {
 
 /// A client for the selected target.
 pub fn client() -> Client {
-    for name in ["E2B_API_KEY", "E2B_API_URL", "E2B_DOMAIN", "E2B_SANDBOX_URL"] {
+    for name in [
+        "E2B_API_KEY",
+        "E2B_API_URL",
+        "E2B_DOMAIN",
+        "E2B_SANDBOX_URL",
+    ] {
         assert!(
             std::env::var_os(name).is_none(),
             "unset {name}: live tests take their settings from E2B_*_<TARGET>"
@@ -511,9 +516,16 @@ Delete `tests/integration.rs`.
 
 Remove the `test-integration` recipe and add:
 
+> **Corrected (issue #5, 2026-10-26).** Both `cargo test` calls pass
+> `--show-output`. Without it libtest swallows stderr from passing tests, so the
+> sweep's `killed N leftover sandbox(es)` line and the drop guard's warnings
+> never reached the run log. The two comment lines are also swapped, because
+> `just --list` shows only the last comment line above a recipe. The `test`
+> recipe's comment now says "live tests" instead of "integration tests".
+
 ```just
-# Live tests against a real server: `just test-live hosted` or `just test-live sandbawks`.
 # Keys come from E2B_API_KEY_<TARGET> (env or the nearest .env). Writes target/live-logs/<run id>.log.
+# Live tests against a real server: `just test-live hosted` or `just test-live sandbawks`.
 test-live target:
     #!/usr/bin/env bash
     set -uo pipefail
@@ -522,9 +534,9 @@ test-live target:
     mkdir -p target/live-logs
     log="target/live-logs/${E2B_TEST_RUN_ID}.log"
     cargo test --test live_lifecycle --test live_commands --test live_files \
-        -- --ignored --test-threads=4 2>&1 | tee "$log"
+        -- --ignored --test-threads=4 --show-output 2>&1 | tee "$log"
     status=${PIPESTATUS[0]}
-    cargo test --test live_sweep -- --ignored 2>&1 | tee -a "$log"
+    cargo test --test live_sweep -- --ignored --show-output 2>&1 | tee -a "$log"
     echo "run log: $log"
     exit "$status"
 ```
@@ -556,6 +568,13 @@ Replace the "Integration tests" bullet in the Tests section with:
   named `clm_NNNN_*` after the claim in `claims.json` it backs, and the run log
   in `target/live-logs/` is the evidence for that claim.
 ````
+
+> **Corrected (issue #5, 2026-10-26).** The "Testing against a self-hosted
+> E2B-compatible server" subsection also called `just test-integration` with the
+> standard `E2B_*` variables, which the harness now refuses. It was rewritten to
+> use the `sandbawks` target (`E2B_API_KEY_SANDBAWKS`, `E2B_DOMAIN_SANDBAWKS`,
+> optional `E2B_TEMPLATE_SANDBAWKS`). It also notes that the harness does not
+> support a single shared envd endpoint (`E2B_SANDBOX_URL`). See `CONTRIBUTING.md`.
 
 - [ ] **Step 7: Run the gates and one live smoke run**
 

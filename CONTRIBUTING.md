@@ -11,7 +11,7 @@ You need a stable Rust toolchain (with `rustfmt` and `clippy`) and
 | `just lint` | `cargo fmt --check` plus `cargo clippy --all-targets -- -D warnings` |
 | `just test` | Unit, mock-server and doc tests |
 | `just doc` | Build the docs with warnings as errors |
-| `just test-integration` | End-to-end tests against a real server (see below) |
+| `just test-live <target>` | Live tests against `hosted` E2B or `sandbawks` (see below) |
 
 CI (`.github/workflows/ci.yml`) runs `just lint`, `just test` and `just doc` on
 every pull request and on `main`.
@@ -32,29 +32,37 @@ in scope.
 - Mock-server tests (`tests/rest_api.rs`, `tests/envd_api.rs`) use
   [`wiremock`](https://docs.rs/wiremock) to play both the REST API and envd,
   including Connect streaming envelopes, end-of-stream frames and error frames.
-- Integration tests (`tests/integration.rs`) are `#[ignore]`d. They create
-  real sandboxes, so run them only with credentials:
+- Live tests (`tests/live_*.rs`) are `#[ignore]`d. Each creates real
+  sandboxes, killed on drop and swept at the end of the run. They read keys
+  from the environment or the nearest `.env` (the main checkout's `.env` is
+  found from any worktree):
 
   ```sh
-  E2B_API_KEY=... just test-integration
+  # .env
+  E2B_API_KEY_HOSTED=...
+  E2B_API_KEY_SANDBAWKS=...
+  E2B_DOMAIN_SANDBAWKS=...
   ```
 
-  Optional variables: `E2B_API_URL`, `E2B_DOMAIN`, `E2B_SANDBOX_URL`, and
-  `E2B_TEMPLATE` (default `base`).
+  Then run `just test-live hosted` or `just test-live sandbawks`. Each test is
+  named `clm_NNNN_*` after the claim in `claims.json` it backs, and the run log
+  in `target/live-logs/` is the evidence for that claim.
 
 ### Testing against a self-hosted E2B-compatible server
 
-Point the client at the server's API and domain; per-sandbox envd hosts
-(`49983-<id>.<domain>`) need wildcard DNS for that domain:
+The `sandbawks` target works for any E2B-compatible server whose API answers
+at `https://api.<domain>` and whose per-sandbox envd hosts
+(`49983-<id>.<domain>`) resolve through wildcard DNS for that domain:
 
 ```sh
-E2B_API_KEY=... \
-E2B_API_URL=https://<server> \
-E2B_DOMAIN=<server-domain> \
-E2B_TEMPLATE=<template-on-that-server> \
-just test-integration
+# .env
+E2B_API_KEY_SANDBAWKS=...
+E2B_DOMAIN_SANDBAWKS=<server-domain>
+E2B_TEMPLATE_SANDBAWKS=<template-on-that-server>   # optional, default `base`
 ```
 
-If the server has no per-sandbox hosts, set `E2B_SANDBOX_URL` to the single
-envd endpoint instead; the `E2b-Sandbox-Id` header tells it which sandbox is
-meant.
+Then run `just test-live sandbawks`. The live harness refuses to run while the
+standard `E2B_API_KEY`, `E2B_API_URL`, `E2B_DOMAIN` or `E2B_SANDBOX_URL`
+variables are set, so a run cannot silently talk to the wrong server. It does
+not support a single shared envd endpoint (`E2B_SANDBOX_URL`); use the client's
+`ConnectionConfig::builder().sandbox_url(..)` directly for such a server.

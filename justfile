@@ -12,13 +12,25 @@ fmt-check:
 lint: fmt-check
     cargo clippy --all-targets -- -D warnings
 
-# Unit, mock-server and doc tests (integration tests are ignored by default).
+# Unit, mock-server and doc tests (live tests are ignored by default).
 test:
     cargo test
 
-# End-to-end tests; needs E2B_API_KEY (and optionally E2B_API_URL, E2B_DOMAIN, E2B_TEMPLATE).
-test-integration:
-    cargo test --test integration -- --ignored --test-threads=1
+# Keys come from E2B_API_KEY_<TARGET> (env or the nearest .env). Writes target/live-logs/<run id>.log.
+# Live tests against a real server: `just test-live hosted` or `just test-live sandbawks`.
+test-live target:
+    #!/usr/bin/env bash
+    set -uo pipefail
+    export E2B_TEST_TARGET="{{target}}"
+    export E2B_TEST_RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)-{{target}}"
+    mkdir -p target/live-logs
+    log="target/live-logs/${E2B_TEST_RUN_ID}.log"
+    cargo test --test live_lifecycle --test live_commands --test live_files \
+        -- --ignored --test-threads=4 --show-output 2>&1 | tee "$log"
+    status=${PIPESTATUS[0]}
+    cargo test --test live_sweep -- --ignored --show-output 2>&1 | tee -a "$log"
+    echo "run log: $log"
+    exit "$status"
 
 # Build the API docs with warnings as errors.
 doc:
