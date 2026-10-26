@@ -612,9 +612,35 @@ git commit -m "test: live harness with per-claim tests, drop guard and sweep"
 **Files:**
 - Modify: `tests/live_lifecycle.rs`
 
-Add each test below to `tests/live_lifecycle.rs`, extend its `use` lines to `use std::collections::HashSet;`, `use std::time::Duration;`, `use e2b_client::{CommandOptions, EnvdVersion, Error, ListSandboxesParams, SandboxState};` and `use live_support::{LiveSandbox, RUN_METADATA_KEY, client, params, poll_until, run_id, unix_now};`. Every test carries `#[tokio::test]` and `#[ignore = "live: run with `just test-live <target>`"]`; they are shown once here and omitted below for brevity, but each test needs both.
+Add each test below to `tests/live_lifecycle.rs`, extend its `use` lines to `use std::collections::HashSet;`, `use std::time::Duration;`, `use e2b_client::{CommandOptions, EnvdVersion, Error, ListSandboxesParams, SandboxInfo, SandboxState};` and `use live_support::{LiveSandbox, RUN_METADATA_KEY, client, params, poll_until, run_id, unix_now};`. Every test carries `#[tokio::test]` and `#[ignore = "live: run with `just test-live <target>`"]`; they are shown once here and omitted below for brevity, but each test needs both.
 
 A sandbox id that cannot exist: `const MISSING_ID: &str = "i0000000000000000000z";`.
+
+> **Corrected (issue #6, 2026-10-26).** What shipped differs from the code below in these
+> ways; `tests/live_lifecycle.rs` is the reference.
+> - **CLM-0012 probe.** A bare TCP connect (`</dev/tcp/1.1.1.1/443`) succeeds on hosted E2B
+>   even with `allow_internet_access(false)`: the host completes the handshake, then no data
+>   flows (first live run: closed sandbox exit 0; a diagnostic run showed an HTTP request and
+>   `curl` both getting no reply there). The probe now sends `GET /` to `1.1.1.1:80` and needs
+>   an `HTTP/` status line back. The code in Step 2 is fixed inline.
+> - **Client methods.** The claims for CLM-0021, 0023, 0024, 0025 and 0026 name `Client::*`
+>   methods, so those tests call `sandbox.client().kill_sandbox(id)`, `pause_sandbox`,
+>   `set_sandbox_timeout` and `refresh_sandbox` instead of the `Sandbox` wrappers. Arrange
+>   steps still use the wrappers.
+> - **List helpers.** `list_all` returns `Vec<SandboxInfo>`, and an `ids_of(&[SandboxInfo])`
+>   helper maps it to ids. CLM-0019 also asserts every listed entry's `state`, and polls via
+>   `list_all` as before.
+> - **CLM-0016** asserts `info.template_id == sandbox.template_id()`, not just non-empty.
+> - **CLM-0027** polls `is_running` with its own loop instead of `poll_until`, so a timeout
+>   reports the last answer (an `Err` included), not just "timed out".
+> - CLM-0014 was already in the file from Task 1 and is unchanged.
+> - After review (PR #17), these changes were made:
+>   - CLM-0011 panics at once if `get_info` reports not found, since a killed sandbox is
+>     what the claim rules out.
+>   - CLM-0021 polls `get_info` for up to 30 s until it errors, then asserts `is_not_found()`.
+>   - CLM-0025 no longer uses the local clock. It checks that `end_at - started_at` is in
+>     `238..=242 + elapsed`, where `elapsed` is a monotonic `Instant` measured from before
+>     create to after `set_sandbox_timeout`. `unix_now` is no longer imported.
 
 - [ ] **Step 1: Create and metadata (CLM-0007, 0008, 0009, 0010)**
 
@@ -691,7 +717,12 @@ async fn clm_0012_internet_access_false_blocks_outbound() {
     // Arrange: a control sandbox proves the probe works when access is allowed.
     let open = LiveSandbox::new().await;
     let closed = LiveSandbox::create(&params().allow_internet_access(false)).await;
-    let probe = "timeout 5 bash -c '</dev/tcp/1.1.1.1/443'";
+    // A bare TCP connect is not enough: hosted E2B completes the handshake on
+    // the host even when egress is denied. Require an HTTP status line back.
+    let probe = r#"timeout 10 bash -c 'exec 3<>/dev/tcp/1.1.1.1/80
+printf "GET / HTTP/1.0\r\nHost: one.one.one.one\r\n\r\n" >&3
+read -r status <&3
+[[ $status == HTTP/* ]]'"#;
 
     // Act
     let open_result = open.commands().run(probe, &CommandOptions::default()).await.expect("open probe");
@@ -699,8 +730,8 @@ async fn clm_0012_internet_access_false_blocks_outbound() {
         closed.commands().run(probe, &CommandOptions::default()).await.expect("closed probe");
 
     // Assert
-    assert_eq!(open_result.exit_code, 0, "control sandbox could not reach 1.1.1.1:443");
-    assert_ne!(closed_result.exit_code, 0, "sandbox without internet access reached 1.1.1.1:443");
+    assert_eq!(open_result.exit_code, 0, "control sandbox got no HTTP reply from 1.1.1.1:80");
+    assert_ne!(closed_result.exit_code, 0, "sandbox without internet access got an HTTP reply from 1.1.1.1:80");
 }
 ```
 
@@ -1496,6 +1527,24 @@ Same steps as Task 6, with `just test-live sandbawks` and the section heading `#
   - **Milestone changelog.**
 - [ ] **Step 6: Commit `claims.json` and the docs on branch `m1-verdicts` and open the PR.** The flow is the same as for every other PR: review, answer, merge. Then run `github-epic-close-out`.
 
+---
+
+### Task 9: Fix CLM-0071 (#18)
+
+> **Corrected (issue #18, 2026-10-26).** This task was added under Task 8 Step 3: CLM-0071 was refuted by `src/config.rs::tests::explicit_empty_values_count_as_unset`. An explicit empty builder value was kept instead of counting as unset, so `.api_url("")` made `build()` fail with `InvalidConfig`. The Python SDK resolves `value or env or default` (`py: connection_config.py:289-291, 310-318`), where an explicit `""` is unset too.
+
+**Files:**
+- Modify: `src/config.rs`
+- Modify: `docs/verification/s4-evidence-map.md` (the CLM-0071 row)
+- Create: `changelog/<ts>-m1-task-09-empty-config-values.md`
+
+- [x] **Step 1: Un-ignore the refuting test** `explicit_empty_values_count_as_unset` and watch it fail (`InvalidConfig("API URL \"\": relative URL without a base")`).
+- [x] **Step 2: Fix `ConnectionConfigBuilder::build_with_env`.** Builder values for `domain`, `api_url` and `sandbox_url` go through a `non_empty` helper, and the API key is dropped when its exposed value is empty, before the env fallback. Env values were already filtered the same way.
+- [x] **Step 3: Document the rule** in the module docs, the `ConnectionConfigBuilder` rustdoc (with an example) and each affected setter.
+- [x] **Step 4: Mark CLM-0071 covered** in the S4 evidence map, then run `just lint`, `just test` and `just doc`.
+
+---
+
 ### Task 10: Fix CLM-0109 (#19)
 
 > **Corrected (issue #19, 2026-10-26).** Added under Task 8 Step 3: the S4
@@ -1515,4 +1564,4 @@ Same steps as Task 6, with `just test-live sandbawks` and the section heading `#
 - [x] **Step 2: Add the gate.** `close_stdin` returns `Error::InvalidArgument` before sending anything when `envd.version() < EnvdVersion::CLOSE_STDIN`. An unparseable version is 99.99.99, so it is allowed.
 - [x] **Step 3: Watch it pass,** with the existing `stdin_and_signal_calls_send_proto_json` (envd 0.5.7) still green, then `just lint`, `just test`, `just doc`.
 - [ ] **Step 4 (coordinator):** record the passing test as `supports` evidence for CLM-0109 and a new verdict (Task 8 Step 3.3). No live re-run is needed: hosted envd is newer than 0.5.2.
-- [ ] **Step 5: Reconcile the map's summary once #18 and #19 have both merged.** In `docs/verification/s4-evidence-map.md`, the Summary table and the "To run the two refuting tests" command still count CLM-0109 as refuted. They were left alone here because #18 (CLM-0071) edits the same lines. Whichever PR merges second updates both lines: move CLM-0109 (and CLM-0071 once fixed) out of Refuted, and drop the fixed tests from the run command.
+- [x] **Step 5: Reconcile the map's summary once #18 and #19 have both merged.** In `docs/verification/s4-evidence-map.md`, the Summary table and the "To run the two refuting tests" command still count CLM-0109 as refuted. They were left alone here because #18 (CLM-0071) edits the same lines. Whichever PR merges second updates both lines: move CLM-0109 (and CLM-0071 once fixed) out of Refuted, and drop the fixed tests from the run command. Done when merging main after #20: the Summary shows 0 refuted, and the run line says no refuting tests are left.

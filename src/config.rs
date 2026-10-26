@@ -3,7 +3,9 @@
 //!
 //! Resolution follows the official SDKs
 //! (`e2b/connection_config.py:221-319`): an explicit builder value wins, then
-//! the environment variable, then the default.
+//! the environment variable, then the default. An empty string counts as
+//! unset at both of the first two steps, as in the SDKs' `value or env or
+//! default`.
 
 use std::fmt;
 use std::time::Duration;
@@ -219,6 +221,30 @@ fn trim_url(url: &Url) -> String {
 ///
 /// Every setter is optional. Unset values fall back to the environment, then to
 /// the defaults, when [`build`](Self::build) is called.
+///
+/// An explicit empty string counts as unset, exactly like an empty environment
+/// variable: `.api_url("")` resolves `E2B_API_URL`, then the default, rather
+/// than failing to parse. This matches the Python SDK's `value or env or
+/// default` (`e2b/connection_config.py:289-291, 310-318`) for `api_key`,
+/// `api_url`, `domain` and `sandbox_url`.
+///
+/// # Examples
+///
+/// [`build`](Self::build) reads the real process environment, so this example
+/// assumes `E2B_API_URL` is unset (or empty). If it is set, `.api_url("")`
+/// resolves to that value instead, which is the rule being shown.
+///
+/// ```
+/// use e2b_client::ConnectionConfig;
+///
+/// let config = ConnectionConfig::builder()
+///     .api_key("e2b_test")
+///     .domain("example.com")
+///     .api_url("")
+///     .build()?;
+/// assert_eq!(config.api_url().as_str(), "https://api.example.com/");
+/// # Ok::<(), e2b_client::Error>(())
+/// ```
 #[derive(Default)]
 pub struct ConnectionConfigBuilder {
     api_key: Option<SecretString>,
@@ -243,7 +269,8 @@ impl fmt::Debug for ConnectionConfigBuilder {
 }
 
 impl ConnectionConfigBuilder {
-    /// Sets the API key, overriding `E2B_API_KEY`.
+    /// Sets the API key, overriding `E2B_API_KEY`. An empty key counts as
+    /// unset.
     ///
     /// # Arguments
     ///
@@ -259,7 +286,7 @@ impl ConnectionConfigBuilder {
     }
 
     /// Sets the REST API base URL, overriding `E2B_API_URL` and the
-    /// `https://api.<domain>` default.
+    /// `https://api.<domain>` default. An empty URL counts as unset.
     ///
     /// # Arguments
     ///
@@ -274,7 +301,8 @@ impl ConnectionConfigBuilder {
         self
     }
 
-    /// Sets the E2B domain, overriding `E2B_DOMAIN`.
+    /// Sets the E2B domain, overriding `E2B_DOMAIN`. An empty domain counts as
+    /// unset.
     ///
     /// # Arguments
     ///
@@ -290,6 +318,7 @@ impl ConnectionConfigBuilder {
     }
 
     /// Sends all envd traffic to one fixed URL, overriding `E2B_SANDBOX_URL`.
+    /// An empty URL counts as unset.
     ///
     /// This is the official SDKs' `sandbox_url` option. The `E2b-Sandbox-Id`
     /// and `E2b-Sandbox-Port` headers on every envd request tell the server
@@ -324,7 +353,8 @@ impl ConnectionConfigBuilder {
         self
     }
 
-    /// Resolves the configuration, reading the environment for unset values.
+    /// Resolves the configuration, reading the environment for unset (or
+    /// empty) values.
     ///
     /// # Returns
     ///
@@ -344,25 +374,24 @@ impl ConnectionConfigBuilder {
         env: impl Fn(&str) -> Option<String>,
     ) -> Result<ConnectionConfig> {
         // The SDKs use `value or env or default`, so an empty string counts as
-        // unset. `filter` drops empty values before the fallback is applied.
+        // unset, whether it came from the builder or the environment.
+        // `Option::filter` turns `Some("")` into `None` before the fallback.
         let lookup = |key: &str| env(key).filter(|value| !value.is_empty());
 
-        let domain = self
-            .domain
+        let domain = non_empty(self.domain)
             .or_else(|| lookup(ENV_DOMAIN))
             .unwrap_or_else(|| DEFAULT_DOMAIN.to_owned());
-        let api_url_raw = self
-            .api_url
+        let api_url_raw = non_empty(self.api_url)
             .or_else(|| lookup(ENV_API_URL))
             .unwrap_or_else(|| format!("https://api.{domain}"));
         let api_url = parse_url("API URL", &api_url_raw)?;
-        let sandbox_url = self
-            .sandbox_url
+        let sandbox_url = non_empty(self.sandbox_url)
             .or_else(|| lookup(ENV_SANDBOX_URL))
             .map(|raw| parse_url("sandbox URL", &raw))
             .transpose()?;
         let api_key = self
             .api_key
+            .filter(|key| !key.expose_secret().is_empty())
             .or_else(|| lookup(ENV_API_KEY).map(SecretString::from));
 
         Ok(ConnectionConfig {
@@ -375,6 +404,12 @@ impl ConnectionConfigBuilder {
                 .unwrap_or(Some(DEFAULT_REQUEST_TIMEOUT)),
         })
     }
+}
+
+/// `None` for an unset or empty builder value, so both fall through to the
+/// environment.
+fn non_empty(value: Option<String>) -> Option<String> {
+    value.filter(|value| !value.is_empty())
 }
 
 fn parse_url(what: &str, raw: &str) -> Result<Url> {
@@ -511,7 +546,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "refutes CLM-0071: explicit empty builder values are kept, not treated as unset"]
     fn explicit_empty_values_count_as_unset() {
         // Arrange: the SDKs resolve `value or env or default`, so an explicit
         // empty string falls through to the env var as well.
