@@ -67,7 +67,7 @@ Deferred:
 | `CommandEvent::{Stdout(Bytes), Stderr(Bytes), Exit(CommandExit)}`; `CommandExit { exit_code: i32, error: Option<String> }` | `src/commands.rs:166-186` |
 | `CommandResult { stdout, stderr: String, exit_code: i32, error: Option<String> }` with `success()` | `src/commands.rs:189-210` |
 | `ProcessInfo { pid: u32, tag, cmd: String, args: Vec<String>, envs, cwd }` | `src/commands.rs:213-230` |
-| `Commands::{start, run}(&str, &CommandOptions)`, `connect(pid, Option<Duration>)`, `list()`, `send_stdin(pid, impl AsRef<[u8]>)`, `close_stdin(pid)`, `send_signal(pid, Signal)`, `kill(pid) -> bool`; `CommandHandle::{pid, next_event, wait}` | `src/commands.rs:279-641` |
+| `Commands::{start, run}(&str, &CommandOptions)`, `connect(pid, Option<Duration>)`, `list()`, `send_stdin(pid, impl AsRef<[u8]>)`, `close_stdin(pid)`, `send_signal(pid, Signal)`, `kill(pid) -> bool`; `CommandHandle::{pid, next_event, wait}` | `src/commands.rs:279-650` |
 | `CommandOptions` builders: `env`, `cwd`, `user`, `stdin(bool)`, `timeout(Option<Duration>)` | `src/commands.rs:79-141` |
 | `Signal::{Sigterm, Sigkill}` | `src/commands.rs:149-163` |
 | `Filesystem::write(&str, impl Into<Bytes>, Option<&str>) -> WriteInfo { name, path, file_type }`; `read -> Bytes`; `read_to_string`; `list(path, depth, user)`; `get_info`, `exists`, `make_dir -> bool`, `rename(src, dst, user) -> EntryInfo`, `remove` | `src/filesystem.rs:165-420` |
@@ -1542,3 +1542,26 @@ Same steps as Task 6, with `just test-live sandbawks` and the section heading `#
 - [x] **Step 2: Fix `ConnectionConfigBuilder::build_with_env`.** Builder values for `domain`, `api_url` and `sandbox_url` go through a `non_empty` helper, and the API key is dropped when its exposed value is empty, before the env fallback. Env values were already filtered the same way.
 - [x] **Step 3: Document the rule** in the module docs, the `ConnectionConfigBuilder` rustdoc (with an example) and each affected setter.
 - [x] **Step 4: Mark CLM-0071 covered** in the S4 evidence map, then run `just lint`, `just test` and `just doc`.
+
+---
+
+### Task 10: Fix CLM-0109 (#19)
+
+> **Corrected (issue #19, 2026-10-26).** Added under Task 8 Step 3: the S4
+> evidence map (Task 5) found CLM-0109 refuted. `Commands::close_stdin` had no
+> envd version check, so on envd 0.5.1 it sent `CloseStdin` and succeeded,
+> while the SDK refuses below 0.5.2 (py `sandbox_async/commands/command.py:189-193`,
+> `envd/versions.py:7`).
+
+**Files:**
+- Modify: `src/envd/mod.rs` (add `EnvdVersion::CLOSE_STDIN = 0.5.2` beside `DEFAULT_USER`, plus boundary asserts in `version_parsing_and_ordering`)
+- Modify: `src/commands.rs` (gate `Commands::close_stdin`, document the error)
+- Modify: `tests/envd_api.rs` (un-ignore `close_stdin_is_refused_before_envd_0_5_2`)
+- Modify: `docs/verification/s4-evidence-map.md` (CLM-0109 row: refuted to covered)
+- Create: `changelog/<ts>-m1-task-10-close-stdin-version-gate.md`
+
+- [x] **Step 1: Un-ignore the refuting test and watch it fail.** It failed with `Ok(())`: the call reached the mock and succeeded.
+- [x] **Step 2: Add the gate.** `close_stdin` returns `Error::InvalidArgument` before sending anything when `envd.version() < EnvdVersion::CLOSE_STDIN`. An unparseable version is 99.99.99, so it is allowed.
+- [x] **Step 3: Watch it pass,** with the existing `stdin_and_signal_calls_send_proto_json` (envd 0.5.7) still green, then `just lint`, `just test`, `just doc`.
+- [ ] **Step 4 (coordinator):** record the passing test as `supports` evidence for CLM-0109 and a new verdict (Task 8 Step 3.3). No live re-run is needed: hosted envd is newer than 0.5.2.
+- [x] **Step 5: Reconcile the map's summary once #18 and #19 have both merged.** In `docs/verification/s4-evidence-map.md`, the Summary table and the "To run the two refuting tests" command still count CLM-0109 as refuted. They were left alone here because #18 (CLM-0071) edits the same lines. Whichever PR merges second updates both lines: move CLM-0109 (and CLM-0071 once fixed) out of Refuted, and drop the fixed tests from the run command. Done when merging main after #20: the Summary shows 0 refuted, and the run line says no refuting tests are left.

@@ -580,7 +580,6 @@ async fn stdin_and_signal_calls_send_proto_json() {
 }
 
 #[tokio::test]
-#[ignore = "refutes CLM-0109: close_stdin has no envd version check"]
 async fn close_stdin_is_refused_before_envd_0_5_2() {
     // Arrange: envd would accept the call, so only a client-side check fails it.
     let server = MockServer::start().await;

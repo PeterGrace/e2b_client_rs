@@ -18,15 +18,15 @@ How to read it:
   claim, and `new` when this task (issue #9) had to add a test or tighten an
   existing assertion.
 
-Mapped against main at 5b134d0. To run the remaining refuting test:
-`cargo test -- --ignored close_stdin_is_refused_before_envd_0_5_2`. CLM-0071
-was fixed by issue #18, and its test is no longer ignored.
+Mapped against main at 5b134d0. No refuting tests are left: CLM-0071 was
+fixed by issue #18 and CLM-0109 by issue #19, and both tests are no longer
+ignored.
 
 ## Summary
 
 | Covered by existing tests | Covered by new or tightened tests | Partial | Refuted |
 |---|---|---|---|
-| 29 | 20 | 1 (CLM-0085) | 1 (CLM-0109) |
+| 29 | 21 | 1 (CLM-0085) | 0 |
 
 ## Map
 
@@ -74,7 +74,7 @@ was fixed by issue #18, and its test is no longer ignored.
 | CLM-0106 | tests/envd_api.rs::run_streams_output_to_exit_code_with_sdk_headers | yes | existing | The decoded Start body is asserted in full. |
 | CLM-0107 | tests/envd_api.rs::stream_not_opening_with_start_event_is_protocol_error; tests/envd_api.rs::first_event_must_arrive_within_the_request_timeout; tests/envd_api.rs::next_event_yields_chunks_in_order_and_skips_keepalives | yes | new | `slow_stream_open_times_out_with_request_timeout` delays only the response headers. The new test sends headers at once and then withholds the start event. The last test asserts that the pid comes from the start event. |
 | CLM-0108 | tests/envd_api.rs::clean_end_without_exit_event_fails_wait | yes | existing | |
-| CLM-0109 | **tests/envd_api.rs::close_stdin_is_refused_before_envd_0_5_2 (ignored, refutes)** | refuted | new | `Commands::close_stdin` has no version check, so it succeeds on envd 0.5.1. The SDK refuses it below `ENVD_ENVD_CLOSE = 0.5.2` (py `envd/versions.py`). |
+| CLM-0109 | tests/envd_api.rs::close_stdin_is_refused_before_envd_0_5_2; src/envd/mod.rs::tests::version_parsing_and_ordering | yes | new | Fixed in #19 (was refuted): `Commands::close_stdin` now returns `InvalidArgument` without sending `CloseStdin` when envd is older than `EnvdVersion::CLOSE_STDIN` (0.5.2), matching the SDK's `ENVD_ENVD_CLOSE = 0.5.2` (py `envd/versions.py`). The unit test pins the 0.5.1/0.5.2 boundary and that an unparseable version (99.99.99) is allowed. |
 | CLM-0110 | tests/envd_api.rs::read_file_downloads_bytes; tests/envd_api.rs::legacy_envd_defaults_to_user_account | yes | existing | Covers `path` without `username` returning the raw bytes, and `path` with `username`. |
 | CLM-0111 | tests/envd_api.rs::write_file_uploads_multipart | yes | existing | |
 | CLM-0112 | tests/envd_api.rs::read_missing_file_is_envd_not_found; tests/envd_api.rs::write_file_disk_full_is_envd_error | yes | existing | |

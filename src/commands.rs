@@ -7,13 +7,13 @@ use std::time::Duration;
 use bytes::{Bytes, BytesMut};
 use reqwest::header::{HeaderMap, HeaderValue};
 
-use crate::envd::EnvdClient;
 use crate::envd::connect::{ConnectStream, Empty};
 use crate::envd::process_pb::{
     self, CloseStdinRequest, ConnectRequest, EventResponse, ListRequest, ListResponse,
     ProcessConfig, ProcessInput, ProcessSelector, SendInputRequest, SendSignalRequest,
     StartRequest,
 };
+use crate::envd::{EnvdClient, EnvdVersion};
 use crate::error::{ConnectCode, Error, Result};
 
 /// The default bound on a command stream (`timeout=60` in the SDKs'
@@ -450,9 +450,18 @@ impl Commands {
     ///
     /// # Errors
     ///
-    /// [`Error::Rpc`] (envd older than 0.5.2 answers `unimplemented`) or
-    /// [`Error::Transport`].
+    /// [`Error::InvalidArgument`] when the sandbox's envd is older than 0.5.2,
+    /// which has no `CloseStdin`; nothing is sent in that case, matching the
+    /// SDK (`e2b/sandbox_async/commands/command.py:189-193`). Otherwise
+    /// [`Error::Rpc`] (e.g. `not_found`) or [`Error::Transport`].
     pub async fn close_stdin(&self, pid: u32) -> Result<()> {
+        let version = self.envd.version();
+        if version < EnvdVersion::CLOSE_STDIN {
+            return Err(Error::InvalidArgument(format!(
+                "close_stdin needs envd {} or newer; this sandbox runs envd {version}",
+                EnvdVersion::CLOSE_STDIN
+            )));
+        }
         let request = CloseStdinRequest {
             process: ProcessSelector::Pid(pid),
         };
