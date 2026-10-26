@@ -522,6 +522,11 @@ Remove the `test-integration` recipe and add:
 > never reached the run log. The two comment lines are also swapped, because
 > `just --list` shows only the last comment line above a recipe. The `test`
 > recipe's comment now says "live tests" instead of "integration tests".
+>
+> **Corrected (issue #5, 2026-10-26, review).** The run id ends in the shell's
+> pid (`-$$`). With second resolution alone, two runs against the same target
+> started in the same second, for example from two worktrees, would share a tag,
+> and each sweep would kill the other run's sandboxes.
 
 ```just
 # Keys come from E2B_API_KEY_<TARGET> (env or the nearest .env). Writes target/live-logs/<run id>.log.
@@ -530,7 +535,7 @@ test-live target:
     #!/usr/bin/env bash
     set -uo pipefail
     export E2B_TEST_TARGET="{{target}}"
-    export E2B_TEST_RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)-{{target}}"
+    export E2B_TEST_RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)-{{target}}-$$"
     mkdir -p target/live-logs
     log="target/live-logs/${E2B_TEST_RUN_ID}.log"
     cargo test --test live_lifecycle --test live_commands --test live_files \

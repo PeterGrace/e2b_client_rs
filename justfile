@@ -22,7 +22,7 @@ test-live target:
     #!/usr/bin/env bash
     set -uo pipefail
     export E2B_TEST_TARGET="{{target}}"
-    export E2B_TEST_RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)-{{target}}"
+    export E2B_TEST_RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)-{{target}}-$$"
     mkdir -p target/live-logs
     log="target/live-logs/${E2B_TEST_RUN_ID}.log"
     cargo test --test live_lifecycle --test live_commands --test live_files \
