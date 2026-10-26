@@ -242,7 +242,10 @@ async fn get_sandbox_info_404_is_not_found() {
         .await
         .expect_err("error");
 
-    assert!(err.is_not_found(), "{err:?}");
+    assert!(
+        matches!(err, Error::SandboxNotFound(ref id) if id == SANDBOX_ID),
+        "{err:?}"
+    );
 }
 
 #[tokio::test]
@@ -453,6 +456,42 @@ async fn sandbox_handle_delegates_lifecycle_calls() {
         .expect("timeout");
     sandbox.refresh(None).await.expect("refresh");
     assert!(sandbox.kill().await.expect("kill"));
+}
+
+#[tokio::test]
+async fn every_rest_request_carries_the_api_key() {
+    // Arrange: no mocks, so every call gets wiremock's 404. Only the requests
+    // matter here, not how each call reports the 404.
+    let server = MockServer::start().await;
+    let client = client_for(&server);
+    let timeout = Duration::from_secs(1);
+
+    // Act: `let _ =` discards each call's result on purpose.
+    let _ = client.create_sandbox(&CreateSandboxParams::default()).await;
+    // v2 connect, then the v1 fallback after its 404.
+    let _ = client.connect_sandbox(SANDBOX_ID, None).await;
+    let _ = client.get_sandbox_info(SANDBOX_ID).await;
+    let _ = client.list_sandboxes(&ListSandboxesParams::new()).await;
+    let _ = client.kill_sandbox(SANDBOX_ID).await;
+    let _ = client.pause_sandbox(SANDBOX_ID).await;
+    let _ = client.set_sandbox_timeout(SANDBOX_ID, timeout).await;
+    let _ = client.refresh_sandbox(SANDBOX_ID, None).await;
+
+    // Assert
+    let requests = server.received_requests().await.expect("recording");
+    assert_eq!(requests.len(), 9, "one request per call, two for connect");
+    for request in &requests {
+        assert_eq!(
+            request
+                .headers
+                .get("x-api-key")
+                .map(|value| value.as_bytes()),
+            Some(API_KEY.as_bytes()),
+            "{} {}",
+            request.method,
+            request.url
+        );
+    }
 }
 
 #[tokio::test]

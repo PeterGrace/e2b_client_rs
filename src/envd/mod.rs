@@ -410,6 +410,17 @@ mod tests {
     }
 
     #[test]
+    fn unparseable_or_debug_versions_are_99_99_99() {
+        for raw in ["", "dev", "debug", "1.2", "a.b.c", "0.x.1"] {
+            assert_eq!(
+                EnvdVersion::parse_lenient(raw),
+                EnvdVersion::new(99, 99, 99),
+                "{raw:?}"
+            );
+        }
+    }
+
+    #[test]
     fn json_message_extraction() {
         assert_eq!(
             json_message_or_text(br#"{"message":"nope","code":404}"#),

@@ -513,6 +513,58 @@ mod tests {
     }
 
     #[test]
+    fn list_query_form_encodes_several_metadata_pairs_into_one_string() {
+        let params = ListSandboxesParams::new()
+            .metadata("a b", "1")
+            .metadata("c", "x/y");
+
+        let query = params.query();
+
+        // One `metadata` parameter whose value is a form-encoded string of
+        // the encodeURIComponent-ed pairs. HashMap order is unspecified, so
+        // the pairs are compared as a sorted list.
+        let [("metadata", metadata)] = query.as_slice() else {
+            panic!("expected only a metadata parameter: {query:?}");
+        };
+        let mut pairs: Vec<(String, String)> = url::form_urlencoded::parse(metadata.as_bytes())
+            .map(|(key, value)| (key.into_owned(), value.into_owned()))
+            .collect();
+        pairs.sort();
+        assert_eq!(
+            pairs,
+            [
+                ("a%20b".to_owned(), "1".to_owned()),
+                ("c".to_owned(), "x%2Fy".to_owned())
+            ]
+        );
+        assert!(metadata.contains('&'), "{metadata}");
+    }
+
+    #[test]
+    fn sandbox_created_parses_fields_and_optional_tokens() {
+        let full: SandboxCreated = serde_json::from_str(
+            r#"{"templateID":"t1","sandboxID":"s1","clientID":"c1","envdVersion":"0.5.7",
+            "envdAccessToken":"envd-tok","trafficAccessToken":"traffic-tok",
+            "domain":"example.net"}"#,
+        )
+        .expect("full");
+        let minimal: SandboxCreated = serde_json::from_str(
+            r#"{"templateID":"t1","sandboxID":"s1","clientID":"c1","envdVersion":"0.5.7"}"#,
+        )
+        .expect("minimal");
+
+        assert_eq!(full.template_id, "t1");
+        assert_eq!(full.sandbox_id, "s1");
+        assert_eq!(full.envd_version, "0.5.7");
+        assert_eq!(full.envd_access_token.as_deref(), Some("envd-tok"));
+        assert_eq!(full.traffic_access_token.as_deref(), Some("traffic-tok"));
+        assert_eq!(full.domain.as_deref(), Some("example.net"));
+        assert!(minimal.envd_access_token.is_none());
+        assert!(minimal.traffic_access_token.is_none());
+        assert!(minimal.domain.is_none());
+    }
+
+    #[test]
     fn encode_uri_component_keeps_unreserved_marks() {
         assert_eq!(
             encode_uri_component("a-b_c.d!e~f*g'h(i)j k/"),

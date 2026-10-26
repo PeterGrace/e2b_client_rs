@@ -281,30 +281,33 @@ impl fmt::Display for ConnectCode {
 mod tests {
     use super::*;
 
-    const ALL_CODES: [ConnectCode; 16] = [
-        ConnectCode::Canceled,
-        ConnectCode::Unknown,
-        ConnectCode::InvalidArgument,
-        ConnectCode::DeadlineExceeded,
-        ConnectCode::NotFound,
-        ConnectCode::AlreadyExists,
-        ConnectCode::PermissionDenied,
-        ConnectCode::ResourceExhausted,
-        ConnectCode::FailedPrecondition,
-        ConnectCode::Aborted,
-        ConnectCode::OutOfRange,
-        ConnectCode::Unimplemented,
-        ConnectCode::Internal,
-        ConnectCode::Unavailable,
-        ConnectCode::DataLoss,
-        ConnectCode::Unauthenticated,
+    /// Every code with its Connect wire spelling, written out so a wrong
+    /// spelling cannot round-trip unnoticed.
+    const ALL_CODES: [(ConnectCode, &str); 16] = [
+        (ConnectCode::Canceled, "canceled"),
+        (ConnectCode::Unknown, "unknown"),
+        (ConnectCode::InvalidArgument, "invalid_argument"),
+        (ConnectCode::DeadlineExceeded, "deadline_exceeded"),
+        (ConnectCode::NotFound, "not_found"),
+        (ConnectCode::AlreadyExists, "already_exists"),
+        (ConnectCode::PermissionDenied, "permission_denied"),
+        (ConnectCode::ResourceExhausted, "resource_exhausted"),
+        (ConnectCode::FailedPrecondition, "failed_precondition"),
+        (ConnectCode::Aborted, "aborted"),
+        (ConnectCode::OutOfRange, "out_of_range"),
+        (ConnectCode::Unimplemented, "unimplemented"),
+        (ConnectCode::Internal, "internal"),
+        (ConnectCode::Unavailable, "unavailable"),
+        (ConnectCode::DataLoss, "data_loss"),
+        (ConnectCode::Unauthenticated, "unauthenticated"),
     ];
 
     #[test]
     fn wire_spelling_round_trips_for_every_code() {
-        for code in ALL_CODES {
-            assert_eq!(ConnectCode::from_wire(code.as_wire()), Some(code));
-            assert_eq!(code.to_string(), code.as_wire());
+        for (code, wire) in ALL_CODES {
+            assert_eq!(ConnectCode::from_wire(wire), Some(code));
+            assert_eq!(code.as_wire(), wire);
+            assert_eq!(code.to_string(), wire);
         }
     }
 
