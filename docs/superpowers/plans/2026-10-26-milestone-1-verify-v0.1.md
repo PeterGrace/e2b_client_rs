@@ -923,6 +923,14 @@ git commit -m "test: live lifecycle tests for S1 v0.1 claims"
 **Files:**
 - Modify: `tests/live_commands.rs`
 
+> **Corrected (issue #7, 2026-10-26).** The code below compiled as written. Four
+> tests in `tests/live_commands.rs` assert more than this plan shows, so read
+> that file, not this section, for what shipped: CLM-0034 sleeps 2 s and checks
+> that the first Stdout chunk arrives before the Stderr chunk and at least 1 s
+> before Exit (the "as they are produced" part of the claim); CLM-0035 and
+> CLM-0043 also assert exit code 0; CLM-0044 also asserts the pid is gone from
+> `Commands::list` after the wait.
+
 Extend the `use` lines to `use std::time::Duration;`, `use e2b_client::{CommandEvent, CommandOptions, ConnectCode, Error, Signal};` and `use live_support::LiveSandbox;`. Every test carries `#[tokio::test]` and `#[ignore = "live: run with `just test-live <target>`"]`.
 
 - [ ] **Step 1: Streaming and large output (CLM-0034, 0035)**
