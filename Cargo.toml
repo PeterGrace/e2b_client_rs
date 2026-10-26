@@ -37,6 +37,8 @@ tokio = { version = "1.54.1", features = ["time"] }
 url = "2.5.8"
 
 [dev-dependencies]
+# Reads the live-test keys from the nearest .env without touching the process environment.
+dotenvy = "0.15.7"
 tokio = { version = "1.54.1", features = ["rt-multi-thread", "macros", "net", "io-util"] }
 # Mock HTTP server for the REST and envd tests.
 wiremock = "0.6.5"
