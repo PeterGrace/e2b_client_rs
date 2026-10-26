@@ -52,3 +52,12 @@ then reported `killed 0`.
 - Step 6: the self-hosted section of `CONTRIBUTING.md` was rewritten. It
   referred to the removed recipe and to variables the harness now refuses.
 - Step 2: the `client()` loop was rewritten in rustfmt's layout.
+
+## Review follow-ups (PR #13)
+
+- The recipe's run id now ends in the shell's pid
+  (`<UTC seconds>-<target>-<pid>`). Two runs started in the same second
+  against the same target, for example from two worktrees, no longer share a
+  tag, so one run's sweep can't kill the other's sandboxes.
+- `just test-live` now exits non-zero when the sweep fails, even if every claim
+  test passed. A failed sweep means leaked, billed sandboxes.
