@@ -612,9 +612,35 @@ git commit -m "test: live harness with per-claim tests, drop guard and sweep"
 **Files:**
 - Modify: `tests/live_lifecycle.rs`
 
-Add each test below to `tests/live_lifecycle.rs`, extend its `use` lines to `use std::collections::HashSet;`, `use std::time::Duration;`, `use e2b_client::{CommandOptions, EnvdVersion, Error, ListSandboxesParams, SandboxState};` and `use live_support::{LiveSandbox, RUN_METADATA_KEY, client, params, poll_until, run_id, unix_now};`. Every test carries `#[tokio::test]` and `#[ignore = "live: run with `just test-live <target>`"]`; they are shown once here and omitted below for brevity, but each test needs both.
+Add each test below to `tests/live_lifecycle.rs`, extend its `use` lines to `use std::collections::HashSet;`, `use std::time::Duration;`, `use e2b_client::{CommandOptions, EnvdVersion, Error, ListSandboxesParams, SandboxInfo, SandboxState};` and `use live_support::{LiveSandbox, RUN_METADATA_KEY, client, params, poll_until, run_id, unix_now};`. Every test carries `#[tokio::test]` and `#[ignore = "live: run with `just test-live <target>`"]`; they are shown once here and omitted below for brevity, but each test needs both.
 
 A sandbox id that cannot exist: `const MISSING_ID: &str = "i0000000000000000000z";`.
+
+> **Corrected (issue #6, 2026-10-26).** What shipped differs from the code below in these
+> ways; `tests/live_lifecycle.rs` is the reference.
+> - **CLM-0012 probe.** A bare TCP connect (`</dev/tcp/1.1.1.1/443`) succeeds on hosted E2B
+>   even with `allow_internet_access(false)`: the host completes the handshake, then no data
+>   flows (first live run: closed sandbox exit 0; a diagnostic run showed an HTTP request and
+>   `curl` both getting no reply there). The probe now sends `GET /` to `1.1.1.1:80` and needs
+>   an `HTTP/` status line back. The code in Step 2 is fixed inline.
+> - **Client methods.** The claims for CLM-0021, 0023, 0024, 0025 and 0026 name `Client::*`
+>   methods, so those tests call `sandbox.client().kill_sandbox(id)`, `pause_sandbox`,
+>   `set_sandbox_timeout` and `refresh_sandbox` instead of the `Sandbox` wrappers. Arrange
+>   steps still use the wrappers.
+> - **List helpers.** `list_all` returns `Vec<SandboxInfo>`, and an `ids_of(&[SandboxInfo])`
+>   helper maps it to ids. CLM-0019 also asserts every listed entry's `state`, and polls via
+>   `list_all` as before.
+> - **CLM-0016** asserts `info.template_id == sandbox.template_id()`, not just non-empty.
+> - **CLM-0027** polls `is_running` with its own loop instead of `poll_until`, so a timeout
+>   reports the last answer (an `Err` included), not just "timed out".
+> - CLM-0014 was already in the file from Task 1 and is unchanged.
+> - After review (PR #17), these changes were made:
+>   - CLM-0011 panics at once if `get_info` reports not found, since a killed sandbox is
+>     what the claim rules out.
+>   - CLM-0021 polls `get_info` for up to 30 s until it errors, then asserts `is_not_found()`.
+>   - CLM-0025 no longer uses the local clock. It checks that `end_at - started_at` is in
+>     `238..=242 + elapsed`, where `elapsed` is a monotonic `Instant` measured from before
+>     create to after `set_sandbox_timeout`. `unix_now` is no longer imported.
 
 - [ ] **Step 1: Create and metadata (CLM-0007, 0008, 0009, 0010)**
 
@@ -691,7 +717,12 @@ async fn clm_0012_internet_access_false_blocks_outbound() {
     // Arrange: a control sandbox proves the probe works when access is allowed.
     let open = LiveSandbox::new().await;
     let closed = LiveSandbox::create(&params().allow_internet_access(false)).await;
-    let probe = "timeout 5 bash -c '</dev/tcp/1.1.1.1/443'";
+    // A bare TCP connect is not enough: hosted E2B completes the handshake on
+    // the host even when egress is denied. Require an HTTP status line back.
+    let probe = r#"timeout 10 bash -c 'exec 3<>/dev/tcp/1.1.1.1/80
+printf "GET / HTTP/1.0\r\nHost: one.one.one.one\r\n\r\n" >&3
+read -r status <&3
+[[ $status == HTTP/* ]]'"#;
 
     // Act
     let open_result = open.commands().run(probe, &CommandOptions::default()).await.expect("open probe");
@@ -699,8 +730,8 @@ async fn clm_0012_internet_access_false_blocks_outbound() {
         closed.commands().run(probe, &CommandOptions::default()).await.expect("closed probe");
 
     // Assert
-    assert_eq!(open_result.exit_code, 0, "control sandbox could not reach 1.1.1.1:443");
-    assert_ne!(closed_result.exit_code, 0, "sandbox without internet access reached 1.1.1.1:443");
+    assert_eq!(open_result.exit_code, 0, "control sandbox got no HTTP reply from 1.1.1.1:80");
+    assert_ne!(closed_result.exit_code, 0, "sandbox without internet access got an HTTP reply from 1.1.1.1:80");
 }
 ```
 
