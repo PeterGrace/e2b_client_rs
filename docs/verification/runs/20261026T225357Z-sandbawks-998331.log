@@ -1,0 +1,269 @@
+   Compiling proc-macro2 v1.0.107
+   Compiling unicode-ident v1.0.27
+   Compiling quote v1.0.47
+   Compiling libc v0.2.191
+   Compiling pin-project-lite v0.2.17
+   Compiling stable_deref_trait v1.2.1
+   Compiling bytes v1.12.1
+   Compiling futures-core v0.3.34
+   Compiling memchr v2.8.3
+   Compiling shlex v2.0.1
+   Compiling find-msvc-tools v0.1.15
+   Compiling futures-sink v0.3.34
+   Compiling itoa v1.0.18
+   Compiling dunce v1.0.5
+   Compiling pkg-config v0.3.34
+   Compiling fs_extra v1.3.0
+   Compiling once_cell v1.21.4
+   Compiling slab v0.4.12
+   Compiling futures-channel v0.3.34
+   Compiling smallvec v1.16.4
+   Compiling writeable v0.6.4
+   Compiling litemap v0.8.3
+   Compiling zeroize v1.9.1
+   Compiling futures-io v0.3.34
+   Compiling aws-lc-rs v1.18.2
+   Compiling serde_core v1.0.229
+   Compiling icu_properties_data v2.4.0
+   Compiling icu_normalizer_data v2.4.0
+   Compiling futures-task v0.3.34
+   Compiling utf8_iter v1.0.4
+   Compiling percent-encoding v2.3.2
+   Compiling tracing-core v0.1.36
+   Compiling http v1.5.0
+   Compiling hashbrown v0.17.1
+   Compiling rustls-pki-types v1.15.1
+   Compiling equivalent v1.0.3
+   Compiling httparse v1.10.1
+   Compiling serde v1.0.229
+   Compiling tower-service v0.3.3
+   Compiling untrusted v0.9.0
+   Compiling zmij v1.0.23
+   Compiling try-lock v0.2.5
+   Compiling fnv v1.0.7
+   Compiling rustls v0.23.46
+   Compiling atomic-waker v1.1.2
+   Compiling form_urlencoded v1.2.2
+   Compiling httpdate v1.0.3
+   Compiling serde_json v1.0.154
+   Compiling tracing v0.1.44
+   Compiling jobserver v0.1.35
+   Compiling mio v1.2.4
+   Compiling socket2 v0.6.5
+   Compiling indexmap v2.14.2
+   Compiling want v0.3.2
+   Compiling http-body v1.1.0
+   Compiling subtle v2.6.1
+   Compiling base64 v0.23.1
+   Compiling autocfg v1.5.1
+   Compiling unicase v2.10.0
+   Compiling cc v1.10.0
+   Compiling ipnet v2.12.2
+   Compiling sync_wrapper v1.0.2
+   Compiling openssl-probe v0.2.1
+   Compiling tower-layer v0.3.3
+   Compiling log v0.4.34
+   Compiling aho-corasick v1.1.5
+   Compiling bitflags v2.13.2
+   Compiling http-body-util v0.1.5
+   Compiling mime v0.3.17
+   Compiling regex-syntax v0.8.11
+   Compiling num-traits v0.2.19
+   Compiling ryu v1.0.23
+   Compiling mime_guess v2.0.5
+   Compiling rustls-native-certs v0.8.5
+   Compiling thiserror v2.0.21
+   Compiling syn v3.0.9
+   Compiling num_cpus v1.17.0
+   Compiling deadpool-runtime v0.1.4
+   Compiling lazy_static v1.5.1
+   Compiling secrecy v0.10.3
+   Compiling base64 v0.22.1
+   Compiling cmake v0.1.58
+   Compiling dotenvy v0.15.7
+   Compiling aws-lc-sys v0.46.0
+   Compiling regex-automata v0.4.18
+   Compiling synstructure v0.14.0
+   Compiling zerovec-derive v0.11.7
+   Compiling displaydoc v0.2.7
+   Compiling tokio-macros v2.7.2
+   Compiling futures-macro v0.3.34
+   Compiling serde_derive v1.0.229
+   Compiling thiserror-impl v2.0.21
+   Compiling zerofrom-derive v0.1.8
+   Compiling yoke-derive v0.8.4
+   Compiling regex v1.13.1
+   Compiling tokio v1.54.1
+   Compiling futures-util v0.3.34
+   Compiling zerofrom v0.1.8
+   Compiling yoke v0.8.4
+   Compiling futures-executor v0.3.34
+   Compiling zerovec v0.11.9
+   Compiling zerotrie v0.2.5
+   Compiling futures v0.3.34
+   Compiling tokio-util v0.7.20
+   Compiling tower v0.5.3
+   Compiling deadpool v0.12.3
+   Compiling tinystr v0.8.5
+   Compiling potential_utf v0.1.6
+   Compiling h2 v0.4.20
+   Compiling icu_collections v2.4.0
+   Compiling serde_urlencoded v0.7.1
+   Compiling icu_locale_core v2.4.0
+   Compiling chrono v0.4.45
+   Compiling assert-json-diff v2.0.2
+   Compiling icu_provider v2.4.0
+   Compiling hyper v1.12.0
+   Compiling icu_normalizer v2.4.0
+   Compiling icu_properties v2.4.0
+   Compiling hyper-util v0.1.21
+   Compiling idna_adapter v1.2.2
+   Compiling idna v1.1.0
+   Compiling url v2.5.8
+   Compiling tower-http v0.6.11
+   Compiling wiremock v0.6.5
+   Compiling rustls-webpki v0.103.16
+   Compiling tokio-rustls v0.26.6
+   Compiling rustls-platform-verifier v0.7.1
+   Compiling hyper-rustls v0.27.10
+   Compiling reqwest v0.13.5
+   Compiling e2b-client v0.1.0 (/home/pgrace/repos/e2b_client_rs/.worktrees/e2b_client_rs-11)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 15.60s
+     Running tests/live_commands.rs (target/debug/deps/live_commands-66ff8d529c7cfa89)
+
+running 13 tests
+test clm_0035_run_delivers_large_output_in_order ... FAILED
+test clm_0036_options_env_is_set ... FAILED
+test clm_0033_run_returns_output_and_exit_code ... FAILED
+test clm_0034_start_streams_chunks_then_exit ... FAILED
+test clm_0037_options_cwd_is_working_directory ... FAILED
+test clm_0038_options_user_runs_as_user ... FAILED
+test clm_0040_connect_attaches_to_running_command ... FAILED
+test clm_0039_options_timeout_ends_long_command ... FAILED
+test clm_0041_list_includes_background_command ... FAILED
+test clm_0042_send_stdin_reaches_command ... FAILED
+test clm_0044_sigterm_terminates_command ... FAILED
+test clm_0043_close_stdin_sends_eof ... FAILED
+test clm_0045_kill_reports_whether_pid_existed ... FAILED
+
+successes:
+
+successes:
+
+failures:
+
+---- clm_0035_run_delivers_large_output_in_order stdout ----
+
+thread 'clm_0035_run_delivers_large_output_in_order' (1014221) panicked at tests/live_commands.rs:95:5:
+assertion `left == right` failed
+  left: 69
+ right: 0
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- clm_0036_options_env_is_set stdout ----
+
+thread 'clm_0036_options_env_is_set' (1014222) panicked at tests/live_commands.rs:119:5:
+assertion `left == right` failed
+  left: ""
+ right: "teal\n"
+
+---- clm_0033_run_returns_output_and_exit_code stdout ----
+
+thread 'clm_0033_run_returns_output_and_exit_code' (1014219) panicked at tests/live_commands.rs:21:5:
+assertion `left == right` failed
+  left: ""
+ right: "out\n"
+
+---- clm_0034_start_streams_chunks_then_exit stdout ----
+
+thread 'clm_0034_start_streams_chunks_then_exit' (1014220) panicked at tests/live_commands.rs:66:43:
+no Stdout chunk
+
+---- clm_0037_options_cwd_is_working_directory stdout ----
+
+thread 'clm_0037_options_cwd_is_working_directory' (1014261) panicked at tests/live_commands.rs:133:5:
+assertion `left == right` failed
+  left: ""
+ right: "/tmp\n"
+
+---- clm_0038_options_user_runs_as_user stdout ----
+
+thread 'clm_0038_options_user_runs_as_user' (1014278) panicked at tests/live_commands.rs:152:5:
+assertion `left == right` failed
+  left: ""
+ right: "root\n"
+
+---- clm_0040_connect_attaches_to_running_command stdout ----
+
+thread 'clm_0040_connect_attaches_to_running_command' (1014306) panicked at tests/live_commands.rs:209:5:
+assertion `left == right` failed
+  left: ""
+ right: "late\n"
+
+---- clm_0039_options_timeout_ends_long_command stdout ----
+
+thread 'clm_0039_options_timeout_ends_long_command' (1014304) panicked at tests/live_commands.rs:169:10:
+sleep 30 must not finish within 3 s: CommandResult { stdout: "", stderr: "ERROR: sandbox will not become ready without intervention: the sandbox failed (action_failure)\n", exit_code: 69, error: None }
+
+---- clm_0041_list_includes_background_command stdout ----
+
+thread 'clm_0041_list_includes_background_command' (1014317) panicked at tests/live_commands.rs:223:53:
+list: Rpc { code: FailedPrecondition, message: "sandbox will not become ready without intervention: the sandbox failed (action_failure)" }
+
+---- clm_0042_send_stdin_reaches_command stdout ----
+
+thread 'clm_0042_send_stdin_reaches_command' (1014423) panicked at tests/live_commands.rs:251:10:
+send_stdin: Rpc { code: FailedPrecondition, message: "sandbox will not become ready without intervention: the sandbox failed (action_failure)" }
+
+---- clm_0044_sigterm_terminates_command stdout ----
+
+thread 'clm_0044_sigterm_terminates_command' (1014439) panicked at tests/live_commands.rs:299:10:
+signal: Rpc { code: FailedPrecondition, message: "sandbox will not become ready without intervention: the sandbox failed (action_failure)" }
+
+---- clm_0043_close_stdin_sends_eof stdout ----
+
+thread 'clm_0043_close_stdin_sends_eof' (1014430) panicked at tests/live_commands.rs:270:10:
+send_stdin: Rpc { code: FailedPrecondition, message: "sandbox will not become ready without intervention: the sandbox failed (action_failure)" }
+
+---- clm_0045_kill_reports_whether_pid_existed stdout ----
+
+thread 'clm_0045_kill_reports_whether_pid_existed' (1014466) panicked at tests/live_commands.rs:334:10:
+kill running: Rpc { code: FailedPrecondition, message: "sandbox will not become ready without intervention: the sandbox failed (action_failure)" }
+
+
+failures:
+    clm_0033_run_returns_output_and_exit_code
+    clm_0034_start_streams_chunks_then_exit
+    clm_0035_run_delivers_large_output_in_order
+    clm_0036_options_env_is_set
+    clm_0037_options_cwd_is_working_directory
+    clm_0038_options_user_runs_as_user
+    clm_0039_options_timeout_ends_long_command
+    clm_0040_connect_attaches_to_running_command
+    clm_0041_list_includes_background_command
+    clm_0042_send_stdin_reaches_command
+    clm_0043_close_stdin_sends_eof
+    clm_0044_sigterm_terminates_command
+    clm_0045_kill_reports_whether_pid_existed
+
+test result: FAILED. 0 passed; 13 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.43s
+
+error: test failed, to rerun pass `--test live_commands`
+   Compiling e2b-client v0.1.0 (/home/pgrace/repos/e2b_client_rs/.worktrees/e2b_client_rs-11)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.50s
+     Running tests/live_sweep.rs (target/debug/deps/live_sweep-c405ef8afc139365)
+
+running 1 test
+test sweep_leftover_sandboxes_of_this_run ... ok
+
+successes:
+
+---- sweep_leftover_sandboxes_of_this_run stdout ----
+sweep: killed 8 leftover sandbox(es) of run 20261026T225357Z-sandbawks-998331
+
+
+successes:
+    sweep_leftover_sandboxes_of_this_run
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.97s
+

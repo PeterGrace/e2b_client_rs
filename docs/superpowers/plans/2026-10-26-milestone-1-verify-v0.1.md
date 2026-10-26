@@ -1497,6 +1497,26 @@ git commit -m "docs: M1 live results on hosted E2B"
 
 Same steps as Task 6, with `just test-live sandbawks` and the section heading `## sandbawks (run <run id>, <UTC time>)`. For each failure, also state whether the same test passed on hosted E2B. A test that passes on hosted but fails on sandbawks is a sandbawks defect: describe the observed request and response so the coordinator can file it on gfd/sandbawks. Write `changelog/<ts>-m1-task-07-sandbawks-run.md` and commit `docs: M1 live results on sandbawks`.
 
+> **Corrected (issue #11, 2026-10-26).**
+>
+> - **Template.** sandbawks has no `base` template. Its only template is
+>   `compound-sandbox`, so run
+>   `E2B_TEMPLATE_SANDBAWKS=compound-sandbox just test-live sandbawks`.
+>   sandbawks accepts an unknown template with 201 `running`, so a `base` run
+>   fails every test without testing anything.
+> - **`--no-fail-fast`.** The `test-live` recipe now passes it. Without it,
+>   cargo skipped `live_files` and `live_lifecycle` once `live_commands` failed.
+>   The Task 1 recipe above predates this change; read `justfile`.
+> - **Sweep.** `tests/live_sweep.rs` now checks the run id itself before it
+>   kills anything. sandbawks ignores the list filters, and the old sweep killed
+>   other sandboxes on that server.
+> - **Capacity.** With `--test-threads=4`, the sandbawks warm pool (2
+>   sandboxes) runs dry and cold creates go unschedulable. Rerun each failure
+>   on its own to tell capacity from defects.
+> - **Test count.** There are 46 `clm_*` tests, not 47.
+>
+> Results and the defect list (S1-S12): `docs/verification/m1-live-results.md`, section "sandbawks".
+
 ---
 
 ### Task 8: Verdicts, bug tasks and milestone close (coordinator)
