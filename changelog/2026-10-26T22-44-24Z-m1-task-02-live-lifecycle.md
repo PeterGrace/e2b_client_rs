@@ -47,3 +47,14 @@ All corrections are in the Task 2 section, under a dated
   CLM-0019 also checks each listed entry's `state`;
 - CLM-0016 compares `template_id` with the handle's;
 - CLM-0027 uses its own polling loop, so a timeout reports the last answer.
+
+## Review follow-ups (PR #17)
+
+- CLM-0011 fails at once with "sandbox was killed, not paused" if `get_info`
+  reports not found. Before, it kept polling for 120 s.
+- CLM-0021 polls `get_info` for up to 30 s until it errors, then requires
+  not found, so it tolerates a brief lag after a kill.
+- CLM-0025 compares `end_at` with the server's own `started_at`, not with the
+  local wall clock. The allowed window is 238 s to 242 s plus the time measured
+  on a monotonic clock from before create to after `set_sandbox_timeout`.
+- The plan's Task 2 correction note records all three.

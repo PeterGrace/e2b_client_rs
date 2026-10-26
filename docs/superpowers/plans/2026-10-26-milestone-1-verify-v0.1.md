@@ -634,6 +634,13 @@ A sandbox id that cannot exist: `const MISSING_ID: &str = "i0000000000000000000z
 > - **CLM-0027** polls `is_running` with its own loop instead of `poll_until`, so a timeout
 >   reports the last answer (an `Err` included), not just "timed out".
 > - CLM-0014 was already in the file from Task 1 and is unchanged.
+> - After review (PR #17), these changes were made:
+>   - CLM-0011 panics at once if `get_info` reports not found, since a killed sandbox is
+>     what the claim rules out.
+>   - CLM-0021 polls `get_info` for up to 30 s until it errors, then asserts `is_not_found()`.
+>   - CLM-0025 no longer uses the local clock. It checks that `end_at - started_at` is in
+>     `238..=242 + elapsed`, where `elapsed` is a monotonic `Instant` measured from before
+>     create to after `set_sandbox_timeout`. `unix_now` is no longer imported.
 
 - [ ] **Step 1: Create and metadata (CLM-0007, 0008, 0009, 0010)**
 
