@@ -1495,3 +1495,19 @@ Same steps as Task 6, with `just test-live sandbawks` and the section heading `#
   - **protocol-notes "Verification against a live server":** replace the unauthenticated-probe text with a summary of the authenticated runs.
   - **Milestone changelog.**
 - [ ] **Step 6: Commit `claims.json` and the docs on branch `m1-verdicts` and open the PR.** The flow is the same as for every other PR: review, answer, merge. Then run `github-epic-close-out`.
+
+---
+
+### Task 9: Fix CLM-0071 (#18)
+
+> **Corrected (issue #18, 2026-10-26).** This task was added under Task 8 Step 3: CLM-0071 was refuted by `src/config.rs::tests::explicit_empty_values_count_as_unset`. An explicit empty builder value was kept instead of counting as unset, so `.api_url("")` made `build()` fail with `InvalidConfig`. The Python SDK resolves `value or env or default` (`py: connection_config.py:289-291, 310-318`), where an explicit `""` is unset too.
+
+**Files:**
+- Modify: `src/config.rs`
+- Modify: `docs/verification/s4-evidence-map.md` (the CLM-0071 row)
+- Create: `changelog/<ts>-m1-task-09-empty-config-values.md`
+
+- [x] **Step 1: Un-ignore the refuting test** `explicit_empty_values_count_as_unset` and watch it fail (`InvalidConfig("API URL \"\": relative URL without a base")`).
+- [x] **Step 2: Fix `ConnectionConfigBuilder::build_with_env`.** Builder values for `domain`, `api_url` and `sandbox_url` go through a `non_empty` helper, and the API key is dropped when its exposed value is empty, before the env fallback. Env values were already filtered the same way.
+- [x] **Step 3: Document the rule** in the module docs, the `ConnectionConfigBuilder` rustdoc (with an example) and each affected setter.
+- [x] **Step 4: Mark CLM-0071 covered** in the S4 evidence map, then run `just lint`, `just test` and `just doc`.

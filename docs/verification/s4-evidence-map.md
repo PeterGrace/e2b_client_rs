@@ -18,14 +18,15 @@ How to read it:
   claim, and `new` when this task (issue #9) had to add a test or tighten an
   existing assertion.
 
-Mapped against main at 5b134d0. To run the two refuting tests:
-`cargo test -- --ignored explicit_empty_values_count_as_unset close_stdin_is_refused_before_envd_0_5_2`.
+Mapped against main at 5b134d0. To run the remaining refuting test:
+`cargo test -- --ignored close_stdin_is_refused_before_envd_0_5_2`. CLM-0071
+was fixed by issue #18, and its test is no longer ignored.
 
 ## Summary
 
 | Covered by existing tests | Covered by new or tightened tests | Partial | Refuted |
 |---|---|---|---|
-| 29 | 19 | 1 (CLM-0085) | 2 (CLM-0071, CLM-0109) |
+| 29 | 20 | 1 (CLM-0085) | 1 (CLM-0109) |
 
 ## Map
 
@@ -35,7 +36,7 @@ Mapped against main at 5b134d0. To run the two refuting tests:
 | CLM-0068 | src/config.rs::tests::env_values_are_used_when_builder_is_empty | yes | existing | |
 | CLM-0069 | src/config.rs::tests::each_setting_resolves_explicit_then_env_then_default; src/config.rs::tests::defaults_without_env | yes | new | No test read `E2B_API_URL` from the environment: the only test that set it also overrode it with a builder value. |
 | CLM-0070 | src/config.rs::tests::env_values_are_used_when_builder_is_empty | yes | existing | Both envd URLs equal the `E2B_SANDBOX_URL` value. |
-| CLM-0071 | **src/config.rs::tests::explicit_empty_values_count_as_unset (ignored, refutes)**; src/config.rs::tests::each_setting_resolves_explicit_then_env_then_default; src/config.rs::tests::empty_env_values_count_as_unset | refuted | new | Explicit, then env, then default holds for all four settings, and an empty env var counts as unset. But an explicit empty builder value is kept instead of falling through: `.api_url("")` fails `build()` with `InvalidConfig`, and `.domain("")` keeps `""` as the domain. The SDKs resolve `value or env or default` (py `connection_config.py:92-121`, e2b 2.21.1), so there an explicit `""` is unset too. Fix: filter empty builder values in `build_with_env` the way env values are filtered. |
+| CLM-0071 | src/config.rs::tests::explicit_empty_values_count_as_unset; src/config.rs::tests::each_setting_resolves_explicit_then_env_then_default; src/config.rs::tests::empty_env_values_count_as_unset | yes | new | Explicit, then env, then default holds for all four settings, and an empty value counts as unset whether it is an env var or an explicit builder value, as in the SDKs' `value or env or default` (py `connection_config.py:289-291, 310-318`). Refuted at 5b134d0, when an explicit empty builder value was kept; fixed by issue #18, which un-ignored the first test. |
 | CLM-0072 | src/config.rs::tests::defaults_without_env | yes | new | Tightened: the test compared against the `DEFAULT_REQUEST_TIMEOUT` constant, so it could not catch a wrong value. It now asserts `Duration::from_secs(60)`. |
 | CLM-0073 | tests/rest_api.rs::every_rest_request_carries_the_api_key | yes | new | Covers all nine REST requests: create, v2 connect, the v1 connect fallback, info, list, kill, pause, timeout and refresh. Before, only create and info asserted `x-api-key`. |
 | CLM-0074 | src/config.rs::tests::env_values_are_used_when_builder_is_empty; src/config.rs::tests::every_hosted_domain_routes_rpc_through_the_shared_sandbox_host; src/config.rs::tests::envd_urls_for_custom_domain_use_per_sandbox_host | yes | new | Before, only `e2b.app` was tested of the seven hosted domains in `sandbox_domains.py:1-9`. The new test spells out all seven. |
