@@ -425,10 +425,15 @@ async fn clm_0021_kill_running_sandbox() {
 
     // Assert
     assert!(killed);
-    let error = sandbox
-        .get_info()
-        .await
-        .expect_err("killed sandbox must be gone");
+    // The API may briefly still return the sandbox, so poll until `get_info`
+    // fails, then require that failure to be not found.
+    let sandbox_ref = &sandbox;
+    let error = poll_until(
+        "get_info to fail after kill",
+        Duration::from_secs(30),
+        || async move { sandbox_ref.get_info().await.err() },
+    )
+    .await;
     assert!(error.is_not_found(), "want not found, got {error:?}");
 }
 
