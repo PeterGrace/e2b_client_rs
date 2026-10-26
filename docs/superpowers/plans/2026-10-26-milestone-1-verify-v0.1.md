@@ -527,6 +527,10 @@ Remove the `test-integration` recipe and add:
 > pid (`-$$`). With second resolution alone, two runs against the same target
 > started in the same second, for example from two worktrees, would share a tag,
 > and each sweep would kill the other run's sandboxes.
+>
+> **Corrected (issue #5, 2026-10-26, review).** The recipe exits non-zero when
+> the sweep fails, even if every claim test passed. Previously only the claim
+> tests' status was returned.
 
 ```just
 # Keys come from E2B_API_KEY_<TARGET> (env or the nearest .env). Writes target/live-logs/<run id>.log.
@@ -542,8 +546,11 @@ test-live target:
         -- --ignored --test-threads=4 --show-output 2>&1 | tee "$log"
     status=${PIPESTATUS[0]}
     cargo test --test live_sweep -- --ignored --show-output 2>&1 | tee -a "$log"
+    sweep_status=${PIPESTATUS[0]}
     echo "run log: $log"
-    exit "$status"
+    # A failed sweep means leaked, billed sandboxes, so it fails the run too.
+    if [ "$status" -ne 0 ]; then exit "$status"; fi
+    exit "$sweep_status"
 ```
 
 - [ ] **Step 6: Update `CONTRIBUTING.md`**

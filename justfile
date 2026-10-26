@@ -29,8 +29,11 @@ test-live target:
         -- --ignored --test-threads=4 --show-output 2>&1 | tee "$log"
     status=${PIPESTATUS[0]}
     cargo test --test live_sweep -- --ignored --show-output 2>&1 | tee -a "$log"
+    sweep_status=${PIPESTATUS[0]}
     echo "run log: $log"
-    exit "$status"
+    # A failed sweep means leaked, billed sandboxes, so it fails the run too.
+    if [ "$status" -ne 0 ]; then exit "$status"; fi
+    exit "$sweep_status"
 
 # Build the API docs with warnings as errors.
 doc:
