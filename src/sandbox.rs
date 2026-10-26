@@ -255,6 +255,7 @@ mod tests {
 
     const API_KEY: &str = "api-key-secret";
     const ENVD_TOKEN: &str = "envd-token-secret";
+    const TRAFFIC_TOKEN: &str = "traffic-token-secret";
 
     /// A client on the custom domain `configured.test`, with no envd URL
     /// override, so addressing is derived from domains.
@@ -274,6 +275,7 @@ mod tests {
             "sandboxID": "sbx",
             "envdVersion": "0.5.7",
             "envdAccessToken": ENVD_TOKEN,
+            "trafficAccessToken": TRAFFIC_TOKEN,
             "domain": domain,
         }))
         .expect("created");
@@ -312,7 +314,7 @@ mod tests {
     }
 
     #[test]
-    fn debug_output_omits_the_api_key_and_envd_token() {
+    fn debug_output_omits_the_api_key_and_access_tokens() {
         // Arrange
         let sandbox = sandbox_on(None);
 
@@ -327,6 +329,7 @@ mod tests {
         for text in &rendered {
             assert!(!text.contains(API_KEY), "API key leaked: {text}");
             assert!(!text.contains(ENVD_TOKEN), "envd token leaked: {text}");
+            assert!(!text.contains(TRAFFIC_TOKEN), "traffic token leaked: {text}");
         }
     }
 }
