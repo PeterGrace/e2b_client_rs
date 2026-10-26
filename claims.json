@@ -1,0 +1,3641 @@
+{
+  "schema_version": 2,
+  "next_claim_seq": 127,
+  "next_claim_seq_seal": {
+    "by": "server",
+    "mac": "4e23801b9e546d10e320bb69c199f1a14af24738c8733a88d0a5969b769b6aab"
+  },
+  "next_evidence_seq": 1,
+  "next_evidence_seq_seal": {
+    "by": "server",
+    "mac": "e2c18818a4e4e866f2cf2fea97805ad17366c81718ac3c58743f5691cd281641"
+  },
+  "claims": [
+    {
+      "id": "CLM-0001",
+      "statement": "e2b-client is a publishable async Rust client for the standard E2B API, usable against hosted E2B and E2B-compatible servers.",
+      "kind": "functional",
+      "level": "system",
+      "verification_method": "demonstration",
+      "source": "docs/superpowers/specs/2026-10-26-claims-audit-and-publishability-design.md#claim-hierarchy",
+      "derived_from": [],
+      "artifacts": [
+        "crate e2b-client"
+      ],
+      "tags": [
+        "root"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:06.855685366Z",
+      "updated_at": "2026-10-26T22:09:06.855685366Z",
+      "seal": {
+        "by": "server",
+        "mac": "3666d1a401eb0e1e4fbebbd58fa3f7907213a21c70e4ae84c48a240dd654eed6"
+      }
+    },
+    {
+      "id": "CLM-0002",
+      "statement": "The client covers the official SDK's Sandbox/SandboxApi lifecycle surface against hosted E2B.",
+      "kind": "functional",
+      "level": "software",
+      "verification_method": "demonstration",
+      "source": "spec#claim-hierarchy S1",
+      "derived_from": [
+        "CLM-0001"
+      ],
+      "artifacts": [
+        "src/client.rs",
+        "src/sandbox.rs",
+        "src/models.rs"
+      ],
+      "tags": [
+        "s1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:06.855685366Z",
+      "updated_at": "2026-10-26T22:09:06.855685366Z",
+      "seal": {
+        "by": "server",
+        "mac": "acded5210e04ae84013947d5db5735f07c11aa204db86577f24010d91eeb5265"
+      }
+    },
+    {
+      "id": "CLM-0003",
+      "statement": "The client covers the official SDK's Commands (process) surface against hosted E2B.",
+      "kind": "functional",
+      "level": "software",
+      "verification_method": "demonstration",
+      "source": "spec#claim-hierarchy S2",
+      "derived_from": [
+        "CLM-0001"
+      ],
+      "artifacts": [
+        "src/commands.rs"
+      ],
+      "tags": [
+        "s2"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:06.855685366Z",
+      "updated_at": "2026-10-26T22:09:06.855685366Z",
+      "seal": {
+        "by": "server",
+        "mac": "99155395f6ec5e0c516e4ef65ba2fd2c1e0e0ee0cfff6f86799f2262dcad2bc1"
+      }
+    },
+    {
+      "id": "CLM-0004",
+      "statement": "The client covers the official SDK's Filesystem surface against hosted E2B.",
+      "kind": "functional",
+      "level": "software",
+      "verification_method": "demonstration",
+      "source": "spec#claim-hierarchy S3",
+      "derived_from": [
+        "CLM-0001"
+      ],
+      "artifacts": [
+        "src/filesystem.rs"
+      ],
+      "tags": [
+        "s3"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:06.855685366Z",
+      "updated_at": "2026-10-26T22:09:06.855685366Z",
+      "seal": {
+        "by": "server",
+        "mac": "36a625878b18121760eb97b3fc15cbd945e0ab48103a845e78ea93259ac7fe3f"
+      }
+    },
+    {
+      "id": "CLM-0005",
+      "statement": "Every wire fact in docs/protocol-notes.md is implemented as documented.",
+      "kind": "interface",
+      "level": "software",
+      "verification_method": "test",
+      "source": "spec#claim-hierarchy S4",
+      "derived_from": [
+        "CLM-0001"
+      ],
+      "artifacts": [
+        "docs/protocol-notes.md"
+      ],
+      "tags": [
+        "s4"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:06.855685366Z",
+      "updated_at": "2026-10-26T22:09:06.855685366Z",
+      "seal": {
+        "by": "server",
+        "mac": "a34fb665f93febdd4a83cfe074e8bab0ad06567a331580d0547d313c5bf11c4c"
+      }
+    },
+    {
+      "id": "CLM-0006",
+      "statement": "The crate meets the bar for publishing on crates.io: live-verified, stable reviewed API, documented, released.",
+      "kind": "non_functional",
+      "level": "software",
+      "verification_method": "inspection",
+      "source": "spec#claim-hierarchy S5",
+      "derived_from": [
+        "CLM-0001"
+      ],
+      "artifacts": [],
+      "tags": [
+        "s5"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:06.855685366Z",
+      "updated_at": "2026-10-26T22:09:06.855685366Z",
+      "seal": {
+        "by": "server",
+        "mac": "9a4c62c2ffbdc27a5ffab53780f4c04626518e50a9fb70f1db0da8befa29fed9"
+      }
+    },
+    {
+      "id": "CLM-0007",
+      "statement": "Client::create_sandbox with a template returns a running Sandbox whose sandbox_id, template_id and envd_version are populated.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "py: sandbox_async/sandbox_api.py:256-277",
+      "derived_from": [
+        "CLM-0002"
+      ],
+      "artifacts": [
+        "src/client.rs"
+      ],
+      "tags": [
+        "s1",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:06.855685366Z",
+      "updated_at": "2026-10-26T22:09:06.855685366Z",
+      "seal": {
+        "by": "server",
+        "mac": "a0a2d2c9b43c9a0b3d870f46a99814067151e4cb1657237fda0be55ba0dce7ad"
+      }
+    },
+    {
+      "id": "CLM-0008",
+      "statement": "CreateSandboxParams metadata entries are visible in get_sandbox_info of the created sandbox.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "py: api/client/models/new_sandbox_v2.py:112-132",
+      "derived_from": [
+        "CLM-0002"
+      ],
+      "artifacts": [
+        "src/models.rs"
+      ],
+      "tags": [
+        "s1",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:06.855685366Z",
+      "updated_at": "2026-10-26T22:09:06.855685366Z",
+      "seal": {
+        "by": "server",
+        "mac": "7020c4791b61efb1777a77c1764c7dde1fee57af08ffeda9afc8217d9a187819"
+      }
+    },
+    {
+      "id": "CLM-0009",
+      "statement": "CreateSandboxParams env vars are present in the environment of commands run in the created sandbox.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "py: api/client/models/new_sandbox_v2.py:112-132",
+      "derived_from": [
+        "CLM-0002"
+      ],
+      "artifacts": [
+        "src/models.rs"
+      ],
+      "tags": [
+        "s1",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:06.855685366Z",
+      "updated_at": "2026-10-26T22:09:06.855685366Z",
+      "seal": {
+        "by": "server",
+        "mac": "f60ead37b285def5371efd68b6757428f700fb473303df4a6bd5d9860ff6ca83"
+      }
+    },
+    {
+      "id": "CLM-0010",
+      "statement": "CreateSandboxParams timeout sets the sandbox end_at to about started_at plus the timeout.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "py: api/client/models/new_sandbox_v2.py:112-132",
+      "derived_from": [
+        "CLM-0002"
+      ],
+      "artifacts": [
+        "src/models.rs"
+      ],
+      "tags": [
+        "s1",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:06.855685366Z",
+      "updated_at": "2026-10-26T22:09:06.855685366Z",
+      "seal": {
+        "by": "server",
+        "mac": "07cf6eebffa10b4e936ab470128d5330888743613b0d2e645c5e998d456745f9"
+      }
+    },
+    {
+      "id": "CLM-0011",
+      "statement": "CreateSandboxParams auto_pause(true) makes the sandbox pause, not die, when its timeout expires.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "py: api/client/models/new_sandbox_v2.py:112-132",
+      "derived_from": [
+        "CLM-0002"
+      ],
+      "artifacts": [
+        "src/models.rs"
+      ],
+      "tags": [
+        "s1",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:06.855685366Z",
+      "updated_at": "2026-10-26T22:09:06.855685366Z",
+      "seal": {
+        "by": "server",
+        "mac": "f11f459de784d5c08bf9a9e9a50d1e5af0d57c075b0ce099e0c381b89c47327e"
+      }
+    },
+    {
+      "id": "CLM-0012",
+      "statement": "CreateSandboxParams allow_internet_access(false) blocks outbound internet access from the sandbox.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "py: api/client/models/new_sandbox_v2.py:145-171",
+      "derived_from": [
+        "CLM-0002"
+      ],
+      "artifacts": [
+        "src/models.rs"
+      ],
+      "tags": [
+        "s1",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:06.855685366Z",
+      "updated_at": "2026-10-26T22:09:06.855685366Z",
+      "seal": {
+        "by": "server",
+        "mac": "ccbdbd88953af716cedb7ed0597025983dd95454e3e4b734d6de563bd9bd0af7"
+      }
+    },
+    {
+      "id": "CLM-0013",
+      "statement": "Client::connect_sandbox on a running sandbox returns a Sandbox that can run commands.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "py: sandbox_async/sandbox_api.py:511-520",
+      "derived_from": [
+        "CLM-0002"
+      ],
+      "artifacts": [
+        "src/client.rs"
+      ],
+      "tags": [
+        "s1",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:06.855685366Z",
+      "updated_at": "2026-10-26T22:09:06.855685366Z",
+      "seal": {
+        "by": "server",
+        "mac": "f6b76abc9911106239ad5716aebc63f718d4de4c5d69db5c92fb17cbcab488b0"
+      }
+    },
+    {
+      "id": "CLM-0014",
+      "statement": "Client::connect_sandbox resumes a paused sandbox with its filesystem state preserved.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "py: sandbox_async/sandbox_api.py:511-520",
+      "derived_from": [
+        "CLM-0002"
+      ],
+      "artifacts": [
+        "src/client.rs"
+      ],
+      "tags": [
+        "s1",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:06.855685366Z",
+      "updated_at": "2026-10-26T22:09:06.855685366Z",
+      "seal": {
+        "by": "server",
+        "mac": "afe322167f39fc21283208edd17473bd5fc3e63caced1ada13a3903b1d66d726"
+      }
+    },
+    {
+      "id": "CLM-0015",
+      "statement": "Client::connect_sandbox on an unknown sandbox id returns Error::SandboxNotFound.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "py: sandbox_async/sandbox_api.py:511-520",
+      "derived_from": [
+        "CLM-0002"
+      ],
+      "artifacts": [
+        "src/client.rs"
+      ],
+      "tags": [
+        "s1",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:06.855685366Z",
+      "updated_at": "2026-10-26T22:09:06.855685366Z",
+      "seal": {
+        "by": "server",
+        "mac": "f56fb56b6dba7c9c8da03c6307759983f920a368fd3d275ca59b909a9758158a"
+      }
+    },
+    {
+      "id": "CLM-0016",
+      "statement": "Client::get_sandbox_info returns the sandbox's state, template_id, metadata, started_at and end_at.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "py: api/client/models/sandbox_detail.py:174-218",
+      "derived_from": [
+        "CLM-0002"
+      ],
+      "artifacts": [
+        "src/client.rs"
+      ],
+      "tags": [
+        "s1",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:06.855685366Z",
+      "updated_at": "2026-10-26T22:09:06.855685366Z",
+      "seal": {
+        "by": "server",
+        "mac": "00446858484eef001a12a206ad329461dc221ebcd0afa7260e1519058e971b03"
+      }
+    },
+    {
+      "id": "CLM-0017",
+      "statement": "Client::get_sandbox_info on an unknown sandbox id returns Error::SandboxNotFound.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "py: sandbox_async/sandbox_api.py:118-135",
+      "derived_from": [
+        "CLM-0002"
+      ],
+      "artifacts": [
+        "src/client.rs"
+      ],
+      "tags": [
+        "s1",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:06.855685366Z",
+      "updated_at": "2026-10-26T22:09:06.855685366Z",
+      "seal": {
+        "by": "server",
+        "mac": "b9477bf44bdbf6334f63f6c892279a2e0b7371379363c141a09fa4f4b7418843"
+      }
+    },
+    {
+      "id": "CLM-0018",
+      "statement": "Client::list_sandboxes filtered by metadata returns exactly the sandboxes carrying that metadata.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "py: sandbox_async/paginator.py:50-57",
+      "derived_from": [
+        "CLM-0002"
+      ],
+      "artifacts": [
+        "src/client.rs"
+      ],
+      "tags": [
+        "s1",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:06.855685366Z",
+      "updated_at": "2026-10-26T22:09:06.855685366Z",
+      "seal": {
+        "by": "server",
+        "mac": "6c9a0e67c43705679b01ea8d1cc5cda07f868130981c069b1e231e131b0fe653"
+      }
+    },
+    {
+      "id": "CLM-0019",
+      "statement": "Client::list_sandboxes filtered by state returns only sandboxes in that state.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "py: api/client/api/sandboxes/get_v2_sandboxes.py:31-38",
+      "derived_from": [
+        "CLM-0002"
+      ],
+      "artifacts": [
+        "src/client.rs"
+      ],
+      "tags": [
+        "s1",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:06.855685366Z",
+      "updated_at": "2026-10-26T22:09:06.855685366Z",
+      "seal": {
+        "by": "server",
+        "mac": "92068bc51011cfbd264a7c2aeeb20e9dc57cf49edb2ecc6320109af8cb8b2d41"
+      }
+    },
+    {
+      "id": "CLM-0020",
+      "statement": "Client::list_sandboxes with limit and next_token pages through all matching sandboxes with no duplicates or omissions.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "py: paginator.py:48-50",
+      "derived_from": [
+        "CLM-0002"
+      ],
+      "artifacts": [
+        "src/client.rs"
+      ],
+      "tags": [
+        "s1",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:06.855685366Z",
+      "updated_at": "2026-10-26T22:09:06.855685366Z",
+      "seal": {
+        "by": "server",
+        "mac": "aba30364cd654c7f0adf6d423891cd89ea19f3d6c7109f5ad38bbd339f6f69e5"
+      }
+    },
+    {
+      "id": "CLM-0021",
+      "statement": "Client::kill_sandbox on a running sandbox returns true and the sandbox is then not found.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "py: sandbox_async/sandbox_api.py:138-161",
+      "derived_from": [
+        "CLM-0002"
+      ],
+      "artifacts": [
+        "src/client.rs"
+      ],
+      "tags": [
+        "s1",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:06.855685366Z",
+      "updated_at": "2026-10-26T22:09:06.855685366Z",
+      "seal": {
+        "by": "server",
+        "mac": "1dfe0412a0b25e5f08573636626fadbc0e675a9e48a472f75ddcbd34cde2e9b2"
+      }
+    },
+    {
+      "id": "CLM-0022",
+      "statement": "Client::kill_sandbox on an unknown sandbox id returns false, not an error.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "py: sandbox_async/sandbox_api.py:138-161",
+      "derived_from": [
+        "CLM-0002"
+      ],
+      "artifacts": [
+        "src/client.rs"
+      ],
+      "tags": [
+        "s1",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:06.855685366Z",
+      "updated_at": "2026-10-26T22:09:06.855685366Z",
+      "seal": {
+        "by": "server",
+        "mac": "8ea1cfa80e09e9114cfe82e5a62a395252271f1e7283c0d43793728502242018"
+      }
+    },
+    {
+      "id": "CLM-0023",
+      "statement": "Client::pause_sandbox on a running sandbox returns true and the sandbox state becomes Paused.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "py: sandbox_async/sandbox_api.py:399-432",
+      "derived_from": [
+        "CLM-0002"
+      ],
+      "artifacts": [
+        "src/client.rs"
+      ],
+      "tags": [
+        "s1",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:06.855685366Z",
+      "updated_at": "2026-10-26T22:09:06.855685366Z",
+      "seal": {
+        "by": "server",
+        "mac": "f72e5945796b86b6bc629841f7f1bdc541831a264d27031b9da1c616eeefc6db"
+      }
+    },
+    {
+      "id": "CLM-0024",
+      "statement": "Client::pause_sandbox on an already paused sandbox returns false, not an error.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "py: sandbox_async/sandbox_api.py:399-432",
+      "derived_from": [
+        "CLM-0002"
+      ],
+      "artifacts": [
+        "src/client.rs"
+      ],
+      "tags": [
+        "s1",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:06.855685366Z",
+      "updated_at": "2026-10-26T22:09:06.855685366Z",
+      "seal": {
+        "by": "server",
+        "mac": "070bd7b4b45b0666d707a74b7de9ed941b2c9d9fdf422aa8ac550cf471a3d05e"
+      }
+    },
+    {
+      "id": "CLM-0025",
+      "statement": "Client::set_sandbox_timeout moves the sandbox end_at to about now plus the timeout.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "py: sandbox_async/sandbox_api.py:164-187",
+      "derived_from": [
+        "CLM-0002"
+      ],
+      "artifacts": [
+        "src/client.rs"
+      ],
+      "tags": [
+        "s1",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:06.855685366Z",
+      "updated_at": "2026-10-26T22:09:06.855685366Z",
+      "seal": {
+        "by": "server",
+        "mac": "e13c859c179137e4655e1d2f336d86ec5782ad2e5b2ec7e4e2ff516e04e5a563"
+      }
+    },
+    {
+      "id": "CLM-0026",
+      "statement": "Client::refresh_sandbox with a duration extends the sandbox end_at.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "py: api/client/api/sandboxes/post_sandboxes_sandbox_id_refreshes.py:21-38",
+      "derived_from": [
+        "CLM-0002"
+      ],
+      "artifacts": [
+        "src/client.rs"
+      ],
+      "tags": [
+        "s1",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:06.855685366Z",
+      "updated_at": "2026-10-26T22:09:06.855685366Z",
+      "seal": {
+        "by": "server",
+        "mac": "5c0ae3f9bb9d9384c1e173975c371b3e30be009c731805380bc5296174ddc1b1"
+      }
+    },
+    {
+      "id": "CLM-0027",
+      "statement": "Sandbox::is_running returns true for a running sandbox and false after it is killed.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "py: sandbox_async/main.py:134-168",
+      "derived_from": [
+        "CLM-0002"
+      ],
+      "artifacts": [
+        "src/sandbox.rs"
+      ],
+      "tags": [
+        "s1",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:06.855685366Z",
+      "updated_at": "2026-10-26T22:09:06.855685366Z",
+      "seal": {
+        "by": "server",
+        "mac": "760a358cbe9507870b07a3587d5c7ac6c9ef0bc8b919655ff2a3070458a0181c"
+      }
+    },
+    {
+      "id": "CLM-0028",
+      "statement": "Sandbox::get_host(port) returns the host name that reaches a service listening on that port inside the sandbox.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "official SDK Sandbox.get_host",
+      "derived_from": [
+        "CLM-0002"
+      ],
+      "artifacts": [],
+      "tags": [
+        "s1",
+        "gap"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:06.855685366Z",
+      "updated_at": "2026-10-26T22:09:06.855685366Z",
+      "seal": {
+        "by": "server",
+        "mac": "059e96affd9c325299fca0b62fd384767758dfec1d848536a3505aa391541459"
+      }
+    },
+    {
+      "id": "CLM-0029",
+      "statement": "The client can read sandbox CPU, memory and disk metrics as the SDK's get_metrics does.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "official SDK Sandbox.get_metrics",
+      "derived_from": [
+        "CLM-0002"
+      ],
+      "artifacts": [],
+      "tags": [
+        "s1",
+        "gap"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:06.855685366Z",
+      "updated_at": "2026-10-26T22:09:06.855685366Z",
+      "seal": {
+        "by": "server",
+        "mac": "f77b0e008b02850e40eb338a45adda23cbe8e8160f98755a162dd5310eadcc34"
+      }
+    },
+    {
+      "id": "CLM-0030",
+      "statement": "The client can snapshot a sandbox and create (fork) sandboxes from a snapshot as the SDK does.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "official SDK 2.61 snapshots",
+      "derived_from": [
+        "CLM-0002"
+      ],
+      "artifacts": [],
+      "tags": [
+        "s1",
+        "gap"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:06.855685366Z",
+      "updated_at": "2026-10-26T22:09:06.855685366Z",
+      "seal": {
+        "by": "server",
+        "mac": "9bbb7f02c01cc5ee3ac53e1cdf78a34dfc15fce1a99baa1c9d14dc2b576b0c3e"
+      }
+    },
+    {
+      "id": "CLM-0031",
+      "statement": "The client can update a running sandbox's network settings as the SDK does.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "official SDK 2.61 network update",
+      "derived_from": [
+        "CLM-0002"
+      ],
+      "artifacts": [],
+      "tags": [
+        "s1",
+        "gap"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:06.855685366Z",
+      "updated_at": "2026-10-26T22:09:06.855685366Z",
+      "seal": {
+        "by": "server",
+        "mac": "eaaf32c0c722e8f902a447e887bf6361e9b91582d307536727abee0d37489279"
+      }
+    },
+    {
+      "id": "CLM-0032",
+      "statement": "create_sandbox can send every create field SDK 2.61 sends (secure, network, lifecycle, mcp) beyond the v0.1 set.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "inspection",
+      "source": "py: api/client/models/new_sandbox_v2.py",
+      "derived_from": [
+        "CLM-0002"
+      ],
+      "artifacts": [],
+      "tags": [
+        "s1",
+        "gap"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:06.855685366Z",
+      "updated_at": "2026-10-26T22:09:06.855685366Z",
+      "seal": {
+        "by": "server",
+        "mac": "f4ed7927310c62e6839bf4a17143c5cf4108e5ea253bad486741cc14912e717f"
+      }
+    },
+    {
+      "id": "CLM-0033",
+      "statement": "Commands::run returns the command's full stdout, stderr and exit code, and a non-zero exit is not an Err.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "py: sandbox_async/commands/command_handle.py:154-183",
+      "derived_from": [
+        "CLM-0003"
+      ],
+      "artifacts": [
+        "src/commands.rs"
+      ],
+      "tags": [
+        "s2",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:38.695113733Z",
+      "updated_at": "2026-10-26T22:09:38.695113733Z",
+      "seal": {
+        "by": "server",
+        "mac": "b627927002f273446f89bfadfdea4ffee3c2e680717f8f0479b26ef02f6b5a73"
+      }
+    },
+    {
+      "id": "CLM-0034",
+      "statement": "Commands::start returns a handle whose next_event yields Stdout and Stderr chunks as they are produced, then Exit.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "py: sandbox_async/commands/command.py:382-411",
+      "derived_from": [
+        "CLM-0003"
+      ],
+      "artifacts": [
+        "src/commands.rs"
+      ],
+      "tags": [
+        "s2",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:38.695113733Z",
+      "updated_at": "2026-10-26T22:09:38.695113733Z",
+      "seal": {
+        "by": "server",
+        "mac": "2a108b693082cfbee19ef2711980041abd34439c57781a01258593bbf81603bc"
+      }
+    },
+    {
+      "id": "CLM-0035",
+      "statement": "Commands::run delivers large output (at least 1 MiB) complete and in order.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "spec M1 harness",
+      "derived_from": [
+        "CLM-0003"
+      ],
+      "artifacts": [
+        "src/commands.rs",
+        "src/envd/connect.rs"
+      ],
+      "tags": [
+        "s2",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:38.695113733Z",
+      "updated_at": "2026-10-26T22:09:38.695113733Z",
+      "seal": {
+        "by": "server",
+        "mac": "9e3d6c971b11b81f5d5bae1114d7bb8bcf988a888019d08dfb02a4dffcaf887a"
+      }
+    },
+    {
+      "id": "CLM-0036",
+      "statement": "CommandOptions env entries are set in the command's environment.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "py: sandbox_async/commands/command.py:320-330",
+      "derived_from": [
+        "CLM-0003"
+      ],
+      "artifacts": [
+        "src/commands.rs"
+      ],
+      "tags": [
+        "s2",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:38.695113733Z",
+      "updated_at": "2026-10-26T22:09:38.695113733Z",
+      "seal": {
+        "by": "server",
+        "mac": "b2905e60f35ef1be1083696253ce50d233ff4b5d87a8c97bbad1603e9a3914cc"
+      }
+    },
+    {
+      "id": "CLM-0037",
+      "statement": "CommandOptions cwd sets the command's working directory.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "py: sandbox_async/commands/command.py:320-330",
+      "derived_from": [
+        "CLM-0003"
+      ],
+      "artifacts": [
+        "src/commands.rs"
+      ],
+      "tags": [
+        "s2",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:38.695113733Z",
+      "updated_at": "2026-10-26T22:09:38.695113733Z",
+      "seal": {
+        "by": "server",
+        "mac": "c52a7c1482c0f44e3f52939b8e2ea7928ef74c6efc94e0d31e39400c2d5d571b"
+      }
+    },
+    {
+      "id": "CLM-0038",
+      "statement": "CommandOptions user runs the command as that user.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "py: envd/utils.py:44-57",
+      "derived_from": [
+        "CLM-0003"
+      ],
+      "artifacts": [
+        "src/commands.rs"
+      ],
+      "tags": [
+        "s2",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:38.695113733Z",
+      "updated_at": "2026-10-26T22:09:38.695113733Z",
+      "seal": {
+        "by": "server",
+        "mac": "ec9b88085565ca3163d1ad996189dbf35d9d10c0a2369eca94a5473dc5d12a7f"
+      }
+    },
+    {
+      "id": "CLM-0039",
+      "statement": "CommandOptions timeout ends the wait on a command that outlives it with Error::Timeout or a deadline_exceeded Rpc error.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "py: sandbox_async/commands/command.py:218, 335-338",
+      "derived_from": [
+        "CLM-0003"
+      ],
+      "artifacts": [
+        "src/commands.rs"
+      ],
+      "tags": [
+        "s2",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:38.695113733Z",
+      "updated_at": "2026-10-26T22:09:38.695113733Z",
+      "seal": {
+        "by": "server",
+        "mac": "74dbcdc725eafe2979e364901f896c5fc18418692736f7c2f7722bdcc172dfb8"
+      }
+    },
+    {
+      "id": "CLM-0040",
+      "statement": "Commands::connect(pid) attaches to a running command and receives its later output and exit code.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "py: envd/process/process_connect.py:100",
+      "derived_from": [
+        "CLM-0003"
+      ],
+      "artifacts": [
+        "src/commands.rs"
+      ],
+      "tags": [
+        "s2",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:38.695113733Z",
+      "updated_at": "2026-10-26T22:09:38.695113733Z",
+      "seal": {
+        "by": "server",
+        "mac": "e440e9124150d4df1977ccaacc812fdbcd302fad61e1e88469e21ef827a4bfb5"
+      }
+    },
+    {
+      "id": "CLM-0041",
+      "statement": "Commands::list includes a running background command with its pid and command line.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "py: sandbox_async/commands/command.py:75-95",
+      "derived_from": [
+        "CLM-0003"
+      ],
+      "artifacts": [
+        "src/commands.rs"
+      ],
+      "tags": [
+        "s2",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:38.695113733Z",
+      "updated_at": "2026-10-26T22:09:38.695113733Z",
+      "seal": {
+        "by": "server",
+        "mac": "771f1994445dc0c91362112e901504258a676b61c94385e30491c8e44e7a1f50"
+      }
+    },
+    {
+      "id": "CLM-0042",
+      "statement": "Commands::send_stdin delivers bytes to the stdin of a command started with stdin(true).",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "py: sandbox_async/commands/command.py:133-146",
+      "derived_from": [
+        "CLM-0003"
+      ],
+      "artifacts": [
+        "src/commands.rs"
+      ],
+      "tags": [
+        "s2",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:38.695113733Z",
+      "updated_at": "2026-10-26T22:09:38.695113733Z",
+      "seal": {
+        "by": "server",
+        "mac": "c3a2bc5767eb01ba8b8f8c4f8685fc9d5ada5c8189ac5b48157c5a786e6f1219"
+      }
+    },
+    {
+      "id": "CLM-0043",
+      "statement": "Commands::close_stdin delivers EOF so a command reading stdin to the end exits.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "py: sandbox_async/commands/command.py:189-193",
+      "derived_from": [
+        "CLM-0003"
+      ],
+      "artifacts": [
+        "src/commands.rs"
+      ],
+      "tags": [
+        "s2",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:38.695113733Z",
+      "updated_at": "2026-10-26T22:09:38.695113733Z",
+      "seal": {
+        "by": "server",
+        "mac": "1d31309b098ccf0d4c26e4f3bc08f61d3cc4835a0901a31ae05841474af34221"
+      }
+    },
+    {
+      "id": "CLM-0044",
+      "statement": "Commands::send_signal(Sigterm) terminates a running command.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "py: envd/rpc.py:208-231",
+      "derived_from": [
+        "CLM-0003"
+      ],
+      "artifacts": [
+        "src/commands.rs"
+      ],
+      "tags": [
+        "s2",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:38.695113733Z",
+      "updated_at": "2026-10-26T22:09:38.695113733Z",
+      "seal": {
+        "by": "server",
+        "mac": "695c3be0a47c76a47ac2f33f217aa21a6965c5cc3f6a8243c0606fc73fb2212c"
+      }
+    },
+    {
+      "id": "CLM-0045",
+      "statement": "Commands::kill returns true for a running pid and false for an unknown pid.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "py: envd/rpc.py:208-231",
+      "derived_from": [
+        "CLM-0003"
+      ],
+      "artifacts": [
+        "src/commands.rs"
+      ],
+      "tags": [
+        "s2",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:38.695113733Z",
+      "updated_at": "2026-10-26T22:09:38.695113733Z",
+      "seal": {
+        "by": "server",
+        "mac": "dff1c1001d82f27b43520f4c37923012d0bbb18ab34ab637d4cfd838a4f36935"
+      }
+    },
+    {
+      "id": "CLM-0046",
+      "statement": "The client can stream stdin to a command with envd's StreamInput RPC.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "envd process.proto StreamInput",
+      "derived_from": [
+        "CLM-0003"
+      ],
+      "artifacts": [],
+      "tags": [
+        "s2",
+        "gap"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:38.695113733Z",
+      "updated_at": "2026-10-26T22:09:38.695113733Z",
+      "seal": {
+        "by": "server",
+        "mac": "7291d3f50ea1059fec71c2399d8813adb169d4fb8bf29eb089b260d443467bc5"
+      }
+    },
+    {
+      "id": "CLM-0047",
+      "statement": "The client can start a PTY session and receive its output, as the SDK's pty.create does.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "official SDK Pty.create",
+      "derived_from": [
+        "CLM-0003"
+      ],
+      "artifacts": [],
+      "tags": [
+        "s2",
+        "gap"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:38.695113733Z",
+      "updated_at": "2026-10-26T22:09:38.695113733Z",
+      "seal": {
+        "by": "server",
+        "mac": "536fa04f46557657c21fe150f1ae27684c12b4ddb71345c5d991b53cd331fdc6"
+      }
+    },
+    {
+      "id": "CLM-0048",
+      "statement": "The client can resize a PTY session.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "official SDK Pty.resize",
+      "derived_from": [
+        "CLM-0003"
+      ],
+      "artifacts": [],
+      "tags": [
+        "s2",
+        "gap"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:38.695113733Z",
+      "updated_at": "2026-10-26T22:09:38.695113733Z",
+      "seal": {
+        "by": "server",
+        "mac": "abbdb72f407125393b97d9f5abd85bf2d393bfcf3b42dbc6fd1758fd0881a77f"
+      }
+    },
+    {
+      "id": "CLM-0049",
+      "statement": "The client can send input to a PTY session.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "official SDK Pty.send_stdin",
+      "derived_from": [
+        "CLM-0003"
+      ],
+      "artifacts": [],
+      "tags": [
+        "s2",
+        "gap"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:38.695113733Z",
+      "updated_at": "2026-10-26T22:09:38.695113733Z",
+      "seal": {
+        "by": "server",
+        "mac": "cf19998a7cff4703330851b3fd729ec369ce96fd610f77fd5402ded3ca7c0ea8"
+      }
+    },
+    {
+      "id": "CLM-0050",
+      "statement": "Filesystem::write then Filesystem::read round-trips arbitrary binary bytes unchanged.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "py: sandbox_async/filesystem/filesystem.py:197-212, 445-462",
+      "derived_from": [
+        "CLM-0004"
+      ],
+      "artifacts": [
+        "src/filesystem.rs"
+      ],
+      "tags": [
+        "s3",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:38.695113733Z",
+      "updated_at": "2026-10-26T22:09:38.695113733Z",
+      "seal": {
+        "by": "server",
+        "mac": "066f59a6ab144b3b993555058a34be5f71aa656ee4851ff8640c4b4c7add3ddb"
+      }
+    },
+    {
+      "id": "CLM-0051",
+      "statement": "Filesystem::read_to_string returns a UTF-8 file's text.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "py: sandbox_async/filesystem/filesystem.py:197-212",
+      "derived_from": [
+        "CLM-0004"
+      ],
+      "artifacts": [
+        "src/filesystem.rs"
+      ],
+      "tags": [
+        "s3",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:38.695113733Z",
+      "updated_at": "2026-10-26T22:09:38.695113733Z",
+      "seal": {
+        "by": "server",
+        "mac": "d043b4b08b381e24648383eb250d5829d61441e93d8003bf78f81541772ad56f"
+      }
+    },
+    {
+      "id": "CLM-0052",
+      "statement": "Filesystem::write returns a WriteInfo with the written path and FileType::File.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "js: index.d.ts:4567-4580",
+      "derived_from": [
+        "CLM-0004"
+      ],
+      "artifacts": [
+        "src/filesystem.rs"
+      ],
+      "tags": [
+        "s3",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:38.695113733Z",
+      "updated_at": "2026-10-26T22:09:38.695113733Z",
+      "seal": {
+        "by": "server",
+        "mac": "6fe7f19f9ba0544007a796f2b87be40e80f184e0e9ccfbeb39c80e2d98eb8f45"
+      }
+    },
+    {
+      "id": "CLM-0053",
+      "statement": "Filesystem::read of a missing file returns an error for which is_not_found() is true.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "py: envd/api.py:24-33",
+      "derived_from": [
+        "CLM-0004"
+      ],
+      "artifacts": [
+        "src/filesystem.rs",
+        "src/error.rs"
+      ],
+      "tags": [
+        "s3",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:38.695113733Z",
+      "updated_at": "2026-10-26T22:09:38.695113733Z",
+      "seal": {
+        "by": "server",
+        "mac": "d5e562924ec306eace28e864e89057cbcae22881702a74f8b6bd76ea0d1685e0"
+      }
+    },
+    {
+      "id": "CLM-0054",
+      "statement": "Filesystem::list with depth 1 returns a directory's direct entries with correct file types.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "py: sandbox_async/filesystem/filesystem.py:508-513",
+      "derived_from": [
+        "CLM-0004"
+      ],
+      "artifacts": [
+        "src/filesystem.rs"
+      ],
+      "tags": [
+        "s3",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:38.695113733Z",
+      "updated_at": "2026-10-26T22:09:38.695113733Z",
+      "seal": {
+        "by": "server",
+        "mac": "cc2b47a1e0452cb8419b7b9ede6e025a2df3cfde0473476d87204bb235597ab3"
+      }
+    },
+    {
+      "id": "CLM-0055",
+      "statement": "Filesystem::list with depth 2 also returns entries of subdirectories.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "py: sandbox_async/filesystem/filesystem.py:508-513",
+      "derived_from": [
+        "CLM-0004"
+      ],
+      "artifacts": [
+        "src/filesystem.rs"
+      ],
+      "tags": [
+        "s3",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:38.695113733Z",
+      "updated_at": "2026-10-26T22:09:38.695113733Z",
+      "seal": {
+        "by": "server",
+        "mac": "8d733df477076c743139e52236ce82856a9caccb4e3bb5cd9bd238e733ce50a8"
+      }
+    },
+    {
+      "id": "CLM-0056",
+      "statement": "Filesystem::get_info returns an entry's size, file type, permissions and owner.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "py: envd/filesystem/filesystem_pb.py:245-303",
+      "derived_from": [
+        "CLM-0004"
+      ],
+      "artifacts": [
+        "src/filesystem.rs"
+      ],
+      "tags": [
+        "s3",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:38.695113733Z",
+      "updated_at": "2026-10-26T22:09:38.695113733Z",
+      "seal": {
+        "by": "server",
+        "mac": "cba9dfbce842f914811fa105fc055a421b74c6ac4278f154847a9fce1069518d"
+      }
+    },
+    {
+      "id": "CLM-0057",
+      "statement": "Filesystem::exists is true for an existing path and false for a missing one.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "py: sandbox_async/filesystem/filesystem.py:530-560",
+      "derived_from": [
+        "CLM-0004"
+      ],
+      "artifacts": [
+        "src/filesystem.rs"
+      ],
+      "tags": [
+        "s3",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:38.695113733Z",
+      "updated_at": "2026-10-26T22:09:38.695113733Z",
+      "seal": {
+        "by": "server",
+        "mac": "9384e38a0613193af07b41c6e786d615cf7572a8fadc183e986a2c08eb541933"
+      }
+    },
+    {
+      "id": "CLM-0058",
+      "statement": "Filesystem::make_dir returns true when it creates a directory and false when it already exists.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "py: sandbox_async/filesystem/filesystem.py:647-676",
+      "derived_from": [
+        "CLM-0004"
+      ],
+      "artifacts": [
+        "src/filesystem.rs"
+      ],
+      "tags": [
+        "s3",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:38.695113733Z",
+      "updated_at": "2026-10-26T22:09:38.695113733Z",
+      "seal": {
+        "by": "server",
+        "mac": "380a8ef06cb0accf945a30cebd2ea031680494b4c33608b626523dcbea2490ac"
+      }
+    },
+    {
+      "id": "CLM-0059",
+      "statement": "Filesystem::rename moves an entry and returns its info at the new path.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "py: sandbox_async/filesystem/filesystem.py:614-645",
+      "derived_from": [
+        "CLM-0004"
+      ],
+      "artifacts": [
+        "src/filesystem.rs"
+      ],
+      "tags": [
+        "s3",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:38.695113733Z",
+      "updated_at": "2026-10-26T22:09:38.695113733Z",
+      "seal": {
+        "by": "server",
+        "mac": "c92b9d93099e15a77619f47a1397e4352493939755d0474a904441ca1a2f6bb7"
+      }
+    },
+    {
+      "id": "CLM-0060",
+      "statement": "Filesystem::remove deletes a file or directory so that exists is then false.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "py: envd/filesystem/filesystem_pb.py:143-149",
+      "derived_from": [
+        "CLM-0004"
+      ],
+      "artifacts": [
+        "src/filesystem.rs"
+      ],
+      "tags": [
+        "s3",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:38.695113733Z",
+      "updated_at": "2026-10-26T22:09:38.695113733Z",
+      "seal": {
+        "by": "server",
+        "mac": "40341e53b3c8d66a99bfb7e958f2ac35b52c780929984a54b8dcde0420eedd32"
+      }
+    },
+    {
+      "id": "CLM-0061",
+      "statement": "Filesystem operations given a user act as that user (a file written as root is owned by root).",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "py: sandbox_async/filesystem/filesystem.py:206-212, 517",
+      "derived_from": [
+        "CLM-0004"
+      ],
+      "artifacts": [
+        "src/filesystem.rs"
+      ],
+      "tags": [
+        "s3",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:38.695113733Z",
+      "updated_at": "2026-10-26T22:09:38.695113733Z",
+      "seal": {
+        "by": "server",
+        "mac": "04d2b9d1d612463abc085684534f2c3eecf2dea01cd37d11bf9afdbc3366c727"
+      }
+    },
+    {
+      "id": "CLM-0062",
+      "statement": "The client can write several files in one request, as the SDK's write_files does.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "official SDK Filesystem.write_files",
+      "derived_from": [
+        "CLM-0004"
+      ],
+      "artifacts": [],
+      "tags": [
+        "s3",
+        "gap"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:38.695113733Z",
+      "updated_at": "2026-10-26T22:09:38.695113733Z",
+      "seal": {
+        "by": "server",
+        "mac": "72a0afaba9d9871a92ea95ae315b0fe2f9306ba5d4ac79f30439565b53c67667"
+      }
+    },
+    {
+      "id": "CLM-0063",
+      "statement": "The client can watch a directory and receive filesystem events, as the SDK's watch_dir does.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "official SDK Filesystem.watch_dir",
+      "derived_from": [
+        "CLM-0004"
+      ],
+      "artifacts": [],
+      "tags": [
+        "s3",
+        "gap"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:38.695113733Z",
+      "updated_at": "2026-10-26T22:09:38.695113733Z",
+      "seal": {
+        "by": "server",
+        "mac": "547af032eb7a79678bb9670e5bd01809cdae3deb5a507e87f3a960ec857496dc"
+      }
+    },
+    {
+      "id": "CLM-0064",
+      "statement": "The client can produce a signed upload URL for a sandbox path, as the SDK's upload_url does.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "official SDK Sandbox.upload_url",
+      "derived_from": [
+        "CLM-0004"
+      ],
+      "artifacts": [],
+      "tags": [
+        "s3",
+        "gap"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:38.695113733Z",
+      "updated_at": "2026-10-26T22:09:38.695113733Z",
+      "seal": {
+        "by": "server",
+        "mac": "5330f1637a41d5eea150ab9a4510a84ffc1edf39730d2a13051b6a2455035e86"
+      }
+    },
+    {
+      "id": "CLM-0065",
+      "statement": "The client can produce a signed download URL for a sandbox path, as the SDK's download_url does.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "official SDK Sandbox.download_url",
+      "derived_from": [
+        "CLM-0004"
+      ],
+      "artifacts": [],
+      "tags": [
+        "s3",
+        "gap"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:38.695113733Z",
+      "updated_at": "2026-10-26T22:09:38.695113733Z",
+      "seal": {
+        "by": "server",
+        "mac": "43631f3a19feb7451d06a84b88dca95eb2c0923abb78680331fc95f88e4247ba"
+      }
+    },
+    {
+      "id": "CLM-0066",
+      "statement": "The client can upload a file larger than memory by streaming it, with octet-stream or gzip encoding as the SDK supports.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "docs/protocol-notes.md deliberate differences",
+      "derived_from": [
+        "CLM-0004"
+      ],
+      "artifacts": [],
+      "tags": [
+        "s3",
+        "gap"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:09:38.695113733Z",
+      "updated_at": "2026-10-26T22:09:38.695113733Z",
+      "seal": {
+        "by": "server",
+        "mac": "87aba8b0414397d5f769f1084a0b14d9612851f6ebedf64658b41ae37f2635aa"
+      }
+    },
+    {
+      "id": "CLM-0067",
+      "statement": "ConnectionConfig reads the domain from E2B_DOMAIN and defaults it to e2b.app.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: connection_config.py:221-223",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/config.rs"
+      ],
+      "tags": [
+        "s4",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:33.762053365Z",
+      "updated_at": "2026-10-26T22:12:33.762053365Z",
+      "seal": {
+        "by": "server",
+        "mac": "575f18250de7303493faf2289ed5448fc28c8afb7bf2b3a19d7a76223ac0bd8f"
+      }
+    },
+    {
+      "id": "CLM-0068",
+      "statement": "ConnectionConfig reads the API key from E2B_API_KEY.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: connection_config.py:229-231",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/config.rs"
+      ],
+      "tags": [
+        "s4",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:33.762053365Z",
+      "updated_at": "2026-10-26T22:12:33.762053365Z",
+      "seal": {
+        "by": "server",
+        "mac": "47e52245b24f41146922d0214024cb5b8fa469a9b06bfa1f8c2fff28a6efe0e4"
+      }
+    },
+    {
+      "id": "CLM-0069",
+      "statement": "ConnectionConfig reads the API URL from E2B_API_URL and otherwise uses https://api.<domain>.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: connection_config.py:233-235, 310-314",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/config.rs"
+      ],
+      "tags": [
+        "s4",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:33.762053365Z",
+      "updated_at": "2026-10-26T22:12:33.762053365Z",
+      "seal": {
+        "by": "server",
+        "mac": "12e5d620c5aa2792ecf2dcf77474bbb989c7cc7fd9fd0baa20b5c8b9849fc198"
+      }
+    },
+    {
+      "id": "CLM-0070",
+      "statement": "ConnectionConfig reads an envd URL override from E2B_SANDBOX_URL.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: connection_config.py:237-239, 341-342",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/config.rs"
+      ],
+      "tags": [
+        "s4",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:33.762053365Z",
+      "updated_at": "2026-10-26T22:12:33.762053365Z",
+      "seal": {
+        "by": "server",
+        "mac": "6697000ad3033b9b0b4a295f0c613210d4599240623f185693d9d61080a1f25c"
+      }
+    },
+    {
+      "id": "CLM-0071",
+      "statement": "Each ConnectionConfig setting resolves as explicit value, then env var, then default, with an empty value counted as unset.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: connection_config.py:289-291, 310-318",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/config.rs"
+      ],
+      "tags": [
+        "s4",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:33.762053365Z",
+      "updated_at": "2026-10-26T22:12:33.762053365Z",
+      "seal": {
+        "by": "server",
+        "mac": "d3a02cd044a937bfa7521fe7cb5cb8b1bce425fd45bfa956a5bb15da6157a6ae"
+      }
+    },
+    {
+      "id": "CLM-0072",
+      "statement": "The default request timeout is 60 seconds.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: connection_config.py:32",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/config.rs"
+      ],
+      "tags": [
+        "s4",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:33.762053365Z",
+      "updated_at": "2026-10-26T22:12:33.762053365Z",
+      "seal": {
+        "by": "server",
+        "mac": "c15d64598cd9c05f6482de430b274edaaa3bacbb78cce7088d80774f2b49c957"
+      }
+    },
+    {
+      "id": "CLM-0073",
+      "statement": "REST requests carry the API key in the X-API-KEY header.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: api/__init__.py:250-251",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/client.rs"
+      ],
+      "tags": [
+        "s4",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:33.762053365Z",
+      "updated_at": "2026-10-26T22:12:33.762053365Z",
+      "seal": {
+        "by": "server",
+        "mac": "d42296b8b21daa555ca284d19d1f00ea6848273d9b2dff8728bebb80df67d86a"
+      }
+    },
+    {
+      "id": "CLM-0074",
+      "statement": "envd RPCs go to the E2B_SANDBOX_URL override, else https://sandbox.<domain> for hosted E2B domains, else https://49983-<sandbox_id>.<domain>.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: connection_config.py:336-351; py: sandbox_domains.py:1-13",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/config.rs"
+      ],
+      "tags": [
+        "s4",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:33.762053365Z",
+      "updated_at": "2026-10-26T22:12:33.762053365Z",
+      "seal": {
+        "by": "server",
+        "mac": "03dabb5c232f78499bf1554dd34e1690ecb6a85d01a14826d6a889d0c19bc88e"
+      }
+    },
+    {
+      "id": "CLM-0075",
+      "statement": "envd file API requests go to the override, else always https://49983-<sandbox_id>.<domain>.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: connection_config.py:353-380",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/config.rs"
+      ],
+      "tags": [
+        "s4",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:33.762053365Z",
+      "updated_at": "2026-10-26T22:12:33.762053365Z",
+      "seal": {
+        "by": "server",
+        "mac": "b51612f0b3c77a6b1782262d396dc898791a99b0047b03b2c2b7c012c9a293a1"
+      }
+    },
+    {
+      "id": "CLM-0076",
+      "statement": "envd addressing uses the domain returned by the API for the sandbox, else the configured domain.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: sandbox/main.py:46",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/sandbox.rs"
+      ],
+      "tags": [
+        "s4",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:33.762053365Z",
+      "updated_at": "2026-10-26T22:12:33.762053365Z",
+      "seal": {
+        "by": "server",
+        "mac": "58c3772f45c9a304cb4736b6d17b8d394645629077741c99ac6f1f824e131c67"
+      }
+    },
+    {
+      "id": "CLM-0077",
+      "statement": "Every envd request carries E2b-Sandbox-Id: <id> and E2b-Sandbox-Port: 49983.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: sandbox_async/main.py:1234-1235",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/envd/mod.rs"
+      ],
+      "tags": [
+        "s4",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:33.762053365Z",
+      "updated_at": "2026-10-26T22:12:33.762053365Z",
+      "seal": {
+        "by": "server",
+        "mac": "0e9c2f934b9da6bb63da4091f549a4265163996f3bf5b691f6ef25e059b495be"
+      }
+    },
+    {
+      "id": "CLM-0078",
+      "statement": "envd requests carry X-Access-Token when the API returned an envd access token, and never the API key.",
+      "kind": "security",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: sandbox_async/main.py:1229-1232; py: connection_config.py:454-462",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/envd/mod.rs"
+      ],
+      "tags": [
+        "s4",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:33.762053365Z",
+      "updated_at": "2026-10-26T22:12:33.762053365Z",
+      "seal": {
+        "by": "server",
+        "mac": "13e9a88005016468c4dbb1a310e51e2a89250fdae07273612b5926f40624a8a7"
+      }
+    },
+    {
+      "id": "CLM-0079",
+      "statement": "envd RPCs select the acting user with Authorization: Basic base64(\"<user>:\"), sending none without a user except defaulting to user for envd older than 0.4.0.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: envd/utils.py:44-57; py: envd/versions.py:6",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/envd/mod.rs"
+      ],
+      "tags": [
+        "s4",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:33.762053365Z",
+      "updated_at": "2026-10-26T22:12:33.762053365Z",
+      "seal": {
+        "by": "server",
+        "mac": "88d0212d655af5731bb6f7ea3c8726b9e268d38a355df6da30d8375d101e1b7a"
+      }
+    },
+    {
+      "id": "CLM-0080",
+      "statement": "The envd file API selects the acting user with the username query parameter, with the same defaulting as RPCs.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: sandbox_async/filesystem/filesystem.py:206-212",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/filesystem.rs"
+      ],
+      "tags": [
+        "s4",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:33.762053365Z",
+      "updated_at": "2026-10-26T22:12:33.762053365Z",
+      "seal": {
+        "by": "server",
+        "mac": "30ab2cdc0251fe264acf205e17d8b7583bb3690456bcf6b39cfc3108655cc206"
+      }
+    },
+    {
+      "id": "CLM-0081",
+      "statement": "Process streams carry Keepalive-Ping-Interval: 50.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: connection_config.py:48-49",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/commands.rs"
+      ],
+      "tags": [
+        "s4",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:33.762053365Z",
+      "updated_at": "2026-10-26T22:12:33.762053365Z",
+      "seal": {
+        "by": "server",
+        "mac": "9d737287fec87b4418723efda39b47c0e3d2e6266406a4d1e9bc184c91294ab1"
+      }
+    },
+    {
+      "id": "CLM-0082",
+      "statement": "An unparseable or debug envd version is treated as 99.99.99.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: envd/versions.py:4",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/envd/mod.rs"
+      ],
+      "tags": [
+        "s4",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:33.762053365Z",
+      "updated_at": "2026-10-26T22:12:33.762053365Z",
+      "seal": {
+        "by": "server",
+        "mac": "dfb8e249c2f8ef4395c902d777828065fd7baa91fde999d888ddf482a2576ce3"
+      }
+    },
+    {
+      "id": "CLM-0083",
+      "statement": "create_sandbox sends POST /v2/sandboxes and accepts 201 with a Sandbox body.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: api/client/api/sandboxes/post_v2_sandboxes.py:24-42",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/client.rs"
+      ],
+      "tags": [
+        "s4",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:33.762053365Z",
+      "updated_at": "2026-10-26T22:12:33.762053365Z",
+      "seal": {
+        "by": "server",
+        "mac": "27895165f0a52ced08bf29931d002d9e8403444fb1af762a2087e5e94d9788d5"
+      }
+    },
+    {
+      "id": "CLM-0084",
+      "statement": "The create body uses templateID, timeout, autoPause, metadata, envVars and allow_internet_access, omitting unset fields.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: api/client/models/new_sandbox_v2.py:112-171",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/models.rs"
+      ],
+      "tags": [
+        "s4",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:33.762053365Z",
+      "updated_at": "2026-10-26T22:12:33.762053365Z",
+      "seal": {
+        "by": "server",
+        "mac": "b9edb0668aad4ab65298d7548f1a36ebc8bbdbe8f44a4b38205e21d0f394529b"
+      }
+    },
+    {
+      "id": "CLM-0085",
+      "statement": "The created-sandbox response is parsed from templateID, sandboxID, clientID, envdVersion and the optional envdAccessToken, trafficAccessToken and domain.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: api/client/models/sandbox.py:85-115",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/models.rs"
+      ],
+      "tags": [
+        "s4",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:33.762053365Z",
+      "updated_at": "2026-10-26T22:12:33.762053365Z",
+      "seal": {
+        "by": "server",
+        "mac": "398f84cfcfc21513f847f9a3ada095da958f38ebeff2649d8f8e3507351f9710"
+      }
+    },
+    {
+      "id": "CLM-0086",
+      "statement": "connect_sandbox sends POST /v2/sandboxes/{id}/connect with body {timeout?} and accepts 200 or 201.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: api/client/api/sandboxes/post_v_2_sandboxes_sandbox_id_connect.py:22-44",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/client.rs"
+      ],
+      "tags": [
+        "s4",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:33.762053365Z",
+      "updated_at": "2026-10-26T22:12:33.762053365Z",
+      "seal": {
+        "by": "server",
+        "mac": "ab7a7904ec8fa3a1eaf9aab073d78e7a769f601d1b079816f838a1ab794489da"
+      }
+    },
+    {
+      "id": "CLM-0087",
+      "statement": "When v2 connect answers 404, connect_sandbox retries POST /sandboxes/{id}/connect with body {timeout} before reporting not found.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "docs/protocol-notes.md deliberate differences",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/client.rs"
+      ],
+      "tags": [
+        "s4",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:33.762053365Z",
+      "updated_at": "2026-10-26T22:12:33.762053365Z",
+      "seal": {
+        "by": "server",
+        "mac": "c0dfbf93dd85b449bd8cc613c4804a86290a3e8d46d78d83f6b3d35a77242c15"
+      }
+    },
+    {
+      "id": "CLM-0088",
+      "statement": "get_sandbox_info sends GET /sandboxes/{id} and parses SandboxDetail, mapping 404 to SandboxNotFound.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: api/client/api/sandboxes/get_sandboxes_sandbox_id.py:17-18",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/client.rs"
+      ],
+      "tags": [
+        "s4",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:33.762053365Z",
+      "updated_at": "2026-10-26T22:12:33.762053365Z",
+      "seal": {
+        "by": "server",
+        "mac": "ab80d56a600a147abe0f675c8859787a34f2f3556a211871f06b71c5e25e5caa"
+      }
+    },
+    {
+      "id": "CLM-0089",
+      "statement": "SandboxState parses running and paused.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: api/client/models/sandbox_state.py:5-6",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/models.rs"
+      ],
+      "tags": [
+        "s4",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:33.762053365Z",
+      "updated_at": "2026-10-26T22:12:33.762053365Z",
+      "seal": {
+        "by": "server",
+        "mac": "c8bbf0d00cdfc2208ddd6cb0e631ebb7749ecc4a7931418cdfb2f2832b7b64a8"
+      }
+    },
+    {
+      "id": "CLM-0090",
+      "statement": "list_sandboxes sends GET /v2/sandboxes with metadata, state, limit and nextToken query parameters.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: api/client/api/sandboxes/get_v2_sandboxes.py:28-61",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/client.rs"
+      ],
+      "tags": [
+        "s4",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:33.762053365Z",
+      "updated_at": "2026-10-26T22:12:33.762053365Z",
+      "seal": {
+        "by": "server",
+        "mac": "0891046d6f57de6a0969eb60dde1c32a6a0676a7db7bff2e962db5268796d8fb"
+      }
+    },
+    {
+      "id": "CLM-0091",
+      "statement": "list_sandboxes reads the next page token from the x-next-token response header.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: paginator.py:48-50",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/client.rs"
+      ],
+      "tags": [
+        "s4",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:33.762053365Z",
+      "updated_at": "2026-10-26T22:12:33.762053365Z",
+      "seal": {
+        "by": "server",
+        "mac": "449c6dad0f20f7501e6a15e60317b0026edfe95925314decba967efe96c9e969"
+      }
+    },
+    {
+      "id": "CLM-0092",
+      "statement": "list_sandboxes sends multiple states comma-joined in one state parameter.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: api/client/api/sandboxes/get_v2_sandboxes.py:31-38",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/models.rs"
+      ],
+      "tags": [
+        "s4",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:33.762053365Z",
+      "updated_at": "2026-10-26T22:12:33.762053365Z",
+      "seal": {
+        "by": "server",
+        "mac": "71c13f3d5ab004a7180e7ab6a92129b552ddf293bf33c22611934b93f59902f5"
+      }
+    },
+    {
+      "id": "CLM-0093",
+      "statement": "list_sandboxes encodes the metadata filter by encodeURIComponent-ing each key and value and form-encoding them into one string.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: sandbox_async/paginator.py:50-57",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/models.rs"
+      ],
+      "tags": [
+        "s4",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:33.762053365Z",
+      "updated_at": "2026-10-26T22:12:33.762053365Z",
+      "seal": {
+        "by": "server",
+        "mac": "d69a476f2435145a21456bfe8528101b7e327ad98ee52a8f1684dff0f057381c"
+      }
+    },
+    {
+      "id": "CLM-0094",
+      "statement": "kill_sandbox sends DELETE /sandboxes/{id}, treats 204 as true and 404 as false.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: sandbox_async/sandbox_api.py:138-161",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/client.rs"
+      ],
+      "tags": [
+        "s4",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:33.762053365Z",
+      "updated_at": "2026-10-26T22:12:33.762053365Z",
+      "seal": {
+        "by": "server",
+        "mac": "40203bbb87266f1b7f40d1bba2b976b351ef0c395cd5f3aab970e779c29e6bfc"
+      }
+    },
+    {
+      "id": "CLM-0095",
+      "statement": "pause_sandbox sends POST /sandboxes/{id}/pause with body {}, treats 204 as true, 409 as false and 404 as SandboxNotFound.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: sandbox_async/sandbox_api.py:399-432",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/client.rs"
+      ],
+      "tags": [
+        "s4",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:33.762053365Z",
+      "updated_at": "2026-10-26T22:12:33.762053365Z",
+      "seal": {
+        "by": "server",
+        "mac": "6e7a11dfa106fda9bd2d9219e5fa9535b2915ed3415db3ec641a82b1c9ea2d24"
+      }
+    },
+    {
+      "id": "CLM-0096",
+      "statement": "set_sandbox_timeout sends POST /sandboxes/{id}/timeout with body {timeout} in seconds, mapping 404 to SandboxNotFound.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: sandbox_async/sandbox_api.py:164-187",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/client.rs"
+      ],
+      "tags": [
+        "s4",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:33.762053365Z",
+      "updated_at": "2026-10-26T22:12:33.762053365Z",
+      "seal": {
+        "by": "server",
+        "mac": "cc879bb6ca33ac7cfd37b13b0d61ea741d3eeacdaac1ed4c83af74aec94bccf2"
+      }
+    },
+    {
+      "id": "CLM-0097",
+      "statement": "refresh_sandbox sends POST /sandboxes/{id}/refreshes with body {duration?} in seconds and accepts 204.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: api/client/api/sandboxes/post_sandboxes_sandbox_id_refreshes.py:21-38",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/client.rs"
+      ],
+      "tags": [
+        "s4",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:33.762053365Z",
+      "updated_at": "2026-10-26T22:12:33.762053365Z",
+      "seal": {
+        "by": "server",
+        "mac": "16828b18b33ebfee14bbb4572a722e036f94c15a01f3bb6c25e0c1a3f4c97930"
+      }
+    },
+    {
+      "id": "CLM-0098",
+      "statement": "A non-2xx REST answer becomes Error::Api carrying the status and the body's message field.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: api/client/models/error.py:26-28; py: api/__init__.py:191-213",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/client.rs",
+        "src/error.rs"
+      ],
+      "tags": [
+        "s4",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:33.762053365Z",
+      "updated_at": "2026-10-26T22:12:33.762053365Z",
+      "seal": {
+        "by": "server",
+        "mac": "5d63e7013c3749534b8eaf259f43d07c6aab0d2ebe0519b59912116e0cd46edc"
+      }
+    },
+    {
+      "id": "CLM-0099",
+      "statement": "envd RPCs are sent as POST <base>/<package.Service>/<Method> using the Connect JSON codec, uncompressed.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: envd/process/process_connect.py:80-150; py: envd/client_shared.py:29-60, 133-143",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/envd/connect.rs"
+      ],
+      "tags": [
+        "s4",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:33.762053365Z",
+      "updated_at": "2026-10-26T22:12:33.762053365Z",
+      "seal": {
+        "by": "server",
+        "mac": "950f40a9f57e6ea5dfeccefe40b19bc2adc5eb8dce9dcc6f70e073c77f6bbd75"
+      }
+    },
+    {
+      "id": "CLM-0100",
+      "statement": "Unary RPCs use Content-Type application/json and streaming RPCs application/connect+json, both with Connect-Protocol-Version: 1.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "connect-es: protocol-connect/content-type.js:37-40; headers.js:27",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/envd/connect.rs"
+      ],
+      "tags": [
+        "s4",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:33.762053365Z",
+      "updated_at": "2026-10-26T22:12:33.762053365Z",
+      "seal": {
+        "by": "server",
+        "mac": "32b281703751f5068ce23aaf2c25e08af06c7de64ed58c534d305e5af3d13c14"
+      }
+    },
+    {
+      "id": "CLM-0101",
+      "statement": "RPC deadlines are sent in Connect-Timeout-Ms as whole milliseconds, at least 1.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "connect-es: protocol-connect/request-header.js:28-30; py: envd/utils.py:15-24",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/envd/connect.rs"
+      ],
+      "tags": [
+        "s4",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:33.762053365Z",
+      "updated_at": "2026-10-26T22:12:33.762053365Z",
+      "seal": {
+        "by": "server",
+        "mac": "e98ebacdb5933855f3fb0c3bc2ada32f2e14a1236851eebb6d241bdc96a7c924"
+      }
+    },
+    {
+      "id": "CLM-0102",
+      "statement": "Streaming RPC messages are framed as a 1-byte flag plus a 4-byte big-endian length plus the payload, including when split across network reads.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "connect-es: protocol/envelope.js:38",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/envd/connect.rs"
+      ],
+      "tags": [
+        "s4",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:33.762053365Z",
+      "updated_at": "2026-10-26T22:12:33.762053365Z",
+      "seal": {
+        "by": "server",
+        "mac": "e6aa8df3e0e02198463821a819f72805778b53e62228e8ae0979e5ae8cbdadce"
+      }
+    },
+    {
+      "id": "CLM-0103",
+      "statement": "An end-of-stream envelope (flag 0x02) ends the stream, and its error object becomes Error::Rpc.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "connect-es: protocol-connect/end-stream.js:30, 37-73",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/envd/connect.rs"
+      ],
+      "tags": [
+        "s4",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:33.762053365Z",
+      "updated_at": "2026-10-26T22:12:33.762053365Z",
+      "seal": {
+        "by": "server",
+        "mac": "64b5167a9569df5606f424be80d9e02ad8bac629eed5479b7e435674ae137487"
+      }
+    },
+    {
+      "id": "CLM-0104",
+      "statement": "A Connect error body's snake_case code string maps to the matching ConnectCode, with its message kept.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "connect-es: protocol-connect/error-json.js:42-60; code.js:31-91",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/error.rs"
+      ],
+      "tags": [
+        "s4",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:33.762053365Z",
+      "updated_at": "2026-10-26T22:12:33.762053365Z",
+      "seal": {
+        "by": "server",
+        "mac": "4b2c33577f8068bb563ee9ac2e92c100cdeb82f4cd8fad1ec8895a3bd0e6d4da"
+      }
+    },
+    {
+      "id": "CLM-0105",
+      "statement": "A non-Connect error body maps to a ConnectCode by HTTP status, and an integer JSON code is taken as the status.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: envd/client_shared.py:65-125",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/error.rs",
+        "src/envd/connect.rs"
+      ],
+      "tags": [
+        "s4",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:33.762053365Z",
+      "updated_at": "2026-10-26T22:12:33.762053365Z",
+      "seal": {
+        "by": "server",
+        "mac": "ccabf5d7a6a3a50c7645c54d9161c50b19699f1dee8deefe0e68c7500ac2858e"
+      }
+    },
+    {
+      "id": "CLM-0106",
+      "statement": "Commands are started as /bin/bash -l -c <cmd> with envs, cwd and stdin defaulting to false.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: sandbox_async/commands/command.py:291-292, 320-330",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/commands.rs"
+      ],
+      "tags": [
+        "s4",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:33.762053365Z",
+      "updated_at": "2026-10-26T22:12:33.762053365Z",
+      "seal": {
+        "by": "server",
+        "mac": "e4e00d7aee57f6e9add6c447fb74e4f0c4d6657b2d4d48061c6946c8b379561f"
+      }
+    },
+    {
+      "id": "CLM-0107",
+      "statement": "Opening a process stream requires the first event to be start within the request timeout, and takes the pid from it.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: sandbox_async/commands/command.py:382-411",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/commands.rs"
+      ],
+      "tags": [
+        "s4",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:33.762053365Z",
+      "updated_at": "2026-10-26T22:12:33.762053365Z",
+      "seal": {
+        "by": "server",
+        "mac": "b823d1c22556a7712097cbb8037af7c21ea714d8e7b79e5eb7880eed7ff052bb"
+      }
+    },
+    {
+      "id": "CLM-0108",
+      "statement": "A process stream that ends without an end event is an error.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: sandbox_async/commands/command_handle.py:252-253",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/commands.rs"
+      ],
+      "tags": [
+        "s4",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:33.762053365Z",
+      "updated_at": "2026-10-26T22:12:33.762053365Z",
+      "seal": {
+        "by": "server",
+        "mac": "117fb629690b33f4340649cd2a553e8cb8e05895801ffa2551677b903b5e51ff"
+      }
+    },
+    {
+      "id": "CLM-0109",
+      "statement": "close_stdin is refused with an error for envd versions older than 0.5.2.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: sandbox_async/commands/command.py:189-193; py: envd/versions.py:7",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/commands.rs"
+      ],
+      "tags": [
+        "s4",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:33.762053365Z",
+      "updated_at": "2026-10-26T22:12:33.762053365Z",
+      "seal": {
+        "by": "server",
+        "mac": "a31bf51912545ffddc8712d8679879aca3ce09418b504c2fa1459fd7bc75672c"
+      }
+    },
+    {
+      "id": "CLM-0110",
+      "statement": "File reads send GET /files?path=<p>[&username=<u>] and return the body bytes.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: sandbox_async/filesystem/filesystem.py:197-212",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/filesystem.rs"
+      ],
+      "tags": [
+        "s4",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:33.762053365Z",
+      "updated_at": "2026-10-26T22:12:33.762053365Z",
+      "seal": {
+        "by": "server",
+        "mac": "b1e782a9d2934fa51bd169bca158fa7a4aecdd7920408500bec83f91b4122ae3"
+      }
+    },
+    {
+      "id": "CLM-0111",
+      "statement": "File writes send POST /files?path=<p> as multipart/form-data field file named by the path and parse the JSON array of {name, type, path}.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "js: 2226-2249; py: sandbox_async/filesystem/filesystem.py:445-462",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/filesystem.rs"
+      ],
+      "tags": [
+        "s4",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:33.762053365Z",
+      "updated_at": "2026-10-26T22:12:33.762053365Z",
+      "seal": {
+        "by": "server",
+        "mac": "93c3eaf136627c332a573a020fadb04f6de22c271b45275f302f26248a33de7f"
+      }
+    },
+    {
+      "id": "CLM-0112",
+      "statement": "envd file API errors become Error::Envd with the status and the body's message.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: envd/api.py:24-33, 143-152",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/filesystem.rs",
+        "src/error.rs"
+      ],
+      "tags": [
+        "s4",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:33.762053365Z",
+      "updated_at": "2026-10-26T22:12:33.762053365Z",
+      "seal": {
+        "by": "server",
+        "mac": "10ce469471dad9e86edfc714b6d2a51cb86d7fb46ad15d68ddca09033a37a025"
+      }
+    },
+    {
+      "id": "CLM-0113",
+      "statement": "Filesystem::list rejects depth 0 with Error::InvalidArgument without a request.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: sandbox_async/filesystem/filesystem.py:508-513",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/filesystem.rs"
+      ],
+      "tags": [
+        "s4",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:33.762053365Z",
+      "updated_at": "2026-10-26T22:12:33.762053365Z",
+      "seal": {
+        "by": "server",
+        "mac": "df2ded098f8c814774dd06c7f8281c3013a7e22858a72d2f4666b702cfd30b42"
+      }
+    },
+    {
+      "id": "CLM-0114",
+      "statement": "EntryInfo parses the proto3 JSON EntryInfo, including int64 size as a string and FileType enum names.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: envd/filesystem/filesystem_pb.py:245-303, 747-765",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/filesystem.rs",
+        "src/envd/filesystem_pb.rs"
+      ],
+      "tags": [
+        "s4",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:33.762053365Z",
+      "updated_at": "2026-10-26T22:12:33.762053365Z",
+      "seal": {
+        "by": "server",
+        "mac": "7a98849d89e86c3aa6f96d375cbc7eb34d6ffa4c7fa42d50dfa3199b25ada79b"
+      }
+    },
+    {
+      "id": "CLM-0115",
+      "statement": "Sandbox::is_running sends GET /health and treats 502 as not running.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: sandbox_async/main.py:134-168",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/sandbox.rs"
+      ],
+      "tags": [
+        "s4",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:33.762053365Z",
+      "updated_at": "2026-10-26T22:12:33.762053365Z",
+      "seal": {
+        "by": "server",
+        "mac": "f5ed8d501460777e86b5c9ceae11bee7a807b596bda9eb8257e63ee7e407f9b8"
+      }
+    },
+    {
+      "id": "CLM-0116",
+      "statement": "Process event JSON (start, data stdout/stderr base64 bytes, end with exit_code and error, keepalive) parses into CommandEvent values.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: envd/process/process_pb.py:318-420",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/envd/process_pb.rs",
+        "src/commands.rs"
+      ],
+      "tags": [
+        "s4",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:33.762053365Z",
+      "updated_at": "2026-10-26T22:12:33.762053365Z",
+      "seal": {
+        "by": "server",
+        "mac": "d8358f64f476790358aa7c6f13c167044000bfa7e363510c191111435299ff11"
+      }
+    },
+    {
+      "id": "CLM-0117",
+      "statement": "Every v0.1 S1-S3 claim is supported by a live run against hosted E2B.",
+      "kind": "non_functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "spec#decisions 3",
+      "derived_from": [
+        "CLM-0006"
+      ],
+      "artifacts": [],
+      "tags": [
+        "s5",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:45.325766859Z",
+      "updated_at": "2026-10-26T22:12:45.325766859Z",
+      "seal": {
+        "by": "server",
+        "mac": "0fdf6ee7b5784e51f2a3018b9c12231b11d52414c3bea86a9c16ddf5a2bb25cd"
+      }
+    },
+    {
+      "id": "CLM-0118",
+      "statement": "Every v0.1 S1-S3 claim has been run live against sandbawks, with each failure either fixed in the crate or filed against gfd/sandbawks.",
+      "kind": "non_functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "spec#decisions 4",
+      "derived_from": [
+        "CLM-0006"
+      ],
+      "artifacts": [],
+      "tags": [
+        "s5",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:45.325766859Z",
+      "updated_at": "2026-10-26T22:12:45.325766859Z",
+      "seal": {
+        "by": "server",
+        "mac": "22466ab8132d59592c87505e99f1aacdedb67c27147c27e85f5f46e6bdd6ce07"
+      }
+    },
+    {
+      "id": "CLM-0119",
+      "statement": "Public structs and enums that may gain fields or variants are #[non_exhaustive].",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "inspection",
+      "source": "spec#milestones M4",
+      "derived_from": [
+        "CLM-0006"
+      ],
+      "artifacts": [
+        "src/"
+      ],
+      "tags": [
+        "s5",
+        "gap"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:45.325766859Z",
+      "updated_at": "2026-10-26T22:12:45.325766859Z",
+      "seal": {
+        "by": "server",
+        "mac": "618ce836eca4bbfbd8fb5dceb2169e8c1eadd8ab3b510c078ed07869bb298b6d"
+      }
+    },
+    {
+      "id": "CLM-0120",
+      "statement": "Every public item has a rustdoc comment, enforced by the missing_docs lint, and public functions with non-trivial use have examples.",
+      "kind": "documentation",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "spec#milestones M4; .claude/CLAUDE.md Documentation",
+      "derived_from": [
+        "CLM-0006"
+      ],
+      "artifacts": [
+        "src/lib.rs"
+      ],
+      "tags": [
+        "s5",
+        "gap"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:45.325766859Z",
+      "updated_at": "2026-10-26T22:12:45.325766859Z",
+      "seal": {
+        "by": "server",
+        "mac": "624651085a9bab8d0ef7af622fe7a4e2719cc5be4b5ecef76f297199e761168a"
+      }
+    },
+    {
+      "id": "CLM-0121",
+      "statement": "The crate states its semver policy and pins a minimum supported Rust version (rust-version) that CI checks.",
+      "kind": "constraint",
+      "level": "unit",
+      "verification_method": "inspection",
+      "source": "spec#milestones M4",
+      "derived_from": [
+        "CLM-0006"
+      ],
+      "artifacts": [
+        "Cargo.toml",
+        "README.md"
+      ],
+      "tags": [
+        "s5",
+        "gap"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:45.325766859Z",
+      "updated_at": "2026-10-26T22:12:45.325766859Z",
+      "seal": {
+        "by": "server",
+        "mac": "a7a4f9cd1df958713f1de84e337450f3f4be692fb239fca39e7f2d72866a0a88"
+      }
+    },
+    {
+      "id": "CLM-0122",
+      "statement": "No API key or envd access token appears in the Debug output of Client, ConnectionConfig or Sandbox.",
+      "kind": "security",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "Cargo.toml secrecy dependency comment",
+      "derived_from": [
+        "CLM-0006"
+      ],
+      "artifacts": [
+        "src/config.rs",
+        "src/client.rs",
+        "src/sandbox.rs"
+      ],
+      "tags": [
+        "s5",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:45.325766859Z",
+      "updated_at": "2026-10-26T22:12:45.325766859Z",
+      "seal": {
+        "by": "server",
+        "mac": "4be77bb59dc8d9b5a4c9fe11566a9a68e94d2564d9ca8e3f2e93f90c689fa92a"
+      }
+    },
+    {
+      "id": "CLM-0123",
+      "statement": "A CI job runs the live suite against hosted E2B using repository secrets on a manual or nightly trigger.",
+      "kind": "non_functional",
+      "level": "unit",
+      "verification_method": "inspection",
+      "source": "spec#milestones M5",
+      "derived_from": [
+        "CLM-0006"
+      ],
+      "artifacts": [
+        ".github/workflows/"
+      ],
+      "tags": [
+        "s5",
+        "gap"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:45.325766859Z",
+      "updated_at": "2026-10-26T22:12:45.325766859Z",
+      "seal": {
+        "by": "server",
+        "mac": "b66fa122f146ad5a1c5d89b3e7be2958324f54dd4f61b5d69488ca36412db453"
+      }
+    },
+    {
+      "id": "CLM-0124",
+      "statement": "Cargo.toml allows publishing and cargo publish --dry-run succeeds.",
+      "kind": "constraint",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "spec#milestones M5",
+      "derived_from": [
+        "CLM-0006"
+      ],
+      "artifacts": [
+        "Cargo.toml"
+      ],
+      "tags": [
+        "s5",
+        "gap"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:45.325766859Z",
+      "updated_at": "2026-10-26T22:12:45.325766859Z",
+      "seal": {
+        "by": "server",
+        "mac": "90cc5cab5ac031404ad1153ebad38b7c26a5b031b7cd834a370a5b7a240b9157"
+      }
+    },
+    {
+      "id": "CLM-0125",
+      "statement": "The crate contains no sandbawks-specific endpoints or behaviour beyond the standard E2B API.",
+      "kind": "constraint",
+      "level": "unit",
+      "verification_method": "inspection",
+      "source": "catalog projects/e2b-client-rs.md naming rule",
+      "derived_from": [
+        "CLM-0006"
+      ],
+      "artifacts": [
+        "src/"
+      ],
+      "tags": [
+        "s5",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:45.325766859Z",
+      "updated_at": "2026-10-26T22:12:45.325766859Z",
+      "seal": {
+        "by": "server",
+        "mac": "9b0210a1e851f0ebf47eceecb68ed5b065f9828e2797a1ef5e510584fdd7b878"
+      }
+    },
+    {
+      "id": "CLM-0126",
+      "statement": "The crate is licensed MIT OR Apache-2.0 and vendors no third-party material that needs a NOTICE.",
+      "kind": "constraint",
+      "level": "unit",
+      "verification_method": "inspection",
+      "source": "docs/protocol-notes.md Sources",
+      "derived_from": [
+        "CLM-0006"
+      ],
+      "artifacts": [
+        "Cargo.toml",
+        "LICENSE-MIT",
+        "LICENSE-APACHE"
+      ],
+      "tags": [
+        "s5",
+        "v0.1"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-26T22:12:45.325766859Z",
+      "updated_at": "2026-10-26T22:12:45.325766859Z",
+      "seal": {
+        "by": "server",
+        "mac": "483a91f320925d83c7158cf68327f3d6f556d9814df00b5550c5b9fd0a645ec0"
+      }
+    }
+  ]
+}
