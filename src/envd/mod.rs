@@ -54,6 +54,9 @@ impl EnvdVersion {
     /// envd 0.4.0 introduced a configurable default user
     /// (`e2b/envd/versions.py:6`).
     pub(crate) const DEFAULT_USER: Self = Self::new(0, 4, 0);
+    /// envd 0.5.2 added `CloseStdin`; the SDKs refuse it on older envd
+    /// (`e2b/envd/versions.py:7`).
+    pub(crate) const CLOSE_STDIN: Self = Self::new(0, 5, 2);
 
     /// Creates a version from its parts.
     ///
@@ -422,6 +425,9 @@ mod tests {
         assert!("1.2".parse::<EnvdVersion>().is_err());
         assert!("a.b.c".parse::<EnvdVersion>().is_err());
         assert_eq!(EnvdVersion::new(1, 2, 3).to_string(), "1.2.3");
+        assert!(EnvdVersion::parse_lenient("0.5.1") < EnvdVersion::CLOSE_STDIN);
+        assert!(EnvdVersion::parse_lenient("0.5.2") >= EnvdVersion::CLOSE_STDIN);
+        assert!(EnvdVersion::UNKNOWN_LATEST > EnvdVersion::CLOSE_STDIN);
     }
 
     #[test]
