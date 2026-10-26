@@ -129,8 +129,15 @@ async fn clm_0011_auto_pause_pauses_at_timeout() {
         "auto-pause at timeout",
         Duration::from_secs(120),
         || async move {
-            let info = sandbox_ref.get_info().await.ok()?;
-            (info.state == SandboxState::Paused).then_some(info.state)
+            // Not found is the outcome this claim rules out, so fail at once.
+            // Any other error may be transient and keeps polling.
+            match sandbox_ref.get_info().await {
+                Ok(info) => (info.state == SandboxState::Paused).then_some(info.state),
+                Err(error) if error.is_not_found() => {
+                    panic!("sandbox was killed, not paused, at its timeout: {error:?}")
+                }
+                Err(_) => None,
+            }
         },
     )
     .await;
