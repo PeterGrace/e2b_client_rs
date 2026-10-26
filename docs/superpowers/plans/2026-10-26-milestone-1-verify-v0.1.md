@@ -1466,7 +1466,19 @@ for name in E2B_API_KEY_HOSTED E2B_API_KEY_SANDBAWKS; do
     value="$(grep "^${name}=" "$env_file" | cut -d= -f2-)"
     [ -n "$value" ] && echo "$name: $(grep -cF -- "$value" <log>)"
 done
-``` Add to `docs/verification/m1-live-results.md`:
+```
+
+> **Corrected (issue #10, 2026-10-26).** The closing fence of the block above
+> was on the same line as the next sentence, so the rest of Task 6 rendered as
+> code. It is now on its own line. `<log>` stands for
+> `target/live-logs/<run id>.log`. A count of `0` only means something if the
+> `.env` values are unquoted, because `cut` keeps any quotes and the grep would
+> then miss the real key. Check that the values are unquoted (without printing
+> them) before you trust a `0`. The suite has 46 `clm_*` tests (lifecycle 21,
+> commands 13, files 12). If the results file does not exist yet, start it with
+> a one-line intro, then the section.
+
+Add to `docs/verification/m1-live-results.md`:
 
 ```markdown
 ## Hosted E2B (run <run id>, <UTC time>)
