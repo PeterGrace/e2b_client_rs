@@ -1476,8 +1476,7 @@ done
 > then miss the real key. Check that the values are unquoted (without printing
 > them) before you trust a `0`. The suite has 46 `clm_*` tests (lifecycle 21,
 > commands 13, files 12). If the results file does not exist yet, start it with
-> a one-line intro, then the section. The hosted run's results are in
-> `docs/verification/m1-live-results.md`.
+> a one-line intro, then the section.
 
 Add to `docs/verification/m1-live-results.md`:
 
