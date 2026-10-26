@@ -230,6 +230,10 @@ fn trim_url(url: &Url) -> String {
 ///
 /// # Examples
 ///
+/// [`build`](Self::build) reads the real process environment, so this example
+/// assumes `E2B_API_URL` is unset (or empty). If it is set, `.api_url("")`
+/// resolves to that value instead, which is the rule being shown.
+///
 /// ```
 /// use e2b_client::ConnectionConfig;
 ///
