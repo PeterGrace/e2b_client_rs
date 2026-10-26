@@ -594,8 +594,20 @@ async fn close_stdin_is_refused_before_envd_0_5_2() {
     // Act
     let result = sandbox.commands().close_stdin(9).await;
 
-    // Assert
-    assert!(result.is_err(), "{result:?}");
+    // Assert: refused locally, like a depth-0 list, so no request is sent.
+    // `InvalidArgument` is the crate's variant for a call refused before any
+    // request; if the fix picks another, update this match with it.
+    assert!(
+        matches!(result, Err(Error::InvalidArgument(_))),
+        "{result:?}"
+    );
+    let requests = server.received_requests().await.expect("recording");
+    assert!(
+        requests
+            .iter()
+            .all(|request| request.url.path() != "/process.Process/CloseStdin"),
+        "close_stdin must not reach envd"
+    );
 }
 
 #[tokio::test]
