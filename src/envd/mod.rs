@@ -351,6 +351,21 @@ impl EnvdClient {
     }
 }
 
+// Test-only accessors: `#[cfg(test)]` compiles this block only for
+// `cargo test`, so the base URLs stay private in the published crate.
+#[cfg(test)]
+impl EnvdClient {
+    /// The base URL Connect-RPC calls are sent to.
+    pub(crate) fn rpc_base(&self) -> &str {
+        &self.rpc_base
+    }
+
+    /// The base URL of the plain HTTP API (`/files`, `/health`).
+    pub(crate) fn direct_base(&self) -> &str {
+        &self.direct_base
+    }
+}
+
 fn content_type_of(response: &reqwest::Response) -> Option<String> {
     response
         .headers()
@@ -407,6 +422,17 @@ mod tests {
         assert!("1.2".parse::<EnvdVersion>().is_err());
         assert!("a.b.c".parse::<EnvdVersion>().is_err());
         assert_eq!(EnvdVersion::new(1, 2, 3).to_string(), "1.2.3");
+    }
+
+    #[test]
+    fn unparseable_or_debug_versions_are_99_99_99() {
+        for raw in ["", "dev", "debug", "1.2", "a.b.c", "0.x.1"] {
+            assert_eq!(
+                EnvdVersion::parse_lenient(raw),
+                EnvdVersion::new(99, 99, 99),
+                "{raw:?}"
+            );
+        }
     }
 
     #[test]

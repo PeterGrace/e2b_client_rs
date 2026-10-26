@@ -947,6 +947,14 @@ git commit -m "test: live lifecycle tests for S1 v0.1 claims"
 **Files:**
 - Modify: `tests/live_commands.rs`
 
+> **Corrected (issue #7, 2026-10-26).** The code below compiled as written. Four
+> tests in `tests/live_commands.rs` assert more than this plan shows, so read
+> that file, not this section, for what shipped: CLM-0034 sleeps 2 s and checks
+> that the first Stdout chunk arrives before the Stderr chunk and at least 1 s
+> before Exit (the "as they are produced" part of the claim); CLM-0035 and
+> CLM-0043 also assert exit code 0; CLM-0044 also asserts the pid is gone from
+> `Commands::list` after the wait.
+
 Extend the `use` lines to `use std::time::Duration;`, `use e2b_client::{CommandEvent, CommandOptions, ConnectCode, Error, Signal};` and `use live_support::LiveSandbox;`. Every test carries `#[tokio::test]` and `#[ignore = "live: run with `just test-live <target>`"]`.
 
 - [ ] **Step 1: Streaming and large output (CLM-0034, 0035)**
@@ -1375,6 +1383,8 @@ each row as `test` evidence in the claims ledger.
 
 Expected gaps (confirm or refute each by reading the tests): CLM-0076 (API-returned domain wins), CLM-0078 (the API key is never sent to envd), CLM-0080 (`username` query on read and write), CLM-0092 (several states comma-joined), CLM-0109 (close_stdin refused below envd 0.5.2), CLM-0115 (502 from /health means not running), CLM-0122 (Sandbox and Client Debug output omit tokens).
 
+> **Corrected (issue #9, 2026-10-26).** As shipped, a row of the map may name several tests, separated by `;`, when each covers a different part of the claim and together they cover all of it. The "Covers whole claim?" column holds `yes`, `partial` or `refuted`, and a `Source` column (`existing` or `new`) was added. Of the expected gaps, CLM-0092 and CLM-0115 already had tests that cover the whole claim. The real gaps were wider than the plan's list, for example CLM-0073, CLM-0077 and CLM-0099. See `docs/verification/s4-evidence-map.md`.
+
 - [ ] **Step 2: For each gap, write the failing test first**
 
 Follow the file's existing wiremock patterns. For example, a CLM-0078 test in `tests/envd_api.rs` asserts that no request reaching the envd mock carries `x-api-key`:
@@ -1407,6 +1417,8 @@ async fn envd_requests_never_carry_the_api_key() {
     assert!(envd_requests.iter().all(|request| !request.headers.contains_key("x-api-key")));
 }
 ```
+
+> **Corrected (issue #9, 2026-10-26).** The CLM-0078 test shipped as `envd_requests_carry_the_access_token_only_when_issued_and_never_the_api_key`. It calls every envd route through the shared helper `envd_requests_for_every_route`, for a sandbox with an access token and one without. The CLM-0077 and CLM-0099 tests use the same helper. Refuting tests are marked `#[ignore = "refutes CLM-NNNN: <reason>"]`, because the fix issues do not exist yet. Task 8 files them and can add the issue number.
 
 Run each new test. A test that fails on current code means the claim is refuted: keep the test, mark it `#[ignore = "refutes CLM-NNNN, see #<issue>"]`, note it in the map, and report it. Don't fix the crate in this task.
 
@@ -1490,7 +1502,7 @@ Same steps as Task 6, with `just test-live sandbawks` and the section heading `#
 - Modify: `docs/protocol-notes.md` (rewrite "Verification against a live server")
 - Create: `changelog/<ts>-m1-milestone.md`
 
-- [ ] **Step 1: Record S4 evidence.** For each row of `s4-evidence-map.md`, call `add_evidence` with kind `test`, locator `<path>::<name> @ <main commit>` and stance `supports`, or `refutes` for an ignored refuting test. Then `record_verdict`.
+- [ ] **Step 1: Record S4 evidence.** For each test named in each row of `s4-evidence-map.md`, call `add_evidence` with kind `test`, locator `<path>::<name> @ <main commit>` and stance `supports`, or `refutes` for an ignored refuting test. Then `record_verdict`.
 - [ ] **Step 2: Record live evidence.** For each row of both results tables, call `add_evidence` with kind `demonstration` and locator `<test> @ <target>, docs/verification/runs/<run id>.log`. Hosted rows decide the verdict. A sandbawks failure on a claim that passed on hosted is `neutral` evidence that names the gfd/sandbawks issue.
 - [ ] **Step 3: Handle refuted claims.**
   1. File one sub-issue per crate bug, `M1.9+: fix <claim>`, under the M1 epic, blocked by nothing. Add a matching task to this plan with a dated `> **Corrected**` note.

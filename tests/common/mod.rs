@@ -47,17 +47,22 @@ pub fn sandbox_json(envd_version: &str) -> Value {
     })
 }
 
-/// Mounts a create endpoint and creates a sandbox reporting `envd_version`.
-pub async fn sandbox_with_version(server: &MockServer, envd_version: &str) -> Sandbox {
+/// Mounts a create endpoint answering `created` and creates a sandbox from it.
+pub async fn sandbox_from_json(server: &MockServer, created: Value) -> Sandbox {
     Mock::given(method("POST"))
         .and(path("/v2/sandboxes"))
-        .respond_with(ResponseTemplate::new(201).set_body_json(sandbox_json(envd_version)))
+        .respond_with(ResponseTemplate::new(201).set_body_json(created))
         .mount(server)
         .await;
     client_for(server)
         .create_sandbox(&e2b_client::CreateSandboxParams::default())
         .await
         .expect("create sandbox")
+}
+
+/// Mounts a create endpoint and creates a sandbox reporting `envd_version`.
+pub async fn sandbox_with_version(server: &MockServer, envd_version: &str) -> Sandbox {
+    sandbox_from_json(server, sandbox_json(envd_version)).await
 }
 
 /// A sandbox on a current envd.

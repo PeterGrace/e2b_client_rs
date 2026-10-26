@@ -231,6 +231,20 @@ mod tests {
     }
 
     #[test]
+    fn end_event_parses_exit_code_and_error() {
+        let response: EventResponse = serde_json::from_str(
+            r#"{"event":{"end":{"exitCode":137,"exited":false,"error":"signal: killed"}}}"#,
+        )
+        .expect("deserialize");
+        let end = response
+            .event
+            .and_then(|event| event.end)
+            .expect("end event");
+        assert_eq!(end.exit_code, 137);
+        assert_eq!(end.error.as_deref(), Some("signal: killed"));
+    }
+
+    #[test]
     fn unknown_event_kinds_and_fields_are_ignored() {
         let response: EventResponse =
             serde_json::from_str(r#"{"event":{"keepalive":{}},"extra":1}"#).expect("deserialize");
