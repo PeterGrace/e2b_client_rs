@@ -86,13 +86,18 @@ impl Client {
         let mut api_headers = HeaderMap::with_capacity(1);
         api_headers.insert(HEADER_API_KEY, key_header);
 
+        // Neither API redirects, and reqwest forwards custom headers such as
+        // `X-API-KEY` and `X-Access-Token` across hosts on a redirect, so
+        // redirects are never followed.
         let api_http = reqwest::Client::builder()
             .user_agent(user_agent())
             .default_headers(api_headers)
+            .redirect(reqwest::redirect::Policy::none())
             .build()?;
         // envd gets its own client so the API key is never sent to sandboxes.
         let envd_http = reqwest::Client::builder()
             .user_agent(user_agent())
+            .redirect(reqwest::redirect::Policy::none())
             .build()?;
         Ok(Self {
             inner: Arc::new(ClientInner {
@@ -163,8 +168,10 @@ impl Client {
     /// # Arguments
     ///
     /// * `sandbox_id` - the sandbox to connect to.
-    /// * `timeout` - a new sandbox lifetime from now; `None` keeps the server
-    ///   default.
+    /// * `timeout` - a new sandbox lifetime from now; `None` sends none on
+    ///   the v2 route, so the server keeps its default. The v1 route requires
+    ///   a timeout, so on the fallback `None` sends 300 seconds, which resets
+    ///   the sandbox's lifetime to 5 minutes from now.
     ///
     /// # Returns
     ///

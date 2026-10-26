@@ -546,13 +546,16 @@ impl CommandHandle {
     ///
     /// # Returns
     ///
-    /// `Some(event)` for each event, ending with [`CommandEvent::Exit`], then
-    /// `None`.
+    /// `Some(event)` for each event, then `None` once envd cleanly ends the
+    /// stream. [`CommandEvent::Exit`] normally comes last, but a clean end
+    /// without one also gives `None`; [`CommandHandle::wait`] reports that
+    /// case as [`Error::Protocol`].
     ///
     /// # Errors
     ///
     /// [`Error::Rpc`] if envd ends the stream with an error,
-    /// [`Error::Protocol`] if the stream ends without an exit event,
+    /// [`Error::Protocol`] for a compressed or truncated envelope, or a body
+    /// that ends without an end-of-stream envelope,
     /// [`Error::Timeout`] when the command timeout passes,
     /// [`Error::Transport`] for connection failures.
     pub async fn next_event(&mut self) -> Result<Option<CommandEvent>> {

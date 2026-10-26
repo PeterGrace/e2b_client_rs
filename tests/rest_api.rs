@@ -82,6 +82,32 @@ async fn create_sandbox_surfaces_e2b_error_body() {
 }
 
 #[tokio::test]
+async fn redirects_are_not_followed_so_the_api_key_stays_put() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/v2/sandboxes"))
+        .respond_with(
+            ResponseTemplate::new(307)
+                .insert_header("location", format!("{}/elsewhere", server.uri())),
+        )
+        .mount(&server)
+        .await;
+    Mock::given(method("POST"))
+        .and(path("/elsewhere"))
+        .respond_with(ResponseTemplate::new(201).set_body_json(sandbox_json("0.5.7")))
+        .expect(0)
+        .mount(&server)
+        .await;
+
+    let err = client_for(&server)
+        .create_sandbox(&CreateSandboxParams::default())
+        .await
+        .expect_err("error");
+
+    assert!(matches!(err, Error::Api { status: 307, .. }), "{err:?}");
+}
+
+#[tokio::test]
 async fn create_sandbox_rejects_unexpected_body() {
     let server = MockServer::start().await;
     Mock::given(method("POST"))

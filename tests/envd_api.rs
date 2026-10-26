@@ -6,11 +6,13 @@ mod common;
 use std::time::Duration;
 
 use common::{
-    ACCESS_TOKEN, SANDBOX_ID, decode_request_envelope, end_stream, message, sandbox,
+    ACCESS_TOKEN, SANDBOX_ID, decode_request_envelope, end_stream, envelope, message, sandbox,
     sandbox_with_version, stream_response,
 };
 use e2b_client::{CommandEvent, CommandOptions, ConnectCode, Error, FileType, Signal};
 use serde_json::json;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::TcpListener;
 use wiremock::matchers::{
     body_json, body_string_contains, header, header_exists, method, path, query_param,
     query_param_is_missing,
@@ -237,6 +239,96 @@ async fn truncated_envelope_is_protocol_error() {
         matches!(err, Error::Protocol(ref m) if m.contains("middle")),
         "{err:?}"
     );
+}
+
+#[tokio::test]
+async fn compressed_envelope_is_protocol_error() {
+    let server = MockServer::start().await;
+    let sandbox = sandbox(&server).await;
+    let frames = vec![
+        message(json!({"event": {"start": {"pid": 7}}})),
+        envelope(0b01, &json!({"event": {"data": {"stdout": HELLO_B64}}})),
+    ];
+    Mock::given(method("POST"))
+        .and(path("/process.Process/Start"))
+        .respond_with(stream_response(&frames))
+        .mount(&server)
+        .await;
+
+    let err = sandbox
+        .commands()
+        .run("x", &CommandOptions::default())
+        .await
+        .expect_err("error");
+
+    assert!(
+        matches!(err, Error::Protocol(ref m) if m.contains("compressed")),
+        "{err:?}"
+    );
+}
+
+/// Serves one streaming response that sends `start` and then stalls, which
+/// wiremock cannot do: its delays apply before the response headers.
+async fn stalling_envd() -> String {
+    let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind");
+    let address = listener.local_addr().expect("address");
+    tokio::spawn(async move {
+        let (mut socket, _) = listener.accept().await.expect("accept");
+        let mut request = Vec::new();
+        let mut buffer = [0_u8; 4096];
+        while !request.windows(4).any(|window| window == b"\r\n\r\n") {
+            let read = socket.read(&mut buffer).await.expect("read");
+            if read == 0 {
+                return;
+            }
+            request.extend_from_slice(&buffer[..read]);
+        }
+        let start = message(json!({"event": {"start": {"pid": 7}}}));
+        let mut response = format!(
+            "HTTP/1.1 200 OK\r\ncontent-type: application/connect+json\r\n\
+             transfer-encoding: chunked\r\n\r\n{:x}\r\n",
+            start.len()
+        )
+        .into_bytes();
+        response.extend_from_slice(&start);
+        response.extend_from_slice(b"\r\n");
+        socket.write_all(&response).await.expect("write");
+        // Hold the connection open, sending nothing more.
+        tokio::time::sleep(Duration::from_secs(30)).await;
+    });
+    format!("http://{address}")
+}
+
+#[tokio::test]
+async fn stream_stalling_after_start_times_out_with_command_timeout() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/v2/sandboxes"))
+        .respond_with(ResponseTemplate::new(201).set_body_json(common::sandbox_json("0.5.7")))
+        .mount(&server)
+        .await;
+    let config = e2b_client::ConnectionConfig::builder()
+        .api_key(common::API_KEY)
+        .api_url(server.uri())
+        .sandbox_url(stalling_envd().await)
+        .domain("example.test")
+        .request_timeout(None)
+        .build()
+        .expect("config");
+    let sandbox = e2b_client::Client::new(config)
+        .expect("client")
+        .create_sandbox(&e2b_client::CreateSandboxParams::default())
+        .await
+        .expect("create");
+    let options = CommandOptions::default().timeout(Some(Duration::from_millis(300)));
+
+    let err = sandbox
+        .commands()
+        .run("sleep 60", &options)
+        .await
+        .expect_err("error");
+
+    assert!(matches!(err, Error::Timeout(_)), "{err:?}");
 }
 
 #[tokio::test]
