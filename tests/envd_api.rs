@@ -7,10 +7,10 @@ use std::time::Duration;
 
 use common::{
     ACCESS_TOKEN, SANDBOX_ID, decode_request_envelope, end_stream, envelope, message, sandbox,
-    sandbox_with_version, stream_response,
+    sandbox_from_json, sandbox_json, sandbox_with_version, stream_response,
 };
-use e2b_client::{CommandEvent, CommandOptions, ConnectCode, Error, FileType, Signal};
-use serde_json::json;
+use e2b_client::{CommandEvent, CommandOptions, ConnectCode, Error, FileType, Sandbox, Signal};
+use serde_json::{Value, json};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 use wiremock::matchers::{
@@ -267,9 +267,9 @@ async fn compressed_envelope_is_protocol_error() {
     );
 }
 
-/// Serves one streaming response that sends `start` and then stalls, which
+/// Serves one streaming response that sends `frames` and then stalls, which
 /// wiremock cannot do: its delays apply before the response headers.
-async fn stalling_envd() -> String {
+async fn stalling_envd(frames: Vec<Vec<u8>>) -> String {
     let listener = TcpListener::bind("127.0.0.1:0").await.expect("bind");
     let address = listener.local_addr().expect("address");
     tokio::spawn(async move {
@@ -283,15 +283,16 @@ async fn stalling_envd() -> String {
             }
             request.extend_from_slice(&buffer[..read]);
         }
-        let start = message(json!({"event": {"start": {"pid": 7}}}));
-        let mut response = format!(
-            "HTTP/1.1 200 OK\r\ncontent-type: application/connect+json\r\n\
-             transfer-encoding: chunked\r\n\r\n{:x}\r\n",
-            start.len()
-        )
-        .into_bytes();
-        response.extend_from_slice(&start);
-        response.extend_from_slice(b"\r\n");
+        let body = frames.concat();
+        let mut response = b"HTTP/1.1 200 OK\r\ncontent-type: application/connect+json\r\n\
+            transfer-encoding: chunked\r\n\r\n"
+            .to_vec();
+        // One chunk with every frame; a zero-length chunk would end the body.
+        if !body.is_empty() {
+            response.extend_from_slice(format!("{:x}\r\n", body.len()).as_bytes());
+            response.extend_from_slice(&body);
+            response.extend_from_slice(b"\r\n");
+        }
         socket.write_all(&response).await.expect("write");
         // Hold the connection open, sending nothing more.
         tokio::time::sleep(Duration::from_secs(30)).await;
@@ -299,27 +300,37 @@ async fn stalling_envd() -> String {
     format!("http://{address}")
 }
 
-#[tokio::test]
-async fn stream_stalling_after_start_times_out_with_command_timeout() {
+/// A sandbox whose REST API is a mock and whose envd is a [`stalling_envd`]
+/// sending `frames`.
+async fn sandbox_on_stalling_envd(
+    frames: Vec<Vec<u8>>,
+    request_timeout: Option<Duration>,
+) -> Sandbox {
     let server = MockServer::start().await;
     Mock::given(method("POST"))
         .and(path("/v2/sandboxes"))
-        .respond_with(ResponseTemplate::new(201).set_body_json(common::sandbox_json("0.5.7")))
+        .respond_with(ResponseTemplate::new(201).set_body_json(sandbox_json("0.5.7")))
         .mount(&server)
         .await;
     let config = e2b_client::ConnectionConfig::builder()
         .api_key(common::API_KEY)
         .api_url(server.uri())
-        .sandbox_url(stalling_envd().await)
+        .sandbox_url(stalling_envd(frames).await)
         .domain("example.test")
-        .request_timeout(None)
+        .request_timeout(request_timeout)
         .build()
         .expect("config");
-    let sandbox = e2b_client::Client::new(config)
+    e2b_client::Client::new(config)
         .expect("client")
         .create_sandbox(&e2b_client::CreateSandboxParams::default())
         .await
-        .expect("create");
+        .expect("create")
+}
+
+#[tokio::test]
+async fn stream_stalling_after_start_times_out_with_command_timeout() {
+    let start = message(json!({"event": {"start": {"pid": 7}}}));
+    let sandbox = sandbox_on_stalling_envd(vec![start], None).await;
     let options = CommandOptions::default().timeout(Some(Duration::from_millis(300)));
 
     let err = sandbox
@@ -329,6 +340,27 @@ async fn stream_stalling_after_start_times_out_with_command_timeout() {
         .expect_err("error");
 
     assert!(matches!(err, Error::Timeout(_)), "{err:?}");
+}
+
+#[tokio::test]
+async fn first_event_must_arrive_within_the_request_timeout() {
+    // Arrange: response headers arrive at once, the start event never does.
+    let request_timeout = Duration::from_millis(300);
+    let sandbox = sandbox_on_stalling_envd(Vec::new(), Some(request_timeout)).await;
+
+    // Act: no command timeout, so only the request timeout can end the wait.
+    let options = CommandOptions::default().timeout(None);
+    let err = sandbox
+        .commands()
+        .start("x", &options)
+        .await
+        .expect_err("error");
+
+    // Assert
+    assert!(
+        matches!(err, Error::Timeout(limit) if limit == request_timeout),
+        "{err:?}"
+    );
 }
 
 #[tokio::test]
@@ -449,6 +481,7 @@ async fn connect_to_running_process_by_pid() {
     Mock::given(method("POST"))
         .and(path("/process.Process/Connect"))
         .and(header("connect-timeout-ms", "5000"))
+        .and(header("keepalive-ping-interval", "50"))
         .and(|request: &Request| {
             decode_request_envelope(&request.body) == json!({"process": {"pid": 42}})
         })
@@ -544,6 +577,37 @@ async fn stdin_and_signal_calls_send_proto_json() {
         .await
         .expect("signal");
     assert!(commands.kill(9).await.expect("kill"));
+}
+
+#[tokio::test]
+#[ignore = "refutes CLM-0109: close_stdin has no envd version check"]
+async fn close_stdin_is_refused_before_envd_0_5_2() {
+    // Arrange: envd would accept the call, so only a client-side check fails it.
+    let server = MockServer::start().await;
+    let sandbox = sandbox_with_version(&server, "0.5.1").await;
+    Mock::given(method("POST"))
+        .and(path("/process.Process/CloseStdin"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({})))
+        .mount(&server)
+        .await;
+
+    // Act
+    let result = sandbox.commands().close_stdin(9).await;
+
+    // Assert: refused locally, like a depth-0 list, so no request is sent.
+    // `InvalidArgument` is the crate's variant for a call refused before any
+    // request; if the fix picks another, update this match with it.
+    assert!(
+        matches!(result, Err(Error::InvalidArgument(_))),
+        "{result:?}"
+    );
+    let requests = server.received_requests().await.expect("recording");
+    assert!(
+        requests
+            .iter()
+            .all(|request| request.url.path() != "/process.Process/CloseStdin"),
+        "close_stdin must not reach envd"
+    );
 }
 
 #[tokio::test]
@@ -750,6 +814,60 @@ async fn list_dir_with_zero_depth_is_rejected_locally() {
     let err = sandbox.files().list("/", 0, None).await.expect_err("error");
 
     assert!(matches!(err, Error::InvalidArgument(_)), "{err:?}");
+    let requests = server.received_requests().await.expect("recording");
+    assert!(
+        requests
+            .iter()
+            .all(|request| request.url.path() == "/v2/sandboxes"),
+        "only the create call may reach the server"
+    );
+}
+
+/// The `username` query value of each `/files` request `server` received.
+async fn file_api_usernames(server: &MockServer) -> Vec<Option<String>> {
+    server
+        .received_requests()
+        .await
+        .expect("recording")
+        .iter()
+        .filter(|request| request.url.path() == "/files")
+        .map(|request| {
+            request
+                .url
+                .query_pairs()
+                .find(|(key, _)| key == "username")
+                .map(|(_, value)| value.into_owned())
+        })
+        .collect()
+}
+
+#[tokio::test]
+async fn file_api_selects_the_user_with_the_username_query() {
+    // Arrange: no `/files` mocks; each call's 404 is irrelevant here.
+    let current_server = MockServer::start().await;
+    let current = sandbox(&current_server).await;
+    let legacy_server = MockServer::start().await;
+    let legacy = sandbox_with_version(&legacy_server, "0.3.9").await;
+
+    // Act: read then write, as an explicit user and as no user.
+    for (sandbox, user) in [(&current, Some("root")), (&current, None), (&legacy, None)] {
+        let files = sandbox.files();
+        let _ = files.read("/a", user).await;
+        let _ = files.write("/a", "x", user).await;
+    }
+
+    // Assert: the explicit user is sent; no user sends none on current envd
+    // and `user` on envd older than 0.4.0, as RPCs do.
+    let root = Some("root".to_owned());
+    assert_eq!(
+        file_api_usernames(&current_server).await,
+        [root.clone(), root, None, None]
+    );
+    let user = Some("user".to_owned());
+    assert_eq!(
+        file_api_usernames(&legacy_server).await,
+        [user.clone(), user]
+    );
 }
 
 #[tokio::test]
@@ -871,4 +989,147 @@ async fn is_running_checks_envd_health() {
 
     assert!(sandbox.is_running().await.expect("running"));
     assert!(!sandbox.is_running().await.expect("not running"));
+}
+
+/// Calls every kind of envd route once (process streams, unary RPCs, the
+/// file API and health) and returns the requests that reached envd, that is,
+/// all but the create call. Nothing is mocked, so each call fails on
+/// wiremock's 404 after its request is recorded.
+async fn envd_requests_for_every_route(server: &MockServer, sandbox: &Sandbox) -> Vec<Request> {
+    let commands = sandbox.commands();
+    let files = sandbox.files();
+    // `let _ =` discards each call's result on purpose.
+    let _ = commands.run("true", &CommandOptions::default()).await;
+    let _ = commands.connect(1, None).await;
+    let _ = commands.list().await;
+    let _ = files.read("/a", None).await;
+    let _ = files.write("/a", "x", None).await;
+    let _ = files.list("/", 1, None).await;
+    let _ = sandbox.is_running().await;
+    let requests: Vec<Request> = server
+        .received_requests()
+        .await
+        .expect("recording")
+        .into_iter()
+        .filter(|request| request.url.path() != "/v2/sandboxes")
+        .collect();
+    assert_eq!(requests.len(), 7, "one request per call");
+    requests
+}
+
+#[tokio::test]
+async fn every_envd_request_carries_the_sandbox_id_and_port() {
+    let server = MockServer::start().await;
+    let sandbox = sandbox(&server).await;
+
+    let requests = envd_requests_for_every_route(&server, &sandbox).await;
+
+    for request in &requests {
+        let header = |name: &str| request.headers.get(name).map(|value| value.as_bytes());
+        assert_eq!(
+            header("e2b-sandbox-id"),
+            Some(SANDBOX_ID.as_bytes()),
+            "{}",
+            request.url
+        );
+        assert_eq!(
+            header("e2b-sandbox-port"),
+            Some(&b"49983"[..]),
+            "{}",
+            request.url
+        );
+    }
+}
+
+#[tokio::test]
+async fn envd_requests_carry_the_access_token_only_when_issued_and_never_the_api_key() {
+    // Arrange: one sandbox the API issued a token for, one without.
+    let secured_server = MockServer::start().await;
+    let secured = sandbox(&secured_server).await;
+    let open_server = MockServer::start().await;
+    let mut created = sandbox_json("0.5.7");
+    created["envdAccessToken"] = Value::Null;
+    let open = sandbox_from_json(&open_server, created).await;
+
+    // Act
+    let secured_requests = envd_requests_for_every_route(&secured_server, &secured).await;
+    let open_requests = envd_requests_for_every_route(&open_server, &open).await;
+
+    // Assert
+    for request in &secured_requests {
+        assert_eq!(
+            request
+                .headers
+                .get("x-access-token")
+                .map(|value| value.as_bytes()),
+            Some(ACCESS_TOKEN.as_bytes()),
+            "{}",
+            request.url
+        );
+    }
+    for request in &open_requests {
+        assert!(
+            !request.headers.contains_key("x-access-token"),
+            "{}",
+            request.url
+        );
+    }
+    for request in secured_requests.iter().chain(&open_requests) {
+        assert!(
+            !request.headers.contains_key("x-api-key"),
+            "{}",
+            request.url
+        );
+    }
+}
+
+#[tokio::test]
+async fn rpcs_post_uncompressed_connect_json_to_service_method_paths() {
+    let server = MockServer::start().await;
+    let sandbox = sandbox(&server).await;
+
+    let requests = envd_requests_for_every_route(&server, &sandbox).await;
+
+    let rpcs: Vec<&Request> = requests
+        .iter()
+        .filter(|request| request.url.path().contains('.'))
+        .collect();
+    let paths: Vec<&str> = rpcs.iter().map(|request| request.url.path()).collect();
+    assert_eq!(
+        paths,
+        [
+            "/process.Process/Start",
+            "/process.Process/Connect",
+            "/process.Process/List",
+            "/filesystem.Filesystem/ListDir"
+        ]
+    );
+    for request in rpcs {
+        assert_eq!(request.method.as_str(), "POST", "{}", request.url);
+        assert!(
+            !request.headers.contains_key("content-encoding"),
+            "{}",
+            request.url
+        );
+        assert!(
+            !request.headers.contains_key("connect-content-encoding"),
+            "{}",
+            request.url
+        );
+        let content_type = request
+            .headers
+            .get("content-type")
+            .map(|value| value.as_bytes());
+        // A streaming body is one uncompressed (flag 0) JSON envelope, which
+        // `decode_request_envelope` checks; a unary body is bare JSON.
+        match content_type {
+            Some(b"application/connect+json") => {
+                decode_request_envelope(&request.body);
+            }
+            Some(b"application/json") => {
+                serde_json::from_slice::<Value>(&request.body).expect("unary JSON body");
+            }
+            other => panic!("unexpected content type {other:?} on {}", request.url),
+        }
+    }
 }

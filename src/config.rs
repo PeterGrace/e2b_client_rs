@@ -400,10 +400,11 @@ mod tests {
         let config = ConnectionConfig::builder()
             .build_with_env(env_of(&[]))
             .expect("config");
-        assert_eq!(config.domain(), DEFAULT_DOMAIN);
+        // Literals, not the constants, so a changed default fails here.
+        assert_eq!(config.domain(), "e2b.app");
         assert_eq!(config.api_url().as_str(), "https://api.e2b.app/");
         assert!(config.api_key().is_none());
-        assert_eq!(config.request_timeout(), Some(DEFAULT_REQUEST_TIMEOUT));
+        assert_eq!(config.request_timeout(), Some(Duration::from_secs(60)));
     }
 
     #[test]
@@ -417,6 +418,7 @@ mod tests {
             .build_with_env(env)
             .expect("config");
         assert_eq!(config.api_key(), Some("env-key"));
+        assert_eq!(config.domain(), "example.org");
         assert_eq!(config.api_url().as_str(), "https://api.example.org/");
         assert_eq!(config.envd_rpc_url("sbx", None), "http://localhost:9000");
         assert_eq!(config.envd_direct_url("sbx", None), "http://localhost:9000");
@@ -447,6 +449,124 @@ mod tests {
             .expect("config");
         assert_eq!(config.domain(), DEFAULT_DOMAIN);
         assert!(config.api_key().is_none());
+    }
+
+    /// Env values for every setting that has an environment variable.
+    const FULL_ENV: [(&str, &str); 4] = [
+        ("E2B_API_KEY", "env-key"),
+        ("E2B_API_URL", "https://env-api.example"),
+        ("E2B_DOMAIN", "env.example"),
+        ("E2B_SANDBOX_URL", "http://env-sandbox.example"),
+    ];
+
+    #[test]
+    fn each_setting_resolves_explicit_then_env_then_default() {
+        // Arrange: `&env` works because a reference to a closure is itself
+        // callable, so one lookup serves several builds.
+        let env = env_of(&FULL_ENV);
+        let empty_env = env_of(&[
+            ("E2B_API_KEY", ""),
+            ("E2B_API_URL", ""),
+            ("E2B_DOMAIN", ""),
+            ("E2B_SANDBOX_URL", ""),
+        ]);
+
+        // Act
+        let explicit = ConnectionConfig::builder()
+            .api_key("explicit-key")
+            .api_url("https://explicit-api.example")
+            .domain("explicit.example")
+            .sandbox_url("http://explicit-sandbox.example")
+            .build_with_env(&env)
+            .expect("explicit config");
+        let from_env = ConnectionConfig::builder()
+            .build_with_env(&env)
+            .expect("env config");
+        let defaults = ConnectionConfig::builder()
+            .build_with_env(empty_env)
+            .expect("default config");
+
+        // Assert
+        assert_eq!(explicit.api_key(), Some("explicit-key"));
+        assert_eq!(explicit.api_url().as_str(), "https://explicit-api.example/");
+        assert_eq!(explicit.domain(), "explicit.example");
+        assert_eq!(
+            explicit.envd_rpc_url("sbx", None),
+            "http://explicit-sandbox.example"
+        );
+        assert_eq!(from_env.api_key(), Some("env-key"));
+        assert_eq!(from_env.api_url().as_str(), "https://env-api.example/");
+        assert_eq!(from_env.domain(), "env.example");
+        assert_eq!(
+            from_env.envd_rpc_url("sbx", None),
+            "http://env-sandbox.example"
+        );
+        assert!(defaults.api_key().is_none());
+        assert_eq!(defaults.api_url().as_str(), "https://api.e2b.app/");
+        assert_eq!(defaults.domain(), "e2b.app");
+        assert_eq!(
+            defaults.envd_rpc_url("sbx", None),
+            "https://sandbox.e2b.app"
+        );
+    }
+
+    #[test]
+    #[ignore = "refutes CLM-0071: explicit empty builder values are kept, not treated as unset"]
+    fn explicit_empty_values_count_as_unset() {
+        // Arrange: the SDKs resolve `value or env or default`, so an explicit
+        // empty string falls through to the env var as well.
+        let env = env_of(&FULL_ENV);
+
+        // Act
+        let config = ConnectionConfig::builder()
+            .api_key("")
+            .api_url("")
+            .domain("")
+            .sandbox_url("")
+            .build_with_env(env)
+            .expect("config");
+
+        // Assert
+        assert_eq!(config.api_key(), Some("env-key"));
+        assert_eq!(config.api_url().as_str(), "https://env-api.example/");
+        assert_eq!(config.domain(), "env.example");
+        assert_eq!(
+            config.envd_rpc_url("sbx", None),
+            "http://env-sandbox.example"
+        );
+    }
+
+    #[test]
+    fn every_hosted_domain_routes_rpc_through_the_shared_sandbox_host() {
+        // Arrange: the hosted list from `e2b/sandbox_domains.py:1-9`, spelled
+        // out so a changed list fails here.
+        let hosted = [
+            "e2b.app",
+            "e2b.dev",
+            "e2b.pro",
+            "e2b-staging.dev",
+            "e2b-tango.dev",
+            "e2b-juliett.dev",
+            "foxtrot-2.e2b.dev",
+        ];
+
+        for domain in hosted {
+            // Act
+            let config = ConnectionConfig::builder()
+                .domain(domain)
+                .build_with_env(env_of(&[]))
+                .expect("config");
+
+            // Assert: RPCs share `sandbox.<domain>`; the file API never does.
+            assert_eq!(
+                config.envd_rpc_url("abc", None),
+                format!("https://sandbox.{domain}")
+            );
+            assert_eq!(
+                config.envd_direct_url("abc", None),
+                format!("https://49983-abc.{domain}")
+            );
+        }
     }
 
     #[test]

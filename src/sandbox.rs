@@ -247,3 +247,81 @@ impl Sandbox {
         self.client.get_sandbox_info(&self.sandbox_id).await
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::ConnectionConfig;
+
+    const API_KEY: &str = "api-key-secret";
+    const ENVD_TOKEN: &str = "envd-token-secret";
+    const TRAFFIC_TOKEN: &str = "traffic-token-secret";
+
+    /// A client on the custom domain `configured.test`, with no envd URL
+    /// override, so addressing is derived from domains.
+    fn client() -> Client {
+        let config = ConnectionConfig::builder()
+            .api_key(API_KEY)
+            .domain("configured.test")
+            .build_with_env(|_| None)
+            .expect("config");
+        Client::new(config).expect("client")
+    }
+
+    /// A handle built from a create response reporting `domain`.
+    fn sandbox_on(domain: Option<&str>) -> Sandbox {
+        let created: SandboxCreated = serde_json::from_value(serde_json::json!({
+            "templateID": "base",
+            "sandboxID": "sbx",
+            "envdVersion": "0.5.7",
+            "envdAccessToken": ENVD_TOKEN,
+            "trafficAccessToken": TRAFFIC_TOKEN,
+            "domain": domain,
+        }))
+        .expect("created");
+        Sandbox::from_created(client(), created).expect("sandbox")
+    }
+
+    #[test]
+    fn envd_addressing_uses_the_api_domain_else_the_configured_one() {
+        // Arrange: a hosted domain from the API must switch RPCs to the
+        // shared host, which the configured custom domain would not.
+        let from_api = sandbox_on(Some("e2b.app"));
+        let from_config = sandbox_on(None);
+
+        // Act and Assert
+        assert_eq!(from_api.envd.rpc_base(), "https://sandbox.e2b.app");
+        assert_eq!(from_api.envd.direct_base(), "https://49983-sbx.e2b.app");
+        assert_eq!(
+            from_config.envd.rpc_base(),
+            "https://49983-sbx.configured.test"
+        );
+        assert_eq!(
+            from_config.envd.direct_base(),
+            "https://49983-sbx.configured.test"
+        );
+    }
+
+    #[test]
+    fn debug_output_omits_the_api_key_and_access_tokens() {
+        // Arrange
+        let sandbox = sandbox_on(None);
+
+        // Act: `{:?}` renders the `Debug` impl, what `dbg!` and logs show.
+        let rendered = [
+            format!("{:?}", sandbox.client),
+            format!("{:?}", sandbox.client.config()),
+            format!("{sandbox:?}"),
+        ];
+
+        // Assert
+        for text in &rendered {
+            assert!(!text.contains(API_KEY), "API key leaked: {text}");
+            assert!(!text.contains(ENVD_TOKEN), "envd token leaked: {text}");
+            assert!(
+                !text.contains(TRAFFIC_TOKEN),
+                "traffic token leaked: {text}"
+            );
+        }
+    }
+}
