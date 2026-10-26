@@ -1,0 +1,42 @@
+[package]
+name = "e2b-client"
+version = "0.1.0"
+edition = "2024"
+description = "Async client for the E2B sandbox API: REST sandbox lifecycle plus envd process and filesystem services"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/PeterGrace/e2b_client_rs"
+readme = "README.md"
+keywords = ["e2b", "sandbox", "connect-rpc", "async"]
+categories = ["api-bindings", "asynchronous"]
+# Not published to crates.io yet.
+publish = false
+
+[lib]
+name = "e2b_client"
+
+[dependencies]
+# proto3 JSON `bytes` fields are base64 strings.
+base64 = "0.23.1"
+# Zero-copy buffers for Connect envelope decoding and command output.
+bytes = "1.12.1"
+# RFC 3339 timestamps in REST responses and file metadata (parsing only, no clock).
+chrono = { version = "0.4.45", default-features = false, features = ["serde", "std"] }
+# encodeURIComponent-compatible encoding for the list metadata filter.
+percent-encoding = "2.3.2"
+# HTTP/1.1 and HTTP/2 client over rustls; multipart for file uploads.
+reqwest = { version = "0.13.5", default-features = false, features = ["json", "multipart", "http2", "rustls", "query"] }
+# Keeps the API key and envd access token out of Debug output.
+secrecy = "0.10.3"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+# Error enum derive.
+thiserror = "2.0.21"
+# Deadlines on streams and stream opening.
+tokio = { version = "1.54.1", features = ["time"] }
+# URL building and form encoding.
+url = "2.5.8"
+
+[dev-dependencies]
+tokio = { version = "1.54.1", features = ["rt-multi-thread", "macros", "net", "io-util"] }
+# Mock HTTP server for the REST and envd tests.
+wiremock = "0.6.5"
