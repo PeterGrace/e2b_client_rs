@@ -1,0 +1,503 @@
+//! Connection configuration: API key, API URL, domain, and how envd is
+//! addressed.
+//!
+//! Resolution follows the official SDKs
+//! (`e2b/connection_config.py:221-319`): an explicit builder value wins, then
+//! the environment variable, then the default.
+
+use std::fmt;
+use std::time::Duration;
+
+use secrecy::{ExposeSecret, SecretString};
+use url::Url;
+
+use crate::error::{Error, Result};
+
+/// The default E2B domain (`E2B_DOMAIN` unset).
+pub const DEFAULT_DOMAIN: &str = "e2b.app";
+
+/// The port envd listens on inside every sandbox.
+pub const ENVD_PORT: u16 = 49983;
+
+/// The default per-request timeout used by the official SDKs (60 seconds).
+pub const DEFAULT_REQUEST_TIMEOUT: Duration = Duration::from_secs(60);
+
+/// Hosted E2B domains whose envd RPC traffic goes through the shared
+/// `sandbox.<domain>` endpoint instead of the per-sandbox host
+/// (`e2b/sandbox_domains.py:1-9`).
+const SUPPORTED_SANDBOX_DOMAINS: [&str; 7] = [
+    "e2b.app",
+    "e2b.dev",
+    "e2b.pro",
+    "e2b-staging.dev",
+    "e2b-tango.dev",
+    "e2b-juliett.dev",
+    "foxtrot-2.e2b.dev",
+];
+
+const ENV_API_KEY: &str = "E2B_API_KEY";
+const ENV_API_URL: &str = "E2B_API_URL";
+const ENV_DOMAIN: &str = "E2B_DOMAIN";
+const ENV_SANDBOX_URL: &str = "E2B_SANDBOX_URL";
+
+/// Resolved connection settings shared by every request a [`crate::Client`]
+/// makes.
+///
+/// Build one with [`ConnectionConfig::builder`] or [`ConnectionConfig::from_env`].
+/// The API key is held as a [`SecretString`], so it never appears in `Debug`
+/// output or logs.
+#[derive(Clone)]
+pub struct ConnectionConfig {
+    api_key: Option<SecretString>,
+    api_url: Url,
+    domain: String,
+    sandbox_url: Option<Url>,
+    request_timeout: Option<Duration>,
+}
+
+impl fmt::Debug for ConnectionConfig {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ConnectionConfig")
+            .field("api_key", &self.api_key.as_ref().map(|_| "[redacted]"))
+            .field("api_url", &self.api_url.as_str())
+            .field("domain", &self.domain)
+            .field("sandbox_url", &self.sandbox_url.as_ref().map(Url::as_str))
+            .field("request_timeout", &self.request_timeout)
+            .finish()
+    }
+}
+
+impl ConnectionConfig {
+    /// Starts a builder. Values left unset are resolved from the environment
+    /// when [`ConnectionConfigBuilder::build`] runs.
+    ///
+    /// # Returns
+    ///
+    /// An empty [`ConnectionConfigBuilder`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use e2b_client::ConnectionConfig;
+    ///
+    /// let config = ConnectionConfig::builder()
+    ///     .api_key("e2b_test")
+    ///     .domain("example.com")
+    ///     .build()?;
+    /// assert_eq!(config.api_url().as_str(), "https://api.example.com/");
+    /// # Ok::<(), e2b_client::Error>(())
+    /// ```
+    #[must_use]
+    pub fn builder() -> ConnectionConfigBuilder {
+        ConnectionConfigBuilder::default()
+    }
+
+    /// Builds a configuration purely from `E2B_API_KEY`, `E2B_API_URL`,
+    /// `E2B_DOMAIN` and `E2B_SANDBOX_URL`.
+    ///
+    /// # Returns
+    ///
+    /// The resolved configuration.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::InvalidConfig`] if `E2B_API_URL` or `E2B_SANDBOX_URL` is not a
+    /// valid URL. A missing API key is not an error here; it is reported by
+    /// [`crate::Client::new`].
+    pub fn from_env() -> Result<Self> {
+        Self::builder().build()
+    }
+
+    /// The API key, if one was configured.
+    pub(crate) fn api_key(&self) -> Option<&str> {
+        self.api_key.as_ref().map(ExposeSecret::expose_secret)
+    }
+
+    /// The REST API base URL (`E2B_API_URL`, else `https://api.<domain>`).
+    ///
+    /// # Returns
+    ///
+    /// The base URL every REST path is joined onto.
+    #[must_use]
+    pub fn api_url(&self) -> &Url {
+        &self.api_url
+    }
+
+    /// The E2B domain (`E2B_DOMAIN`, else `e2b.app`).
+    ///
+    /// # Returns
+    ///
+    /// The domain used for per-sandbox hosts when the API does not return one.
+    #[must_use]
+    pub fn domain(&self) -> &str {
+        &self.domain
+    }
+
+    /// The per-request timeout, or `None` when timeouts are disabled.
+    ///
+    /// # Returns
+    ///
+    /// The timeout applied to REST calls, unary envd calls, and opening envd
+    /// streams.
+    #[must_use]
+    pub fn request_timeout(&self) -> Option<Duration> {
+        self.request_timeout
+    }
+
+    /// The URL envd's Connect-RPC services are reached at for a sandbox.
+    ///
+    /// Mirrors `ConnectionConfig.get_sandbox_url` in the Python SDK
+    /// (`e2b/connection_config.py:336-351`): the `E2B_SANDBOX_URL` override
+    /// wins; hosted E2B domains use `https://sandbox.<domain>`; any other
+    /// domain uses the per-sandbox host `https://<port>-<sandbox_id>.<domain>`.
+    ///
+    /// # Arguments
+    ///
+    /// * `sandbox_id` - the sandbox ID.
+    /// * `sandbox_domain` - the domain the API returned for the sandbox, if any.
+    ///
+    /// # Returns
+    ///
+    /// The base URL, without a trailing slash.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use e2b_client::ConnectionConfig;
+    ///
+    /// let config = ConnectionConfig::builder().api_key("k").domain("example.com").build()?;
+    /// assert_eq!(config.envd_rpc_url("sbx1", None), "https://49983-sbx1.example.com");
+    /// assert_eq!(config.envd_rpc_url("sbx1", Some("e2b.app")), "https://sandbox.e2b.app");
+    /// # Ok::<(), e2b_client::Error>(())
+    /// ```
+    #[must_use]
+    pub fn envd_rpc_url(&self, sandbox_id: &str, sandbox_domain: Option<&str>) -> String {
+        if let Some(url) = &self.sandbox_url {
+            return trim_url(url);
+        }
+        let domain = sandbox_domain.unwrap_or(&self.domain);
+        if SUPPORTED_SANDBOX_DOMAINS.contains(&domain) {
+            return format!("https://sandbox.{domain}");
+        }
+        format!("https://{}", sandbox_host(sandbox_id, domain))
+    }
+
+    /// The URL envd's plain HTTP API (`/files`, `/health`) is reached at.
+    ///
+    /// Mirrors `get_sandbox_direct_url` (`e2b/connection_config.py:353-364`):
+    /// the `E2B_SANDBOX_URL` override wins, otherwise always the per-sandbox
+    /// host.
+    ///
+    /// # Arguments
+    ///
+    /// * `sandbox_id` - the sandbox ID.
+    /// * `sandbox_domain` - the domain the API returned for the sandbox, if any.
+    ///
+    /// # Returns
+    ///
+    /// The base URL, without a trailing slash.
+    #[must_use]
+    pub fn envd_direct_url(&self, sandbox_id: &str, sandbox_domain: Option<&str>) -> String {
+        if let Some(url) = &self.sandbox_url {
+            return trim_url(url);
+        }
+        let domain = sandbox_domain.unwrap_or(&self.domain);
+        format!("https://{}", sandbox_host(sandbox_id, domain))
+    }
+}
+
+/// `<port>-<sandbox_id>.<domain>` (`e2b/connection_config.py:366-380`).
+fn sandbox_host(sandbox_id: &str, domain: &str) -> String {
+    format!("{ENVD_PORT}-{sandbox_id}.{domain}")
+}
+
+fn trim_url(url: &Url) -> String {
+    url.as_str().trim_end_matches('/').to_owned()
+}
+
+/// Builder for [`ConnectionConfig`].
+///
+/// Every setter is optional. Unset values fall back to the environment, then to
+/// the defaults, when [`build`](Self::build) is called.
+#[derive(Default)]
+pub struct ConnectionConfigBuilder {
+    api_key: Option<SecretString>,
+    api_url: Option<String>,
+    domain: Option<String>,
+    sandbox_url: Option<String>,
+    // `Option<Option<..>>` distinguishes "not set" (use the default) from
+    // "explicitly disabled" (no timeout).
+    request_timeout: Option<Option<Duration>>,
+}
+
+impl fmt::Debug for ConnectionConfigBuilder {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ConnectionConfigBuilder")
+            .field("api_key", &self.api_key.as_ref().map(|_| "[redacted]"))
+            .field("api_url", &self.api_url)
+            .field("domain", &self.domain)
+            .field("sandbox_url", &self.sandbox_url)
+            .field("request_timeout", &self.request_timeout)
+            .finish()
+    }
+}
+
+impl ConnectionConfigBuilder {
+    /// Sets the API key, overriding `E2B_API_KEY`.
+    ///
+    /// # Arguments
+    ///
+    /// * `api_key` - the team API key, sent as the `X-API-KEY` header.
+    ///
+    /// # Returns
+    ///
+    /// The builder, for chaining.
+    #[must_use]
+    pub fn api_key(mut self, api_key: impl Into<String>) -> Self {
+        self.api_key = Some(SecretString::from(api_key.into()));
+        self
+    }
+
+    /// Sets the REST API base URL, overriding `E2B_API_URL` and the
+    /// `https://api.<domain>` default.
+    ///
+    /// # Arguments
+    ///
+    /// * `api_url` - for example `https://api.e2b.app`.
+    ///
+    /// # Returns
+    ///
+    /// The builder, for chaining.
+    #[must_use]
+    pub fn api_url(mut self, api_url: impl Into<String>) -> Self {
+        self.api_url = Some(api_url.into());
+        self
+    }
+
+    /// Sets the E2B domain, overriding `E2B_DOMAIN`.
+    ///
+    /// # Arguments
+    ///
+    /// * `domain` - for example `e2b.app`.
+    ///
+    /// # Returns
+    ///
+    /// The builder, for chaining.
+    #[must_use]
+    pub fn domain(mut self, domain: impl Into<String>) -> Self {
+        self.domain = Some(domain.into());
+        self
+    }
+
+    /// Sends all envd traffic to one fixed URL, overriding `E2B_SANDBOX_URL`.
+    ///
+    /// This is the official SDKs' `sandbox_url` option. The `E2b-Sandbox-Id`
+    /// and `E2b-Sandbox-Port` headers on every envd request tell the server
+    /// which sandbox is meant.
+    ///
+    /// # Arguments
+    ///
+    /// * `sandbox_url` - the base URL for envd requests.
+    ///
+    /// # Returns
+    ///
+    /// The builder, for chaining.
+    #[must_use]
+    pub fn sandbox_url(mut self, sandbox_url: impl Into<String>) -> Self {
+        self.sandbox_url = Some(sandbox_url.into());
+        self
+    }
+
+    /// Sets the per-request timeout. `None` disables it.
+    ///
+    /// # Arguments
+    ///
+    /// * `timeout` - the timeout, or `None` for no timeout. Defaults to
+    ///   [`DEFAULT_REQUEST_TIMEOUT`].
+    ///
+    /// # Returns
+    ///
+    /// The builder, for chaining.
+    #[must_use]
+    pub fn request_timeout(mut self, timeout: Option<Duration>) -> Self {
+        self.request_timeout = Some(timeout);
+        self
+    }
+
+    /// Resolves the configuration, reading the environment for unset values.
+    ///
+    /// # Returns
+    ///
+    /// The resolved [`ConnectionConfig`].
+    ///
+    /// # Errors
+    ///
+    /// [`Error::InvalidConfig`] if the API URL or sandbox URL does not parse.
+    pub fn build(self) -> Result<ConnectionConfig> {
+        self.build_with_env(|key| std::env::var(key).ok())
+    }
+
+    /// [`build`](Self::build) with an injectable environment lookup, so tests
+    /// never touch the real process environment.
+    pub(crate) fn build_with_env(
+        self,
+        env: impl Fn(&str) -> Option<String>,
+    ) -> Result<ConnectionConfig> {
+        // The SDKs use `value or env or default`, so an empty string counts as
+        // unset. `filter` drops empty values before the fallback is applied.
+        let lookup = |key: &str| env(key).filter(|value| !value.is_empty());
+
+        let domain = self
+            .domain
+            .or_else(|| lookup(ENV_DOMAIN))
+            .unwrap_or_else(|| DEFAULT_DOMAIN.to_owned());
+        let api_url_raw = self
+            .api_url
+            .or_else(|| lookup(ENV_API_URL))
+            .unwrap_or_else(|| format!("https://api.{domain}"));
+        let api_url = parse_url("API URL", &api_url_raw)?;
+        let sandbox_url = self
+            .sandbox_url
+            .or_else(|| lookup(ENV_SANDBOX_URL))
+            .map(|raw| parse_url("sandbox URL", &raw))
+            .transpose()?;
+        let api_key = self
+            .api_key
+            .or_else(|| lookup(ENV_API_KEY).map(SecretString::from));
+
+        Ok(ConnectionConfig {
+            api_key,
+            api_url,
+            domain,
+            sandbox_url,
+            request_timeout: self
+                .request_timeout
+                .unwrap_or(Some(DEFAULT_REQUEST_TIMEOUT)),
+        })
+    }
+}
+
+fn parse_url(what: &str, raw: &str) -> Result<Url> {
+    Url::parse(raw).map_err(|err| Error::InvalidConfig(format!("{what} {raw:?}: {err}")))
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+
+    use super::*;
+
+    fn env_of(pairs: &[(&str, &str)]) -> impl Fn(&str) -> Option<String> {
+        let map: HashMap<String, String> = pairs
+            .iter()
+            .map(|(k, v)| ((*k).to_owned(), (*v).to_owned()))
+            .collect();
+        move |key| map.get(key).cloned()
+    }
+
+    #[test]
+    fn defaults_without_env() {
+        let config = ConnectionConfig::builder()
+            .build_with_env(env_of(&[]))
+            .expect("config");
+        assert_eq!(config.domain(), DEFAULT_DOMAIN);
+        assert_eq!(config.api_url().as_str(), "https://api.e2b.app/");
+        assert!(config.api_key().is_none());
+        assert_eq!(config.request_timeout(), Some(DEFAULT_REQUEST_TIMEOUT));
+    }
+
+    #[test]
+    fn env_values_are_used_when_builder_is_empty() {
+        let env = env_of(&[
+            ("E2B_API_KEY", "env-key"),
+            ("E2B_DOMAIN", "example.org"),
+            ("E2B_SANDBOX_URL", "http://localhost:9000/"),
+        ]);
+        let config = ConnectionConfig::builder()
+            .build_with_env(env)
+            .expect("config");
+        assert_eq!(config.api_key(), Some("env-key"));
+        assert_eq!(config.api_url().as_str(), "https://api.example.org/");
+        assert_eq!(config.envd_rpc_url("sbx", None), "http://localhost:9000");
+        assert_eq!(config.envd_direct_url("sbx", None), "http://localhost:9000");
+    }
+
+    #[test]
+    fn builder_values_override_env() {
+        let env = env_of(&[
+            ("E2B_API_KEY", "env-key"),
+            ("E2B_API_URL", "https://env.example"),
+        ]);
+        let config = ConnectionConfig::builder()
+            .api_key("builder-key")
+            .api_url("https://builder.example")
+            .request_timeout(None)
+            .build_with_env(env)
+            .expect("config");
+        assert_eq!(config.api_key(), Some("builder-key"));
+        assert_eq!(config.api_url().as_str(), "https://builder.example/");
+        assert_eq!(config.request_timeout(), None);
+    }
+
+    #[test]
+    fn empty_env_values_count_as_unset() {
+        let env = env_of(&[("E2B_DOMAIN", ""), ("E2B_API_KEY", "")]);
+        let config = ConnectionConfig::builder()
+            .build_with_env(env)
+            .expect("config");
+        assert_eq!(config.domain(), DEFAULT_DOMAIN);
+        assert!(config.api_key().is_none());
+    }
+
+    #[test]
+    fn invalid_url_is_rejected() {
+        let result = ConnectionConfig::builder()
+            .api_url("not a url")
+            .build_with_env(env_of(&[]));
+        assert!(matches!(result, Err(Error::InvalidConfig(_))));
+    }
+
+    #[test]
+    fn envd_urls_for_custom_domain_use_per_sandbox_host() {
+        let config = ConnectionConfig::builder()
+            .domain("example.com")
+            .build_with_env(env_of(&[]))
+            .expect("c");
+        assert_eq!(
+            config.envd_rpc_url("abc", None),
+            "https://49983-abc.example.com"
+        );
+        assert_eq!(
+            config.envd_direct_url("abc", None),
+            "https://49983-abc.example.com"
+        );
+        // A domain returned by the API wins over the configured one.
+        assert_eq!(
+            config.envd_rpc_url("abc", Some("other.net")),
+            "https://49983-abc.other.net"
+        );
+    }
+
+    #[test]
+    fn envd_urls_for_hosted_domain_split_rpc_and_direct() {
+        let config = ConnectionConfig::builder()
+            .build_with_env(env_of(&[]))
+            .expect("config");
+        assert_eq!(config.envd_rpc_url("abc", None), "https://sandbox.e2b.app");
+        assert_eq!(
+            config.envd_direct_url("abc", None),
+            "https://49983-abc.e2b.app"
+        );
+    }
+
+    #[test]
+    fn debug_output_redacts_api_key() {
+        let config = ConnectionConfig::builder()
+            .api_key("super-secret")
+            .build_with_env(env_of(&[]))
+            .expect("config");
+        let rendered = format!("{config:?}");
+        assert!(!rendered.contains("super-secret"));
+        assert!(rendered.contains("[redacted]"));
+    }
+}
