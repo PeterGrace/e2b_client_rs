@@ -3,12 +3,12 @@
 mod live_support;
 
 use std::collections::HashSet;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use e2b_client::{
     CommandOptions, EnvdVersion, Error, ListSandboxesParams, SandboxInfo, SandboxState,
 };
-use live_support::{LiveSandbox, RUN_METADATA_KEY, client, params, poll_until, run_id, unix_now};
+use live_support::{LiveSandbox, RUN_METADATA_KEY, client, params, poll_until, run_id};
 
 /// A sandbox id that cannot exist.
 const MISSING_ID: &str = "i0000000000000000000z";
@@ -492,7 +492,9 @@ async fn clm_0024_pause_paused_sandbox_is_false() {
 #[tokio::test]
 #[ignore = "live: run with `just test-live <target>`"]
 async fn clm_0025_set_timeout_moves_end_at() {
-    // Arrange
+    // Arrange: `Instant` is a monotonic clock, so the elapsed time below does
+    // not depend on the local wall clock agreeing with the server's.
+    let before_create = Instant::now();
     let sandbox = LiveSandbox::new().await;
 
     // Act
@@ -501,13 +503,18 @@ async fn clm_0025_set_timeout_moves_end_at() {
         .set_sandbox_timeout(sandbox.sandbox_id(), Duration::from_secs(240))
         .await
         .expect("set timeout");
+    let elapsed = i64::try_from(before_create.elapsed().as_secs()).expect("elapsed fits in i64");
 
-    // Assert
+    // Assert: the server set end_at to its own "now" plus 240 s, and that "now"
+    // lies between started_at and started_at + elapsed. Measuring from the
+    // server's started_at keeps both ends of the comparison on the server's
+    // clock. The 2 s slack absorbs whole-second rounding.
     let info = sandbox.get_info().await.expect("info");
-    let remaining = info.end_at.timestamp() - unix_now();
+    let lifetime = info.end_at.timestamp() - info.started_at.timestamp();
+    let window = (240 - 2)..=(240 + elapsed + 2);
     assert!(
-        (220..=250).contains(&remaining),
-        "end_at is {remaining}s away, want about 240"
+        window.contains(&lifetime),
+        "end_at - started_at = {lifetime}s, want {window:?} (240 s from the set_timeout call)"
     );
 }
 
