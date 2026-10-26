@@ -36,7 +36,7 @@ Deferred:
 
 1. **Merging.** pgrace authorized the coordinator to merge the plan PR and the M1 sub-issue PRs once CI is green and brooke-reviews' review has been answered.
 2. **Ledger.** `claims.json` is committed to the repo. Only the coordinator session writes it, because the claims MCP server writes `claims.json` in the coordinator's own working directory. Subagents never call claims write tools. They hand over evidence as files (run logs, the S4 evidence map), and the coordinator records it. `.claims.json.lock` is gitignored.
-3. **Keys.** These live in `/home/pgrace/repos/e2b_client_rs/.env`, the main checkout root: `E2B_API_KEY_HOSTED`, `E2B_API_KEY_SANDBAWKS` and `E2B_DOMAIN_SANDBAWKS`. `dotenvy::dotenv_iter` finds that file by walking up from any worktree under `.worktrees/`. Process environment variables override it, so CI can use secrets.
+3. **Keys.** These live in `.env` at the main checkout's root (the directory that contains `.worktrees/`): `E2B_API_KEY_HOSTED`, `E2B_API_KEY_SANDBAWKS` and `E2B_DOMAIN_SANDBAWKS`. `dotenvy::dotenv_iter` finds that file by walking up from any worktree under `.worktrees/`. Process environment variables override it, so CI can use secrets.
 4. **The ledger was populated during planning**, not as a task, so the test names in this plan can cite real claim ids.
 5. **sandbawks API URL.** Both `https://api.<domain>` and `https://<domain>` route on sandbawks (probed 2026-10-26: both answer 401 unauthenticated). So the default `https://api.<domain>` is used and no `E2B_API_URL_*` variable is needed.
 6. **sandbawks has v2 routes.** `POST /v2/sandboxes/x/connect` now answers 401, not 404, so sandbawks ≥ 0.1.28 is deployed. CLM-0087 (v1 fallback) is still verified by its mock test only.
@@ -581,7 +581,7 @@ git commit -m "test: live harness with per-claim tests, drop guard and sweep"
 **Files:**
 - Modify: `tests/live_lifecycle.rs`
 
-Add each test below to `tests/live_lifecycle.rs`, extend its `use` lines to `use std::collections::HashSet;`, `use std::time::Duration;`, `use e2b_client::{CommandOptions, ListSandboxesParams, SandboxState};` and `use live_support::{LiveSandbox, RUN_METADATA_KEY, client, params, poll_until, run_id, unix_now};`. Every test carries `#[tokio::test]` and `#[ignore = "live: run with `just test-live <target>`"]`; they are shown once here and omitted below for brevity, but each test needs both.
+Add each test below to `tests/live_lifecycle.rs`, extend its `use` lines to `use std::collections::HashSet;`, `use std::time::Duration;`, `use e2b_client::{CommandOptions, EnvdVersion, Error, ListSandboxesParams, SandboxState};` and `use live_support::{LiveSandbox, RUN_METADATA_KEY, client, params, poll_until, run_id, unix_now};`. Every test carries `#[tokio::test]` and `#[ignore = "live: run with `just test-live <target>`"]`; they are shown once here and omitted below for brevity, but each test needs both.
 
 A sandbox id that cannot exist: `const MISSING_ID: &str = "i0000000000000000000z";`.
 
@@ -600,6 +600,10 @@ async fn clm_0007_create_returns_running_sandbox() {
     let info = sandbox.get_info().await.expect("info");
     assert_eq!(info.state, SandboxState::Running);
     assert_eq!(info.sandbox_id, sandbox.sandbox_id());
+    // `parse_lenient` maps an unparseable version to 99.99.99, so compare the
+    // parsed handle version with the raw string the API reports.
+    assert!(!info.envd_version.is_empty(), "API reported no envd version");
+    assert_eq!(sandbox.envd_version(), EnvdVersion::parse_lenient(&info.envd_version));
 }
 
 async fn clm_0008_create_metadata_is_visible_in_info() {
@@ -695,7 +699,7 @@ async fn clm_0015_connect_unknown_sandbox_is_not_found() {
         .await
         .expect_err("unknown sandbox must not connect");
 
-    assert!(error.is_not_found(), "want not found, got {error:?}");
+    assert!(matches!(error, Error::SandboxNotFound(_)), "want SandboxNotFound, got {error:?}");
 }
 
 async fn clm_0016_get_info_returns_detail() {
@@ -713,7 +717,7 @@ async fn clm_0016_get_info_returns_detail() {
 async fn clm_0017_get_info_unknown_sandbox_is_not_found() {
     let error = client().get_sandbox_info(MISSING_ID).await.expect_err("unknown sandbox");
 
-    assert!(error.is_not_found(), "want not found, got {error:?}");
+    assert!(matches!(error, Error::SandboxNotFound(_)), "want SandboxNotFound, got {error:?}");
 }
 ```
 
@@ -901,15 +905,23 @@ async fn clm_0034_start_streams_chunks_then_exit() {
         .await
         .expect("start");
 
-    let mut events = Vec::new();
+    // envd may split or merge output into chunks of any size, so join the
+    // chunks per stream instead of asserting an exact event count.
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+    let mut exit = None;
     while let Some(event) = handle.next_event().await.expect("next_event") {
-        events.push(event);
+        assert!(exit.is_none(), "event after Exit: {event:?}");
+        match event {
+            CommandEvent::Stdout(chunk) => stdout.extend_from_slice(&chunk),
+            CommandEvent::Stderr(chunk) => stderr.extend_from_slice(&chunk),
+            CommandEvent::Exit(command_exit) => exit = Some(command_exit),
+        }
     }
 
-    assert_eq!(events.len(), 3, "events: {events:?}");
-    assert_eq!(events[0], CommandEvent::Stdout("first\n".into()));
-    assert_eq!(events[1], CommandEvent::Stderr("second\n".into()));
-    assert!(matches!(&events[2], CommandEvent::Exit(exit) if exit.exit_code == 0));
+    assert_eq!(stdout, b"first\n");
+    assert_eq!(stderr, b"second\n");
+    assert_eq!(exit.expect("stream ended without Exit").exit_code, 0);
 }
 
 async fn clm_0035_run_delivers_large_output_in_order() {
@@ -1372,7 +1384,15 @@ The sweep must report 0 leftovers on a clean run. If it reports more, a drop gua
 
 - [ ] **Step 3: Check the log in and summarize**
 
-Copy the log to `docs/verification/runs/`. First make sure it contains no API key: `grep -cE 'e2b_[0-9a-f]{20,}' <log>` must print `0`. Add to `docs/verification/m1-live-results.md`:
+Copy the log to `docs/verification/runs/`. First make sure it contains none of the configured keys. Check each actual value, not a key pattern. Nothing is printed except the counts, and every count must be `0`:
+
+```bash
+env_file="$(git rev-parse --path-format=absolute --git-common-dir)/../.env"
+for name in E2B_API_KEY_HOSTED E2B_API_KEY_SANDBAWKS; do
+    value="$(grep "^${name}=" "$env_file" | cut -d= -f2-)"
+    [ -n "$value" ] && echo "$name: $(grep -cF -- "$value" <log>)"
+done
+``` Add to `docs/verification/m1-live-results.md`:
 
 ```markdown
 ## Hosted E2B (run <run id>, <UTC time>)
