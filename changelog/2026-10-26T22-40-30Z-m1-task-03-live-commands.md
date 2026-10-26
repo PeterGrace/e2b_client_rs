@@ -41,3 +41,14 @@ All 13 tests in `live_commands` passed on the first run (5.06 s with
 
 - Task 3: a dated note says the plan code compiled as written and lists the
   added assertions above. No symbol changed, so later tasks are unaffected.
+
+## Review follow-ups (PR #16)
+
+- CLM-0044 now reads the elapsed time right after `wait()`, before the
+  `list()` call, so the list round trip no longer counts against the 10 s
+  SIGTERM budget or inflates the failure message. The live tests were not
+  re-run: the assertions are the same, only the measurement point moved.
+- The strict "pid gone from `list()` right after `wait()`" check stays. It
+  assumes envd drops the process entry no later than it sends Exit. If it
+  flakes on sandbawks (Task 7), wrap it in `poll_until` with a short limit
+  rather than treating it as a crate bug.

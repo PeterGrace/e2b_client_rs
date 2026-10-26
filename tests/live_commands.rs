@@ -298,12 +298,14 @@ async fn clm_0044_sigterm_terminates_command() {
         .await
         .expect("signal");
     let result = handle.wait().await.expect("wait");
+    // Measure before `list()`, so its round trip does not count against
+    // the SIGTERM budget.
+    let waited = started.elapsed();
     let processes = sandbox.commands().list().await.expect("list");
 
     assert!(
-        started.elapsed() < Duration::from_secs(10),
-        "the command outlived SIGTERM by {:?}",
-        started.elapsed()
+        waited < Duration::from_secs(10),
+        "the command outlived SIGTERM by {waited:?}"
     );
     assert!(
         !result.success(),
