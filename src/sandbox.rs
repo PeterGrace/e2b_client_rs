@@ -289,27 +289,16 @@ mod tests {
         let from_api = sandbox_on(Some("e2b.app"));
         let from_config = sandbox_on(None);
 
-        // Act: `EnvdClient`'s derived Debug output shows its base URLs, which
-        // are private to the envd module.
-        let from_api = format!("{:?}", from_api.envd);
-        let from_config = format!("{:?}", from_config.envd);
-
-        // Assert
-        assert!(
-            from_api.contains(r#"rpc_base: "https://sandbox.e2b.app""#),
-            "{from_api}"
+        // Act and Assert
+        assert_eq!(from_api.envd.rpc_base(), "https://sandbox.e2b.app");
+        assert_eq!(from_api.envd.direct_base(), "https://49983-sbx.e2b.app");
+        assert_eq!(
+            from_config.envd.rpc_base(),
+            "https://49983-sbx.configured.test"
         );
-        assert!(
-            from_api.contains(r#"direct_base: "https://49983-sbx.e2b.app""#),
-            "{from_api}"
-        );
-        assert!(
-            from_config.contains(r#"rpc_base: "https://49983-sbx.configured.test""#),
-            "{from_config}"
-        );
-        assert!(
-            from_config.contains(r#"direct_base: "https://49983-sbx.configured.test""#),
-            "{from_config}"
+        assert_eq!(
+            from_config.envd.direct_base(),
+            "https://49983-sbx.configured.test"
         );
     }
 
@@ -329,7 +318,10 @@ mod tests {
         for text in &rendered {
             assert!(!text.contains(API_KEY), "API key leaked: {text}");
             assert!(!text.contains(ENVD_TOKEN), "envd token leaked: {text}");
-            assert!(!text.contains(TRAFFIC_TOKEN), "traffic token leaked: {text}");
+            assert!(
+                !text.contains(TRAFFIC_TOKEN),
+                "traffic token leaked: {text}"
+            );
         }
     }
 }
