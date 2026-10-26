@@ -158,7 +158,11 @@ async fn clm_0056_get_info_reports_metadata() {
 
     assert_eq!(info.size, 5);
     assert_eq!(info.file_type, FileType::File);
-    assert!(!info.permissions.is_empty(), "no permissions: {info:?}");
+    // `ls -l` form: a regular file its writer (the default user) can read and write.
+    assert!(
+        info.permissions.starts_with("-rw"),
+        "want `-rw...` permissions: {info:?}"
+    );
     assert!(!info.owner.is_empty(), "no owner: {info:?}");
 }
 
@@ -245,7 +249,12 @@ async fn clm_0060_remove_deletes_file_and_directory() {
     files
         .write("/tmp/gone/file.txt", "x", None)
         .await
-        .expect("write");
+        .expect("write file");
+    // Keeps `/tmp/gone` non-empty, so removing it shows the documented recursion.
+    files
+        .write("/tmp/gone/kept.txt", "y", None)
+        .await
+        .expect("write kept");
 
     files
         .remove("/tmp/gone/file.txt", None)
@@ -255,7 +264,10 @@ async fn clm_0060_remove_deletes_file_and_directory() {
         .exists("/tmp/gone/file.txt", None)
         .await
         .expect("exists file");
-    files.remove("/tmp/gone", None).await.expect("remove dir");
+    files
+        .remove("/tmp/gone", None)
+        .await
+        .expect("remove non-empty dir");
     let dir_exists = files.exists("/tmp/gone", None).await.expect("exists dir");
 
     assert!(!file_exists, "the removed file still exists");
@@ -272,6 +284,9 @@ async fn clm_0061_user_selects_file_owner() {
         .write("/tmp/as-root.txt", "r", Some("root"))
         .await
         .expect("write as root");
+    // `user` is also the template's default user, so this half would pass even
+    // if the argument were ignored. The `root` half proves the parameter takes
+    // effect; keep it.
     files
         .write("/tmp/as-user.txt", "u", Some("user"))
         .await
