@@ -1,7 +1,7 @@
 # Claims audit and road to a publishable crate
 
 - **Date:** 2026-10-26
-- **Status:** approved in brainstorming, awaiting spec review
+- **Status:** approved (brainstorming and spec review, 2026-10-26)
 - **Scope:** how we decide whether `e2b-client` is a valid E2B client, and the
   milestones that take it from v0.1 to a crate published on crates.io.
 
@@ -69,7 +69,7 @@ All claims live in the claims MCP ledger. The tree:
     - a live CI job runs behind repository secrets;
     - `publish = true`.
 
-Expected size is about 85 claims.
+The ledger holds 126 claims (CLM-0001 to CLM-0126).
 
 **Fields:**
 
@@ -104,12 +104,15 @@ Expected size is about 85 claims.
   `E2B_TEST_TARGET=hosted|sandbawks` picks the target. Keys are
   `E2B_API_KEY_HOSTED` and `E2B_API_KEY_SANDBAWKS` in `.env` (already
   gitignored), loaded by `dotenvy` as a dev-dependency only. The library keeps
-  reading only the standard `E2B_*` variables; the harness maps the
-  per-target values onto them.
+  reading only the standard `E2B_*` variables. The harness builds each
+  target's `ConnectionConfig` explicitly from the per-target values, and it
+  refuses to run while a standard `E2B_API_KEY`, `E2B_API_URL`,
+  `E2B_DOMAIN` or `E2B_SANDBOX_URL` is set, so a run can't silently reach
+  the wrong server.
 - `just test-live <target>` replaces `just test-integration`. The tests stay
   `#[ignore]`, so `cargo test` never reaches the network.
 - Each test is named after the claim it backs, for example
-  `clm_0012_list_paging_reads_next_token`, so evidence locators are exact.
+  `clm_0020_list_pages_without_duplicates_or_omissions`, so evidence locators are exact.
 - Cost and leak control, since hosted E2B bills per sandbox-second:
   - each test uses its own sandbox with a 60 s timeout;
   - a drop guard kills the sandbox even if the test panics;
@@ -118,7 +121,7 @@ Expected size is about 85 claims.
     left.
 - Evidence flow:
   1. Run the suite and save the output as a dated run log under
-     `changelog/`.
+     `docs/verification/runs/`. The per-task changelog entry links to it.
   2. For each test, call `add_evidence` with kind `demonstration`, locator
      `<test name> @ <target>, <run log path>`, and an honest stance.
   3. Call `record_verdict`, citing that evidence.
