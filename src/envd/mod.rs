@@ -78,6 +78,15 @@ impl EnvdVersion {
     /// envd 0.5.2 added `CloseStdin`; the SDKs refuse it on older envd
     /// (`e2b/envd/versions.py:7`).
     pub(crate) const CLOSE_STDIN: Self = Self::new(0, 5, 2);
+    /// envd 0.1.4 added recursive directory watching
+    /// (`e2b/envd/versions.py:3`).
+    pub(crate) const RECURSIVE_WATCH: Self = Self::new(0, 1, 4);
+    /// envd 0.6.3 added entry info on watch events
+    /// (`e2b/envd/versions.py:10`).
+    pub(crate) const FS_EVENT_ENTRY_INFO: Self = Self::new(0, 6, 3);
+    /// envd 0.6.4 allowed watching network mounts
+    /// (`e2b/envd/versions.py:11`).
+    pub(crate) const WATCH_NETWORK_MOUNTS: Self = Self::new(0, 6, 4);
 
     /// Creates a version from its parts.
     ///
@@ -537,6 +546,9 @@ mod tests {
         assert!(EnvdVersion::parse_lenient("0.5.1") < EnvdVersion::CLOSE_STDIN);
         assert!(EnvdVersion::parse_lenient("0.5.2") >= EnvdVersion::CLOSE_STDIN);
         assert!(EnvdVersion::UNKNOWN_LATEST > EnvdVersion::CLOSE_STDIN);
+        assert_eq!(EnvdVersion::RECURSIVE_WATCH.to_string(), "0.1.4");
+        assert_eq!(EnvdVersion::FS_EVENT_ENTRY_INFO.to_string(), "0.6.3");
+        assert_eq!(EnvdVersion::WATCH_NETWORK_MOUNTS.to_string(), "0.6.4");
     }
 
     #[test]

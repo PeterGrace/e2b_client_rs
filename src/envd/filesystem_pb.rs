@@ -6,6 +6,7 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::envd::connect::Empty;
 use crate::wire::{EnumValue, deserialize_i64_lenient};
 
 /// Service path prefix.
@@ -73,6 +74,44 @@ pub(crate) struct EntryInfoWire {
     pub(crate) symlink_target: Option<String>,
 }
 
+/// `filesystem.WatchDirRequest`
+/// (`e2b/envd/filesystem/filesystem_pb.py:404-455`).
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct WatchDirRequest<'a> {
+    pub(crate) path: &'a str,
+    pub(crate) recursive: bool,
+    pub(crate) include_entry: bool,
+    pub(crate) allow_network_mounts: bool,
+}
+
+/// `filesystem.WatchDirResponse`: a oneof of `start`, `filesystem` and
+/// `keepalive` (`e2b/envd/filesystem/filesystem_pb.py:499-560`).
+///
+/// Modelled as optional fields rather than an enum, like `ProcessEvent`, so a
+/// keepalive (or a member a newer envd adds) decodes to all-`None` instead of
+/// failing the stream.
+#[derive(Debug, Clone, Default, Deserialize)]
+pub(crate) struct WatchDirResponse {
+    /// Present (as an empty object) on the opening event.
+    #[serde(default)]
+    pub(crate) start: Option<Empty>,
+    #[serde(default)]
+    pub(crate) filesystem: Option<FilesystemEventWire>,
+}
+
+/// `filesystem.FilesystemEvent`
+/// (`e2b/envd/filesystem/filesystem_pb.py:457-497`).
+#[derive(Debug, Clone, Default, Deserialize)]
+pub(crate) struct FilesystemEventWire {
+    #[serde(default)]
+    pub(crate) name: String,
+    #[serde(default, rename = "type")]
+    pub(crate) event_type: Option<EnumValue>,
+    #[serde(default)]
+    pub(crate) entry: Option<EntryInfoWire>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -102,5 +141,44 @@ mod tests {
         })
         .expect("ser");
         assert_eq!(json, serde_json::json!({"path": "/", "depth": 2}));
+    }
+
+    #[test]
+    fn watch_dir_request_serializes_camel_case() {
+        let json = serde_json::to_value(WatchDirRequest {
+            path: "/w",
+            recursive: true,
+            include_entry: false,
+            allow_network_mounts: true,
+        })
+        .expect("serialize watch request");
+        assert_eq!(
+            json,
+            serde_json::json!({"path": "/w", "recursive": true, "includeEntry": false,
+                "allowNetworkMounts": true})
+        );
+    }
+
+    #[test]
+    fn watch_dir_response_members_parse() {
+        let start: WatchDirResponse = serde_json::from_str(r#"{"start":{}}"#).expect("start");
+        assert!(start.start.is_some() && start.filesystem.is_none());
+
+        let keepalive: WatchDirResponse =
+            serde_json::from_str(r#"{"keepalive":{}}"#).expect("keepalive");
+        assert!(keepalive.start.is_none() && keepalive.filesystem.is_none());
+
+        let event: WatchDirResponse = serde_json::from_str(
+            r#"{"filesystem":{"name":"a.txt","type":"EVENT_TYPE_CREATE",
+                "entry":{"name":"a.txt","path":"/w/a.txt"}}}"#,
+        )
+        .expect("filesystem event");
+        let event = event.filesystem.expect("filesystem member");
+        assert_eq!(event.name, "a.txt");
+        assert_eq!(
+            event.event_type,
+            Some(EnumValue::Name("EVENT_TYPE_CREATE".into()))
+        );
+        assert_eq!(event.entry.expect("entry").path, "/w/a.txt");
     }
 }

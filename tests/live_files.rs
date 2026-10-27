@@ -3,8 +3,9 @@
 mod live_support;
 
 use std::collections::HashSet;
+use std::time::Duration;
 
-use e2b_client::FileType;
+use e2b_client::{FileType, FilesystemEventType, WatchOptions};
 use live_support::LiveSandbox;
 
 #[tokio::test]
@@ -304,4 +305,45 @@ async fn clm_0061_user_selects_file_owner() {
         .owner;
     assert_eq!(root_owner, "root");
     assert_eq!(user_owner, "user");
+}
+
+#[tokio::test]
+#[ignore = "live: run with `just test-live <target>`"]
+async fn clm_0063_watch_dir_reports_a_created_file() {
+    let sandbox = LiveSandbox::new().await;
+    let files = sandbox.files();
+    files
+        .make_dir("/tmp/watched", None)
+        .await
+        .expect("make_dir");
+    let mut watch = files
+        .watch_dir("/tmp/watched", &WatchOptions::default())
+        .await
+        .expect("watch_dir");
+
+    files
+        .write("/tmp/watched/new.txt", "x", None)
+        .await
+        .expect("write");
+    // Events can arrive in a burst (create, write, chmod...), so look for
+    // the create of this file rather than taking the first event. `seen`
+    // keeps everything else for the failure message.
+    let mut seen = Vec::new();
+    let found = tokio::time::timeout(Duration::from_secs(20), async {
+        while let Some(event) = watch.next_event().await.expect("next_event") {
+            if event.event_type == FilesystemEventType::Create && event.name == "new.txt" {
+                return true;
+            }
+            seen.push(event);
+        }
+        false
+    })
+    .await;
+
+    assert!(
+        matches!(found, Ok(true)),
+        "no create event for new.txt within 20 s (envd {}, watch ended: {}); other events: {seen:?}",
+        sandbox.envd_version(),
+        matches!(found, Ok(false)),
+    );
 }
