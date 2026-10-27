@@ -1526,6 +1526,9 @@ Same steps as Task 6, with `just test-live sandbawks` and the section heading `#
 >   sandboxes) runs dry and cold creates go unschedulable. Rerun each failure
 >   on its own to tell capacity from defects.
 > - **Test count.** There are 46 `clm_*` tests, not 47.
+> - **CLM-0014** (Task 2) now asserts `SandboxState::Paused` from `get_info`
+>   after the pause. Without it, a server whose pause is a no-op passes
+>   vacuously. Read `tests/live_lifecycle.rs`.
 >
 > Results and the defect list (S1-S12): `docs/verification/m1-live-results.md`, section "sandbawks".
 

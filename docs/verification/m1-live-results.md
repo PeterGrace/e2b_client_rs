@@ -125,8 +125,9 @@ issue #10), in which all 46 tests passed. The per-PR hosted runs of #6, #7 and
 
 **Classes:** **pass**; **sandbawks** (a sandbawks defect, S-number below);
 **env** (the cluster or template, not sandbawks code: inconclusive);
-**crate** (crate bug); **test** (test bug). This run found no crate bugs and no
-test bugs. It found two harness bugs, which are fixed here (H1, H2).
+**crate** (crate bug); **test** (test bug). This run found no crate bugs. It
+found one test weakness, CLM-0014 (see the notes), and two harness bugs (H1,
+H2). All three are fixed here.
 
 | Test | Claim | Run of record | Rerun | Hosted | Class | Failure (first line, last attempt) |
 |---|---|---|---|---|---|---|
@@ -137,7 +138,7 @@ test bugs. It found two harness bugs, which are fixed here (H1, H2).
 | clm_0011_auto_pause_pauses_at_timeout | CLM-0011 | fail | fail | pass | sandbawks S11 ([sandbawks#679](https://git.gfpd.us/gfd/sandbawks/issues/679), [sandbawks#665](https://git.gfpd.us/gfd/sandbawks/issues/665)) | `timed out after 120s waiting for auto-pause at timeout` |
 | clm_0012_internet_access_false_blocks_outbound | CLM-0012 | fail | pass | pass | pass (run of record: env S2) | |
 | clm_0013_connect_running_sandbox_runs_commands | CLM-0013 | fail | pass | pass | pass (run of record: env S2) | |
-| clm_0014_connect_resumes_paused_sandbox_with_files | CLM-0014 | fail | pass | pass | pass, vacuous (see notes) | |
+| clm_0014_connect_resumes_paused_sandbox_with_files | CLM-0014 | fail | pass | pass | pass, vacuous (test weakness, now fixed; see notes) | |
 | clm_0015_connect_unknown_sandbox_is_not_found | CLM-0015 | pass | | pass | pass | |
 | clm_0016_get_info_returns_detail | CLM-0016 | pass | | pass | pass | |
 | clm_0017_get_info_unknown_sandbox_is_not_found | CLM-0017 | pass | | pass | pass | |
@@ -452,12 +453,16 @@ none was sent. "SDK" citations are to `docs/protocol-notes.md` sources (e2b
 
 ### Notes
 
-- **CLM-0014 passed vacuously on sandbawks.** The test pauses, connects and
-  reads the file back, but doesn't assert that the sandbox was `paused` before
-  the connect. With S11, sandbawks never paused, so the test proves nothing
-  about resume there. On hosted, pause is synchronous and the test is sound,
-  so it was not changed. The coordinator may want a `Paused` assertion after
-  the pause.
+- **CLM-0014 passed vacuously on sandbawks. That is a test weakness, now
+  fixed.** The test paused, connected and read the file back, but never
+  asserted that the sandbox was `paused` before the connect. With S11,
+  sandbawks never paused, so the pass proved nothing about resume. The test now
+  asserts `SandboxState::Paused` from `get_info` right after the pause. The
+  same check passes on hosted in CLM-0023, where pause is synchronous. The
+  recorded runs used the old test. With the new assertion, CLM-0014 would fail
+  on sandbawks with S11
+  ([sandbawks#679](https://git.gfpd.us/gfd/sandbawks/issues/679)) instead of
+  passing.
 - **CLM-0015, 0017 and 0022 (unknown ids)** pass. sandbawks answers 404 for
   unknown sandbox ids on REST.
 - **CLM-0039 (command timeout), 0045 (kill) and 0012 (internet off)** pass on

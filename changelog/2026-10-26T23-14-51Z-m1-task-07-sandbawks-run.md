@@ -45,8 +45,9 @@ Issue #11, Task 7 of `docs/superpowers/plans/2026-10-26-milestone-1-verify-v0.1.
 
 25 of 46 tests pass. Of the 21 failures, 16 are sandbawks defects that pass on
 hosted E2B, and 5 are inconclusive because the sandbox never became ready. No
-crate bugs and no test bugs were found. CLM-0014 passes vacuously on
-sandbawks, because pause is a no-op there. The results file notes this.
+crate bugs were found. CLM-0014 passed vacuously on sandbawks, because pause
+is a no-op there. That is a test weakness. After review, the test asserts
+`Paused` right after the pause, so on sandbawks it now fails honestly on S11.
 
 ## Update: merge with the hosted results, and a second full run
 
