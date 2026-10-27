@@ -7,7 +7,7 @@
 use std::collections::HashMap;
 use std::time::Duration;
 
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, SecondsFormat, Utc};
 use serde::{Deserialize, Serialize};
 
 /// The template the SDKs use when none is given (`e2b/sandbox/main.py:32`).
@@ -467,7 +467,7 @@ impl ListSandboxesParams {
     /// one string, and that string is the `metadata` parameter
     /// (`e2b/sandbox_async/paginator.py:50-57`; JS `dist/index.js:5656-5658`).
     /// States are comma-joined. `order` is `asc` or `desc`, `startedAfter`
-    /// is an RFC 3339 time and `template` is sent as given. The pairs come in
+    /// is an RFC 3339 time in Python's `isoformat` form and `template` is sent as given. The pairs come in
     /// the order `metadata, state, order, startedAfter, template, limit,
     /// nextToken`, each left out when unset.
     pub(crate) fn query(&self) -> Vec<(&'static str, String)> {
@@ -487,9 +487,7 @@ impl ListSandboxesParams {
             query.push(("order", order.as_wire().to_owned()));
         }
         if let Some(time) = self.started_after {
-            // Python's `isoformat()` of an aware time: `+00:00` for UTC
-            // (`get_v2_sandboxes.py:46-49`).
-            query.push(("startedAfter", time.to_rfc3339()));
+            query.push(("startedAfter", isoformat(time)));
         }
         if let Some(template) = &self.template {
             query.push(("template", template.clone()));
@@ -502,6 +500,31 @@ impl ListSandboxesParams {
         }
         query
     }
+}
+
+/// Python's `datetime.isoformat()` of an aware UTC time, as the SDK sends
+/// `startedAfter` (`get_v2_sandboxes.py:46-49`): `+00:00` for UTC, and six
+/// fractional digits only when the microseconds are not zero. Python has no
+/// nanoseconds, so a finer part is truncated to microseconds.
+///
+/// chrono's plain `to_rfc3339` picks 3, 6 or 9 digits from the value, which
+/// differs from Python for millisecond and nanosecond times.
+///
+/// # Arguments
+///
+/// * `time` - the time to format.
+///
+/// # Returns
+///
+/// The formatted time, e.g. `2026-10-27T12:00:00.123000+00:00`.
+fn isoformat(time: DateTime<Utc>) -> String {
+    let format = if time.timestamp_subsec_micros() == 0 {
+        SecondsFormat::Secs
+    } else {
+        SecondsFormat::Micros
+    };
+    // `false`: write the offset as `+00:00`, not `Z`.
+    time.to_rfc3339_opts(format, false)
 }
 
 /// JavaScript's `encodeURIComponent`: everything except `A-Z a-z 0-9 - _ . ! ~ * ' ( )`.
@@ -635,6 +658,36 @@ mod tests {
                 ("nextToken", "tok".to_owned()),
             ]
         );
+    }
+
+    #[test]
+    fn isoformat_matches_python_for_whole_milli_micro_and_nanosecond_times() {
+        // Arrange: the outputs are what Python's `isoformat()` prints for the
+        // same times (Python truncates to microseconds when it parses them).
+        let cases = [
+            ("2026-10-27T12:00:00Z", "2026-10-27T12:00:00+00:00"),
+            ("2026-10-27T12:00:00.5Z", "2026-10-27T12:00:00.500000+00:00"),
+            (
+                "2026-10-27T12:00:00.123456Z",
+                "2026-10-27T12:00:00.123456+00:00",
+            ),
+            (
+                "2026-10-27T12:00:00.123456789Z",
+                "2026-10-27T12:00:00.123456+00:00",
+            ),
+            (
+                "2026-10-27T12:00:00.000000500Z",
+                "2026-10-27T12:00:00+00:00",
+            ),
+        ];
+
+        for (input, expected) in cases {
+            // Act
+            let time: DateTime<Utc> = input.parse().expect("time");
+
+            // Assert
+            assert_eq!(isoformat(time), expected, "{input}");
+        }
     }
 
     #[test]
