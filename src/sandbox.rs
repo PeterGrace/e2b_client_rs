@@ -276,6 +276,29 @@ impl Sandbox {
         self.traffic_access_token.as_ref()
     }
 
+    /// The host name that reaches `port` inside this sandbox, for example to
+    /// open `https://<host>/` on a web server the sandbox runs. The SDKs'
+    /// `get_host(port)`.
+    ///
+    /// When the sandbox was created with public traffic disallowed, requests
+    /// to the host also need [`Sandbox::traffic_access_token`].
+    ///
+    /// # Arguments
+    ///
+    /// * `port` - the port the service listens on inside the sandbox.
+    ///
+    /// # Returns
+    ///
+    /// The host name, without a scheme, e.g. `3000-<sandbox id>.e2b.app`.
+    #[must_use]
+    pub fn get_host(&self, port: u16) -> String {
+        // `as_deref` turns the stored `Option<String>` into the
+        // `Option<&str>` the config takes, borrowing instead of cloning.
+        self.client
+            .config()
+            .sandbox_host(&self.sandbox_id, self.domain.as_deref(), port)
+    }
+
     /// The process service: run commands and manage processes.
     ///
     /// # Returns
@@ -577,6 +600,17 @@ mod tests {
             from_config.envd.direct_base(),
             "https://49983-sbx.configured.test"
         );
+    }
+
+    #[test]
+    fn get_host_follows_the_reported_domain() {
+        // Arrange, Act and Assert: the reported domain wins; without one the
+        // client's configured domain applies.
+        assert_eq!(
+            sandbox_on(Some("e2b.app")).get_host(3000),
+            "3000-sbx.e2b.app"
+        );
+        assert_eq!(sandbox_on(None).get_host(8080), "8080-sbx.configured.test");
     }
 
     #[test]

@@ -221,7 +221,9 @@ In `src/sandbox.rs`'s `mod tests` (it already has `sandbox_on(domain)` on the cl
 
 - [ ] **Step 2: Run them to verify they fail**
 
-Run: `cargo test --lib sandbox_host get_host`
+> **Corrected (issue #60, 2026-10-27).** Cargo takes one positional test filter, so `cargo test --lib sandbox_host get_host` is rejected with a usage error; several filters go after `--` (fixed here, in Step 4 and in Task 7 Step 2). The "envd addressing" table has two columns (Fact, Citation), so the Step 6 row puts the format in the Fact cell after a colon.
+
+Run: `cargo test --lib -- sandbox_host get_host`
 Expected: compile error, no method `sandbox_host` / `get_host`.
 
 - [ ] **Step 3: Implement**
@@ -298,7 +300,7 @@ In `src/sandbox.rs`, after `traffic_access_token`:
 
 - [ ] **Step 4: Run the tests**
 
-Run: `cargo test --lib sandbox_host get_host` and `cargo test --doc sandbox_host`
+Run: `cargo test --lib -- sandbox_host get_host` and `cargo test --doc sandbox_host`
 Expected: PASS.
 
 - [ ] **Step 5: Live test**
@@ -348,7 +350,7 @@ Run it on hosted (Conventions). Expected: PASS.
 
 - [ ] **Step 6: Docs**
 
-`docs/protocol-notes.md`, "envd addressing" table: a row "`get_host(port)` | `<port>-<sandbox_id>.<sandbox domain or configured domain>`; not changed by `E2B_SANDBOX_URL` | `py: connection_config.py:366-379`; `py: sandbox/main.py:46, 213-224`; `js: 1138-1141`". Evidence map row: `| CLM-0154 | src/config.rs::tests::sandbox_host_uses_the_sandbox_domain_then_the_configured_one; src/sandbox.rs::tests::get_host_follows_the_reported_domain | yes | new | The config test pins `<port>-<id>.<configured domain>` with no sandbox domain, the sandbox domain when given, and that `sandbox_url` does not change the host; the sandbox test checks the same through `Sandbox::get_host` for a handle with and without a reported domain. |`.
+`docs/protocol-notes.md`, "envd addressing" table: a row "`get_host(port)`: `<port>-<sandbox_id>.<sandbox domain or configured domain>`; not changed by `E2B_SANDBOX_URL` | `py: connection_config.py:366-379`; `py: sandbox/main.py:46, 213-224`; `js: 1138-1141`". Evidence map row: `| CLM-0154 | src/config.rs::tests::sandbox_host_uses_the_sandbox_domain_then_the_configured_one; src/sandbox.rs::tests::get_host_follows_the_reported_domain | yes | new | The config test pins `<port>-<id>.<configured domain>` with no sandbox domain, the sandbox domain when given, and that `sandbox_url` does not change the host; the sandbox test checks the same through `Sandbox::get_host` for a handle with and without a reported domain. |`.
 
 - [ ] **Step 7: Gates, changelog, commit**
 
@@ -2543,7 +2545,7 @@ async fn the_v1_fallback_keeps_the_reboot_flag() {
 
 - [ ] **Step 2: Run to verify failure**
 
-Run: `cargo test --test rest_lifecycle pause_ connect_ v1_`
+Run: `cargo test --test rest_lifecycle -- pause_ connect_ v1_`
 Expected: compile error, `PauseOptions` not found.
 
 - [ ] **Step 3: Implement**
