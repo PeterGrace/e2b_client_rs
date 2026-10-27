@@ -49,12 +49,22 @@ pub fn sandbox_json(envd_version: &str) -> Value {
 
 /// Mounts a create endpoint answering `created` and creates a sandbox from it.
 pub async fn sandbox_from_json(server: &MockServer, created: Value) -> Sandbox {
+    sandbox_from_json_with_client(server, &client_for(server), created).await
+}
+
+/// Like [`sandbox_from_json`], creating the sandbox through `client` (for
+/// example one from [`client_with_timeout`]).
+pub async fn sandbox_from_json_with_client(
+    server: &MockServer,
+    client: &Client,
+    created: Value,
+) -> Sandbox {
     Mock::given(method("POST"))
         .and(path("/v2/sandboxes"))
         .respond_with(ResponseTemplate::new(201).set_body_json(created))
         .mount(server)
         .await;
-    client_for(server)
+    client
         .create_sandbox(&e2b_client::CreateSandboxParams::default())
         .await
         .expect("create sandbox")

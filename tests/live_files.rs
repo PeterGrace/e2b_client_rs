@@ -5,8 +5,11 @@ mod live_support;
 use std::collections::HashSet;
 use std::time::Duration;
 
-use e2b_client::{FileType, FilesystemEventType, WatchOptions, WriteEntry, WriteOptions};
+use e2b_client::{
+    CommandOptions, FileType, FilesystemEventType, WatchOptions, WriteEntry, WriteOptions,
+};
 use live_support::LiveSandbox;
+use tokio::io::AsyncReadExt;
 
 #[tokio::test]
 #[ignore = "live: run with `just test-live <target>`"]
@@ -378,4 +381,87 @@ async fn clm_0063_watch_dir_reports_a_created_file() {
         sandbox.envd_version(),
         matches!(found, Ok(false)),
     );
+}
+
+#[tokio::test]
+#[ignore = "live: run with `just test-live <target>`"]
+async fn clm_0066_write_stream_uploads_more_than_it_buffers() {
+    let sandbox = LiveSandbox::new().await;
+    let files = sandbox.files();
+    // 64 MiB generated on the fly by `repeat(..).take(..)`: the data never
+    // exists in memory as a whole, only in the reader's small buffers.
+    const SIZE: u64 = 64 << 20;
+    let plain_source = tokio::io::repeat(b'z').take(SIZE);
+    let gzip_source = tokio::io::repeat(b'z').take(SIZE);
+
+    let plain = files
+        .write_stream("/tmp/plain.bin", plain_source, &WriteOptions::default())
+        .await
+        .expect("write_stream plain");
+    let gzipped = files
+        .write_stream(
+            "/tmp/gz.bin",
+            gzip_source,
+            &WriteOptions::default().gzip(true),
+        )
+        .await
+        .expect("write_stream gzip");
+
+    assert_eq!(plain.path, "/tmp/plain.bin");
+    assert_eq!(gzipped.path, "/tmp/gz.bin");
+    let expected_size = i64::try_from(SIZE).expect("64 MiB fits i64");
+    for target in ["/tmp/plain.bin", "/tmp/gz.bin"] {
+        let info = files.get_info(target, None).await.expect("get_info");
+        assert_eq!(info.size, expected_size, "{target} size");
+    }
+    // Only `z` bytes, so envd stored the decompressed data, not the gzip.
+    let others = sandbox
+        .commands()
+        .run("tr -d z < /tmp/gz.bin | wc -c", &CommandOptions::default())
+        .await
+        .expect("run tr");
+    assert_eq!(others.stdout.trim(), "0", "non-z bytes in /tmp/gz.bin");
+}
+
+#[tokio::test]
+#[ignore = "live: run with `just test-live <target>`"]
+async fn clm_0128_read_stream_downloads_in_chunks() {
+    let sandbox = LiveSandbox::new().await;
+    // `yes` repeats the 16-byte line "0123456789abcde\n"; 8 MiB of it.
+    const PATTERN: &[u8; 16] = b"0123456789abcde\n";
+    const SIZE: usize = 8 << 20;
+    let made = sandbox
+        .commands()
+        .run(
+            "yes 0123456789abcde | head -c 8388608 > /tmp/big.txt",
+            &CommandOptions::default(),
+        )
+        .await
+        .expect("run yes");
+    assert_eq!(made.exit_code, 0, "making /tmp/big.txt: {}", made.stderr);
+
+    let mut stream = sandbox
+        .files()
+        .read_stream("/tmp/big.txt", None)
+        .await
+        .expect("read_stream");
+    // Check each chunk against the pattern at its offset, then drop it, so
+    // the file is never held whole.
+    let mut offset = 0_usize;
+    let mut chunks = 0_usize;
+    while let Some(chunk) = stream.next_chunk().await.expect("next_chunk") {
+        let matches = chunk
+            .iter()
+            .enumerate()
+            .all(|(index, byte)| *byte == PATTERN[(offset + index) % PATTERN.len()]);
+        assert!(
+            matches,
+            "chunk {chunks} at offset {offset} breaks the pattern"
+        );
+        offset += chunk.len();
+        chunks += 1;
+    }
+
+    assert_eq!(offset, SIZE, "total bytes");
+    assert!(chunks > 1, "expected several chunks, got {chunks}");
 }

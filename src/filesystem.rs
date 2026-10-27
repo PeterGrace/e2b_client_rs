@@ -1,5 +1,5 @@
-//! Files in a sandbox: upload and download over envd's HTTP `/files` API,
-//! metadata operations and directory watching over the
+//! Files in a sandbox: upload and download over envd's HTTP `/files` API
+//! (in memory or streamed), metadata operations and directory watching over the
 //! `filesystem.Filesystem` Connect service.
 
 use std::sync::Arc;
@@ -12,7 +12,7 @@ use reqwest::Method;
 use reqwest::header::{CONTENT_ENCODING, CONTENT_TYPE, HeaderValue};
 use reqwest::multipart::{Form, Part};
 use serde::Deserialize;
-use tokio::io::AsyncBufRead;
+use tokio::io::{AsyncBufRead, AsyncRead, BufReader};
 use tokio_util::io::ReaderStream;
 
 use crate::envd::connect::{ConnectStream, Empty};
@@ -183,13 +183,15 @@ impl WriteEntry {
     }
 }
 
-/// How [`Filesystem::write_files`] uploads: as which user, and with which
-/// encoding.
+/// How [`Filesystem::write_files`] and [`Filesystem::write_stream`] upload:
+/// as which user, and with which encoding.
 ///
-/// By default uploads are `multipart/form-data`, the SDKs' default for
-/// in-memory data, with all files in one request. Octet-stream and gzip
-/// send one request per file, and need envd 0.5.7 or newer: on older envd
-/// they fall back to uncompressed multipart, as the SDKs do.
+/// By default [`Filesystem::write_files`] uploads are `multipart/form-data`,
+/// the SDKs' default for in-memory data, with all files in one request.
+/// Octet-stream and gzip send one request per file, and need envd 0.5.7 or
+/// newer: on older envd they fall back to uncompressed multipart, as the SDKs
+/// do. [`Filesystem::write_stream`] always uses octet-stream where envd
+/// supports it, so only `user` and `gzip` matter there.
 ///
 /// # Examples
 ///
@@ -552,6 +554,46 @@ impl WatchHandle {
     }
 }
 
+/// A file being downloaded, from [`Filesystem::read_stream`].
+///
+/// Python note: this is the SDK's `read(format="stream")` iterator. Pull
+/// chunks with `while let Some(chunk) = stream.next_chunk().await? { ... }`;
+/// dropping the stream (letting it go out of scope) closes the connection.
+#[derive(Debug)]
+pub struct FileStream {
+    response: reqwest::Response,
+}
+
+impl FileStream {
+    /// Waits for the next chunk of the file. Chunk sizes are whatever the
+    /// connection delivers; only their concatenation is meaningful.
+    ///
+    /// # Returns
+    ///
+    /// `Some(chunk)` until the file ends, then `None`.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::Transport`] if the connection fails mid-file.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # async fn demo(sandbox: e2b_client::Sandbox) -> e2b_client::Result<()> {
+    /// let mut stream = sandbox.files().read_stream("/home/user/big.log", None).await?;
+    /// let mut total = 0;
+    /// while let Some(chunk) = stream.next_chunk().await? {
+    ///     total += chunk.len();
+    /// }
+    /// # let _ = total;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn next_chunk(&mut self) -> Result<Option<Bytes>> {
+        Ok(self.response.chunk().await?)
+    }
+}
+
 /// The filesystem service of one sandbox. Get it from
 /// [`crate::Sandbox::files`].
 ///
@@ -730,6 +772,44 @@ impl Filesystem {
         Ok(String::from_utf8_lossy(&bytes).into_owned())
     }
 
+    /// Downloads a file as a stream of chunks (`GET /files?path=...`),
+    /// without holding the whole file in memory.
+    ///
+    /// No timeout applies at all, including the wait for envd's response
+    /// headers, because a deadline would cut off any download that outlasts
+    /// it; this is the SDK's default. A server that accepts the connection
+    /// and never answers therefore hangs this call. Bound it yourself with
+    /// `tokio::time::timeout` around this call and [`FileStream::next_chunk`]
+    /// if needed.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - the file to read.
+    /// * `user` - the user to read as.
+    ///
+    /// # Returns
+    ///
+    /// A [`FileStream`] positioned at the start of the file. envd's status
+    /// is checked here, so a missing file fails this call, not the first
+    /// chunk.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::Envd`] (404 when the file does not exist), or
+    /// [`Error::Transport`].
+    pub async fn read_stream(&self, path: &str, user: Option<&str>) -> Result<FileStream> {
+        let response = self
+            .envd
+            .http_request_with_timeout(Method::GET, FILES_ROUTE, None)
+            .query(&self.file_query(path, user))
+            .send()
+            .await?;
+        if !response.status().is_success() {
+            return Err(envd_http_error(response).await);
+        }
+        Ok(FileStream { response })
+    }
+
     /// Uploads a file, creating parent directories and overwriting any
     /// existing file (`POST /files?path=...`, multipart field `file`, the SDKs'
     /// default upload encoding: JS `dist/index.js:2226-2249`). It is a
@@ -850,6 +930,73 @@ impl Filesystem {
         };
         self.post_multipart(form, single_path, options, timeout)
             .await
+    }
+
+    /// Uploads a file from a reader without loading it into memory
+    /// (`POST /files?path=...`, `application/octet-stream`), creating parent
+    /// directories and overwriting any existing file.
+    ///
+    /// No request timeout applies, because a deadline would cut off any
+    /// transfer that outlasts it; this matches the SDKs. On envd older than
+    /// 0.5.7 the upload falls back to a streamed multipart body, uncompressed,
+    /// as in the SDKs.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - where to write.
+    /// * `reader` - the content, read to its end (a socket, a byte slice, a
+    ///   `tokio::fs::File`...). It must be `Send + 'static` because reqwest
+    ///   may poll the body on another task, so it cannot borrow local data.
+    /// * `options` - user and gzip (`octet_stream` is implied).
+    ///
+    /// # Returns
+    ///
+    /// What envd reports about the written file.
+    ///
+    /// # Errors
+    ///
+    /// As [`Filesystem::write`]; a read error from `reader` surfaces as
+    /// [`Error::Transport`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use e2b_client::{Sandbox, WriteOptions};
+    ///
+    /// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
+    /// // Any `AsyncRead` works: a `tokio::fs::File`, a socket, a byte slice.
+    /// let data: &'static [u8] = b"a,b\n1,2\n";
+    /// let options = WriteOptions::default().gzip(true);
+    /// sandbox.files().write_stream("/home/user/data.csv", data, &options).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn write_stream(
+        &self,
+        path: &str,
+        reader: impl AsyncRead + Send + 'static,
+        options: &WriteOptions,
+    ) -> Result<WriteInfo> {
+        // `BufReader` adds the buffered-read interface (`AsyncBufRead`) the
+        // gzip encoder needs; reads still happen only as the body is sent.
+        let reader = BufReader::new(reader);
+        let written = if self.envd.version() >= EnvdVersion::OCTET_STREAM_UPLOAD {
+            let body = if options.gzip {
+                gzip_body(reader)
+            } else {
+                reqwest::Body::wrap_stream(ReaderStream::new(reader))
+            };
+            self.post_octet_stream(path, body, options, None).await?
+        } else {
+            // `Part::stream` has no length, so the part is sent chunked.
+            // `post_multipart` reads only the user from `options`, so gzip is
+            // dropped on this path, as in the SDKs.
+            let body = reqwest::Body::wrap_stream(ReaderStream::new(reader));
+            let part = Part::stream(body).file_name(path.to_owned());
+            self.post_multipart(Form::new().part("file", part), Some(path), options, None)
+                .await?
+        };
+        written.into_iter().next().ok_or_else(no_written_file)
     }
 
     /// Lists a directory (`ListDir`).

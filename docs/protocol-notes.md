@@ -212,6 +212,7 @@ Behaviour:
 |---|---|
 | File routes `/files` and `/health` on the direct URL | `py: envd/api.py:21-22`; `py: sandbox/main.py:102-129` |
 | Read: `GET /files?path=<p>[&username=<u>]`, body is the file | `py: sandbox_async/filesystem/filesystem.py:197-212`; `js: 2153-2170` |
+| Streamed download (`read_stream`): the same `GET /files`, the body handed over chunk by chunk (`FileStream::next_chunk`); no whole-request timeout unless the caller sets one, and the status is checked before the first chunk, so a missing file fails `read_stream` itself | `py: sandbox_async/filesystem/filesystem.py:197-262` |
 | Write (default encoding): `POST /files?path=<p>[&username=<u>]`, `multipart/form-data`, field `file`, filename = path; response is a JSON array of `{name, type, path}` | `js: 2226-2249`; `py: sandbox_async/filesystem/filesystem.py:445-462`; `js: index.d.ts:4567-4580` |
 | envd HTTP errors carry `{"message"}`; 400/401/404/429/502/507 are distinguished | `py: envd/api.py:24-33, 143-152` |
 | `list` depth must be ≥ 1 | `py: sandbox_async/filesystem/filesystem.py:508-513` |
@@ -226,6 +227,8 @@ Behaviour:
 `Filesystem::write_files(&[WriteEntry], &WriteOptions)` writes a batch of
 in-memory files (`src/filesystem.rs`). `Filesystem::write` is a one-entry
 `write_files` with default options, so its wire request is unchanged.
+`Filesystem::write_stream(path, impl AsyncRead, &WriteOptions)` uploads one
+file from a reader, read as the body is sent.
 
 | Fact | Citation |
 |---|---|
@@ -237,6 +240,9 @@ in-memory files (`src/filesystem.rs`). `Filesystem::write` is a one-entry
 | Octet-stream and gzip need envd 0.5.7: `use_octet_stream = (use_octet_stream or gzip) and envd >= 0.5.7`, so older envd gets *uncompressed* multipart | `py: sandbox_async/filesystem/filesystem.py:369-384`; `py: envd/versions.py:8` |
 | Every answer is a JSON array of `{name, type, path}`; an empty array (or not an array) is an error | `py: sandbox_async/filesystem/filesystem.py:431-438, 480-487`; `py: sandbox/filesystem/filesystem.py:56-90` |
 | An in-memory upload is bounded by the request timeout | `py: sandbox_async/filesystem/filesystem.py:386-393` |
+| A streamed upload (`write_stream`) is an octet-stream `POST /files?path=<p>[&username=<u>]` whose body is read from the caller's reader as it is sent (chunked); with gzip, the reader is compressed on the fly and `Content-Encoding: gzip` is set | `py: sandbox_async/filesystem/filesystem.py:400-419`; `py: sandbox/filesystem/filesystem.py:323-339` |
+| A streamed upload on envd older than 0.5.7 is a multipart upload with one streamed `file` part (filename = path, `path` query set), uncompressed even when gzip was asked for | `py: sandbox_async/filesystem/filesystem.py:369-384, 445-462` |
+| A streamed upload carries no client-side timeout | `py: sandbox_async/filesystem/filesystem.py:386-393, 413-419` |
 
 Differences: the SDK compresses an in-memory gzip upload whole
 (`gzip.compress`) and sends it with a `Content-Length`. This crate
@@ -283,9 +289,8 @@ stream is `Ok(None)`; the error that ends a watch is returned by
   output; here `next_event()` hands chunks to the caller and `wait()` only
   collects what is left, so output is held once.
 - **Not implemented in v0.1:** signed file URLs,
-  streamed uploads from a reader (octet-stream and gzip uploads of in-memory
-  data are in, see "Uploads"), sandbox health probing on transport errors, metrics, snapshots, fork, network updates,
-  template builds, and the sync API.
+  sandbox health probing on transport errors, metrics, snapshots, fork,
+  network updates, template builds, and the sync API.
 
 ## Verification against a live server
 
