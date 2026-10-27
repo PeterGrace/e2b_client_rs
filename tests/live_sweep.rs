@@ -20,7 +20,17 @@ async fn sweep_leftover_sandboxes_of_this_run() {
             .list_sandboxes(&params)
             .await
             .expect("list run sandboxes");
-        leftovers.extend(page.sandboxes.into_iter().map(|info| info.sandbox_id));
+        // Check the run id again on our side: a server that ignores the
+        // metadata filter (sandbawks 0.1.28 does) would otherwise hand us
+        // sandboxes this run does not own, and the sweep would kill them.
+        leftovers.extend(
+            page.sandboxes
+                .into_iter()
+                .filter(|info| {
+                    info.metadata.get(RUN_METADATA_KEY).map(String::as_str) == Some(run_id())
+                })
+                .map(|info| info.sandbox_id),
+        );
         match page.next_token {
             Some(token) => params = base.clone().next_token(token),
             None => break,

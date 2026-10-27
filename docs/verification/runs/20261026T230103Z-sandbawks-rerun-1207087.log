@@ -1,0 +1,620 @@
+=== rerun live_commands clm_0036_options_env_is_set at 2026-10-26T23:01:03Z
+
+running 1 test
+.
+successes:
+
+successes:
+    clm_0036_options_env_is_set
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 12 filtered out; finished in 0.54s
+
+=== rerun live_commands clm_0037_options_cwd_is_working_directory at 2026-10-26T23:01:05Z
+
+running 1 test
+.
+successes:
+
+successes:
+    clm_0037_options_cwd_is_working_directory
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 12 filtered out; finished in 0.83s
+
+=== rerun live_commands clm_0038_options_user_runs_as_user at 2026-10-26T23:01:06Z
+
+running 1 test
+clm_0038_options_user_runs_as_user --- FAILED
+
+successes:
+
+successes:
+
+failures:
+
+---- clm_0038_options_user_runs_as_user stdout ----
+
+thread 'clm_0038_options_user_runs_as_user' (1209448) panicked at tests/live_commands.rs:152:5:
+assertion `left == right` failed
+  left: "dev\n"
+ right: "root\n"
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    clm_0038_options_user_runs_as_user
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 12 filtered out; finished in 13.53s
+
+error: test failed, to rerun pass `--test live_commands`
+=== rerun live_commands clm_0040_connect_attaches_to_running_command at 2026-10-26T23:01:19Z
+
+running 1 test
+clm_0040_connect_attaches_to_running_command --- FAILED
+
+successes:
+
+successes:
+
+failures:
+
+---- clm_0040_connect_attaches_to_running_command stdout ----
+
+thread 'clm_0040_connect_attaches_to_running_command' (1221403) panicked at tests/live_commands.rs:206:10:
+connect: Protocol("Connect stream did not open with a start event")
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    clm_0040_connect_attaches_to_running_command
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 12 filtered out; finished in 4.02s
+
+error: test failed, to rerun pass `--test live_commands`
+=== rerun live_commands clm_0041_list_includes_background_command at 2026-10-26T23:01:24Z
+
+running 1 test
+.
+successes:
+
+successes:
+    clm_0041_list_includes_background_command
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 12 filtered out; finished in 0.56s
+
+=== rerun live_commands clm_0042_send_stdin_reaches_command at 2026-10-26T23:01:24Z
+
+running 1 test
+clm_0042_send_stdin_reaches_command --- FAILED
+
+successes:
+
+successes:
+
+failures:
+
+---- clm_0042_send_stdin_reaches_command stdout ----
+
+thread 'clm_0042_send_stdin_reaches_command' (1225076) panicked at tests/live_commands.rs:251:10:
+send_stdin: Rpc { code: Unavailable, message: "sandbox is still starting up (Pod is Pending (Unschedulable: 0/28 nodes are available: 17 Insufficient memory, 2 node(s) didn't match Pod's node affinity/selector, 2 node(s) had untolerated taint {node-role.kubernetes.io/control-plane: true}, 3 node(s) had untolerated taint {node.kubernetes.io/not-ready: }, 6 Insufficient ephemeral-storage, 7 Insufficient cpu. preemption: 0/28 nodes are available: 21 No preemption victims found for incoming pod, 7 Preemption is not helpful for scheduling.)); retry shortly [EAGAIN: resource temporarily unavailable]" }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    clm_0042_send_stdin_reaches_command
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 12 filtered out; finished in 15.38s
+
+error: test failed, to rerun pass `--test live_commands`
+=== rerun live_commands clm_0043_close_stdin_sends_eof at 2026-10-26T23:01:40Z
+
+running 1 test
+clm_0043_close_stdin_sends_eof --- FAILED
+
+successes:
+
+successes:
+
+failures:
+
+---- clm_0043_close_stdin_sends_eof stdout ----
+
+thread 'clm_0043_close_stdin_sends_eof' (1233529) panicked at tests/live_commands.rs:270:10:
+send_stdin: Rpc { code: NotFound, message: "no process with pid 0" }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    clm_0043_close_stdin_sends_eof
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 12 filtered out; finished in 21.09s
+
+error: test failed, to rerun pass `--test live_commands`
+=== rerun live_commands clm_0044_sigterm_terminates_command at 2026-10-26T23:02:01Z
+
+running 1 test
+clm_0044_sigterm_terminates_command --- FAILED
+
+successes:
+
+successes:
+
+failures:
+
+---- clm_0044_sigterm_terminates_command stdout ----
+
+thread 'clm_0044_sigterm_terminates_command' (1242886) panicked at tests/live_commands.rs:314:5:
+pid 10 still listed after SIGTERM: [ProcessInfo { pid: 10, tag: None, cmd: "/bin/bash", args: ["-l", "-c", "sleep 30"], envs: {}, cwd: None }]
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    clm_0044_sigterm_terminates_command
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 12 filtered out; finished in 0.63s
+
+error: test failed, to rerun pass `--test live_commands`
+=== rerun live_files clm_0051_read_to_string_returns_text at 2026-10-26T23:02:02Z
+
+running 1 test
+.
+successes:
+
+successes:
+    clm_0051_read_to_string_returns_text
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 11 filtered out; finished in 0.76s
+
+=== rerun live_files clm_0052_write_returns_write_info at 2026-10-26T23:02:03Z
+
+running 1 test
+clm_0052_write_returns_write_info --- FAILED
+
+successes:
+
+successes:
+
+failures:
+
+---- clm_0052_write_returns_write_info stdout ----
+
+thread 'clm_0052_write_returns_write_info' (1243328) panicked at tests/live_files.rs:62:10:
+write: Envd { status: 503, message: "sandbox is still starting up (Pod is Pending (Unschedulable: 0/28 nodes are available: 17 Insufficient memory, 2 node(s) had untolerated taint {node-role.kubernetes.io/control-plane: true}, 2 node(s) had untolerated taint {node.kubernetes.io/not-ready: }, 3 node(s) didn't match Pod's node affinity/selector, 6 Insufficient ephemeral-storage, 7 Insufficient cpu. preemption: 0/28 nodes are available: 21 No preemption victims found for incoming pod, 7 Preemption is not helpful for scheduling.)); retry shortly [EAGAIN: resource temporarily unavailable]" }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    clm_0052_write_returns_write_info
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 11 filtered out; finished in 15.37s
+
+error: test failed, to rerun pass `--test live_files`
+=== rerun live_files clm_0054_list_depth_one_lists_direct_entries at 2026-10-26T23:02:19Z
+
+running 1 test
+clm_0054_list_depth_one_lists_direct_entries --- FAILED
+
+successes:
+
+successes:
+
+failures:
+
+---- clm_0054_list_depth_one_lists_direct_entries stdout ----
+
+thread 'clm_0054_list_depth_one_lists_direct_entries' (1246223) panicked at tests/live_files.rs:90:10:
+write a: Envd { status: 404, message: "No such file or directory (os error 2)" }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    clm_0054_list_depth_one_lists_direct_entries
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 11 filtered out; finished in 0.60s
+
+error: test failed, to rerun pass `--test live_files`
+=== rerun live_files clm_0055_list_depth_two_recurses at 2026-10-26T23:02:20Z
+
+running 1 test
+clm_0055_list_depth_two_recurses --- FAILED
+
+successes:
+
+successes:
+
+failures:
+
+---- clm_0055_list_depth_two_recurses stdout ----
+
+thread 'clm_0055_list_depth_two_recurses' (1246378) panicked at tests/live_files.rs:90:10:
+write a: Envd { status: 404, message: "No such file or directory (os error 2)" }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    clm_0055_list_depth_two_recurses
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 11 filtered out; finished in 0.50s
+
+error: test failed, to rerun pass `--test live_files`
+=== rerun live_files clm_0056_get_info_reports_metadata at 2026-10-26T23:02:21Z
+
+running 1 test
+clm_0056_get_info_reports_metadata --- FAILED
+
+successes:
+
+successes:
+
+failures:
+
+---- clm_0056_get_info_reports_metadata stdout ----
+
+thread 'clm_0056_get_info_reports_metadata' (1246470) panicked at tests/live_files.rs:151:10:
+write: Envd { status: 503, message: "sandbox is still starting up (Pod is Pending (Unschedulable: 0/28 nodes are available: 17 Insufficient memory, 2 node(s) had untolerated taint {node-role.kubernetes.io/control-plane: true}, 2 node(s) had untolerated taint {node.kubernetes.io/not-ready: }, 3 node(s) didn't match Pod's node affinity/selector, 6 Insufficient ephemeral-storage, 7 Insufficient cpu. preemption: 0/28 nodes are available: 21 No preemption victims found for incoming pod, 7 Preemption is not helpful for scheduling.)); retry shortly [EAGAIN: resource temporarily unavailable]" }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    clm_0056_get_info_reports_metadata
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 11 filtered out; finished in 15.60s
+
+error: test failed, to rerun pass `--test live_files`
+=== rerun live_files clm_0057_exists_true_and_false at 2026-10-26T23:02:37Z
+
+running 1 test
+clm_0057_exists_true_and_false --- FAILED
+
+successes:
+
+successes:
+
+failures:
+
+---- clm_0057_exists_true_and_false stdout ----
+
+thread 'clm_0057_exists_true_and_false' (1249378) panicked at tests/live_files.rs:177:10:
+write: Envd { status: 503, message: "sandbox is still starting up (Pod is Pending (ContainerCreating)); retry shortly [EAGAIN: resource temporarily unavailable]" }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    clm_0057_exists_true_and_false
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 11 filtered out; finished in 15.96s
+
+error: test failed, to rerun pass `--test live_files`
+=== rerun live_files clm_0058_make_dir_reports_creation at 2026-10-26T23:02:54Z
+
+running 1 test
+clm_0058_make_dir_reports_creation --- FAILED
+
+successes:
+
+successes:
+
+failures:
+
+---- clm_0058_make_dir_reports_creation stdout ----
+
+thread 'clm_0058_make_dir_reports_creation' (1252529) panicked at tests/live_files.rs:211:5:
+make_dir of an existing directory returned true
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    clm_0058_make_dir_reports_creation
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 11 filtered out; finished in 13.83s
+
+error: test failed, to rerun pass `--test live_files`
+=== rerun live_files clm_0059_rename_moves_entry at 2026-10-26T23:03:08Z
+
+running 1 test
+.
+successes:
+
+successes:
+    clm_0059_rename_moves_entry
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 11 filtered out; finished in 0.98s
+
+=== rerun live_files clm_0060_remove_deletes_file_and_directory at 2026-10-26T23:03:10Z
+
+running 1 test
+clm_0060_remove_deletes_file_and_directory --- FAILED
+
+successes:
+
+successes:
+
+failures:
+
+---- clm_0060_remove_deletes_file_and_directory stdout ----
+
+thread 'clm_0060_remove_deletes_file_and_directory' (1257778) panicked at tests/live_files.rs:252:10:
+write file: Envd { status: 404, message: "No such file or directory (os error 2)" }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    clm_0060_remove_deletes_file_and_directory
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 11 filtered out; finished in 0.81s
+
+error: test failed, to rerun pass `--test live_files`
+=== rerun live_files clm_0061_user_selects_file_owner at 2026-10-26T23:03:11Z
+
+running 1 test
+clm_0061_user_selects_file_owner --- FAILED
+
+successes:
+
+successes:
+
+failures:
+
+---- clm_0061_user_selects_file_owner stdout ----
+
+thread 'clm_0061_user_selects_file_owner' (1258081) panicked at tests/live_files.rs:286:10:
+write as root: Envd { status: 503, message: "sandbox is still starting up (Pod is Pending (Unschedulable: 0/28 nodes are available: 1 node(s) had untolerated taint {node.cilium.io/agent-not-ready: }, 17 Insufficient memory, 2 node(s) had untolerated taint {node-role.kubernetes.io/control-plane: true}, 3 node(s) didn't match Pod's node affinity/selector, 7 Insufficient cpu, 7 Insufficient ephemeral-storage. preemption: 0/28 nodes are available: 22 No preemption victims found for incoming pod, 6 Preemption is not helpful for scheduling.)); retry shortly [EAGAIN: resource temporarily unavailable]" }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    clm_0061_user_selects_file_owner
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 11 filtered out; finished in 15.39s
+
+error: test failed, to rerun pass `--test live_files`
+=== rerun live_lifecycle clm_0009_create_env_vars_reach_commands at 2026-10-26T23:03:27Z
+
+running 1 test
+clm_0009_create_env_vars_reach_commands --- FAILED
+
+successes:
+
+successes:
+
+failures:
+
+---- clm_0009_create_env_vars_reach_commands stdout ----
+
+thread 'clm_0009_create_env_vars_reach_commands' (1263886) panicked at tests/live_lifecycle.rs:97:5:
+assertion `left == right` failed
+  left: "\n"
+ right: "hi from create\n"
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    clm_0009_create_env_vars_reach_commands
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 20 filtered out; finished in 1.01s
+
+error: test failed, to rerun pass `--test live_lifecycle`
+=== rerun live_lifecycle clm_0011_auto_pause_pauses_at_timeout at 2026-10-26T23:03:28Z
+
+running 1 test
+test clm_0011_auto_pause_pauses_at_timeout has been running for over 60 seconds
+clm_0011_auto_pause_pauses_at_timeout --- FAILED
+
+successes:
+
+successes:
+
+failures:
+
+---- clm_0011_auto_pause_pauses_at_timeout stdout ----
+
+thread 'clm_0011_auto_pause_pauses_at_timeout' (1264409) panicked at tests/live_support/mod.rs:213:9:
+timed out after 120s waiting for auto-pause at timeout
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    clm_0011_auto_pause_pauses_at_timeout
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 20 filtered out; finished in 121.38s
+
+error: test failed, to rerun pass `--test live_lifecycle`
+=== rerun live_lifecycle clm_0012_internet_access_false_blocks_outbound at 2026-10-26T23:05:30Z
+
+running 1 test
+.
+successes:
+
+successes:
+    clm_0012_internet_access_false_blocks_outbound
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 17.42s
+
+=== rerun live_lifecycle clm_0013_connect_running_sandbox_runs_commands at 2026-10-26T23:05:49Z
+
+running 1 test
+.
+successes:
+
+successes:
+    clm_0013_connect_running_sandbox_runs_commands
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 17.65s
+
+=== rerun live_lifecycle clm_0014_connect_resumes_paused_sandbox_with_files at 2026-10-26T23:06:06Z
+
+running 1 test
+.
+successes:
+
+successes:
+    clm_0014_connect_resumes_paused_sandbox_with_files
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 13.65s
+
+=== rerun live_lifecycle clm_0018_list_filters_by_metadata at 2026-10-26T23:06:24Z
+
+running 1 test
+clm_0018_list_filters_by_metadata --- FAILED
+
+successes:
+
+successes:
+
+failures:
+
+---- clm_0018_list_filters_by_metadata stdout ----
+
+thread 'clm_0018_list_filters_by_metadata' (1408922) panicked at tests/live_lifecycle.rs:325:5:
+assertion `left == right` failed
+  left: ["sbx-36eb334cddf7", "sbx-compound-pool-k52zk", "sbx-compound-pool-pgwmv", "sbx-compound-pool-v6mnq"]
+ right: ["sbx-compound-pool-v6mnq"]
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    clm_0018_list_filters_by_metadata
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 20 filtered out; finished in 1.05s
+
+error: test failed, to rerun pass `--test live_lifecycle`
+=== rerun live_lifecycle clm_0019_list_filters_by_state at 2026-10-26T23:06:26Z
+
+running 1 test
+clm_0019_list_filters_by_state --- FAILED
+
+successes:
+
+successes:
+
+failures:
+
+---- clm_0019_list_filters_by_state stdout ----
+
+thread 'clm_0019_list_filters_by_state' (1410956) panicked at tests/live_lifecycle.rs:357:5:
+assertion `left == right` failed
+  left: ["sbx-36eb6884452f", "sbx-36eb867de991", "sbx-compound-pool-k52zk", "sbx-compound-pool-pgwmv"]
+ right: ["sbx-36eb867de991"]
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    clm_0019_list_filters_by_state
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 20 filtered out; finished in 1.72s
+
+error: test failed, to rerun pass `--test live_lifecycle`
+=== rerun live_lifecycle clm_0020_list_pages_without_duplicates_or_omissions at 2026-10-26T23:06:27Z
+
+running 1 test
+clm_0020_list_pages_without_duplicates_or_omissions --- FAILED
+
+successes:
+
+successes:
+
+failures:
+
+---- clm_0020_list_pages_without_duplicates_or_omissions stdout ----
+
+thread 'clm_0020_list_pages_without_duplicates_or_omissions' (1412245) panicked at tests/live_lifecycle.rs:410:5:
+assertion `left == right` failed
+  left: {"sbx-compound-pool-k52zk", "sbx-36ebdd57a8df", "sbx-36ebe9780162", "sbx-compound-pool-pgwmv", "sbx-36ebd1d5fe87"}
+ right: {"sbx-36ebdd57a8df", "sbx-36ebd1d5fe87", "sbx-36ebe9780162"}
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    clm_0020_list_pages_without_duplicates_or_omissions
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 20 filtered out; finished in 1.63s
+
+error: test failed, to rerun pass `--test live_lifecycle`
+=== rerun live_lifecycle clm_0023_pause_running_sandbox at 2026-10-26T23:06:29Z
+
+running 1 test
+clm_0023_pause_running_sandbox --- FAILED
+
+successes:
+
+successes:
+
+failures:
+
+---- clm_0023_pause_running_sandbox stdout ----
+
+thread 'clm_0023_pause_running_sandbox' (1413290) panicked at tests/live_lifecycle.rs:468:5:
+assertion `left == right` failed
+  left: Running
+ right: Paused
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    clm_0023_pause_running_sandbox
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.72s
+
+error: test failed, to rerun pass `--test live_lifecycle`
+=== rerun live_lifecycle clm_0024_pause_paused_sandbox_is_false at 2026-10-26T23:06:30Z
+
+running 1 test
+clm_0024_pause_paused_sandbox_is_false --- FAILED
+
+successes:
+
+successes:
+
+failures:
+
+---- clm_0024_pause_paused_sandbox_is_false stdout ----
+
+thread 'clm_0024_pause_paused_sandbox_is_false' (1413705) panicked at tests/live_lifecycle.rs:489:5:
+assertion failed: !second
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    clm_0024_pause_paused_sandbox_is_false
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 20 filtered out; finished in 0.94s
+
+error: test failed, to rerun pass `--test live_lifecycle`
+=== rerun live_lifecycle clm_0027_is_running_tracks_kill at 2026-10-26T23:06:31Z
+
+running 1 test
+clm_0027_is_running_tracks_kill --- FAILED
+
+successes:
+
+successes:
+
+failures:
+
+---- clm_0027_is_running_tracks_kill stdout ----
+
+thread 'clm_0027_is_running_tracks_kill' (1414671) panicked at tests/live_lifecycle.rs:561:5:
+want Ok(false) after kill, got Err(Envd { status: 404, message: "sandboxes.sandbawks.dev \"sbx-36eca79a094c\" not found" })
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    clm_0027_is_running_tracks_kill
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 20 filtered out; finished in 45.42s
+
+error: test failed, to rerun pass `--test live_lifecycle`
+=== sweep at 2026-10-26T23:07:16Z
+
+running 1 test
+.
+successes:
+
+---- sweep_leftover_sandboxes_of_this_run stdout ----
+sweep: killed 0 leftover sandbox(es) of run 20261026T230103Z-sandbawks-rerun-1207087
+
+
+successes:
+    sweep_leftover_sandboxes_of_this_run
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.25s
+
