@@ -357,7 +357,9 @@ one to its tests.
 - **sandbawks, M2:** 14 of 57 passed in run
   `20261027T130108Z-sandbawks-2101151` at `0b9494b`, and 29 after single-test
   reruns. Every remaining failure passed on hosted E2B and is a sandbawks
-  defect: StreamInput and the watcher RPCs are not routed (#664), batch
+  defect. Most are the M1 defects still open (#665, #674 to #682, and #667,
+  where `allowInternetAccess: false` no longer blocks the internet). The M2
+  calls add these: StreamInput and the watcher RPCs are not routed (#664), batch
   multipart uploads are refused (#684), large uploads hit an nginx body limit
   (#685), large downloads fail (#686), `Stat` omits owner and group (#687),
   and sandboxes have no envd access token, so their file API takes
