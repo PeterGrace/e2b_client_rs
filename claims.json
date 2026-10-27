@@ -5,10 +5,10 @@
     "by": "server",
     "mac": "527f25aed3b34599a08e4e01ba05dddeec52ef4d6e66f54f562241f27305ce0d"
   },
-  "next_evidence_seq": 129,
+  "next_evidence_seq": 169,
   "next_evidence_seq_seal": {
     "by": "server",
-    "mac": "32ce7b964c3db94b0d90da5ba58e15359d9541a76151e11953ea1267d9908f09"
+    "mac": "724ba6c6900073be93eba456e1ccce3deada5e267d4204ce898847da50e87490"
   },
   "claims": [
     {
@@ -40,13 +40,24 @@
             "by": "server",
             "mac": "90d4183d97ecff7fd34867cebc6717c185625f03183ef7446d03a5e6af1168f7"
           }
+        },
+        {
+          "verdict": "not_enough_info",
+          "rationale": "At M2 close the Commands, Filesystem and wire-protocol branches (CLM-0003, 0004, 0005) are supported on hosted E2B, but sandbox-lifecycle parity (CLM-0002: CLM-0028..0032, M3) and publishability (CLM-0006: CLM-0118..0124, M4/M5) are not yet met.",
+          "auditor": "claude-code/claude-opus-5-5 (M2 coordinator)",
+          "evidence_ids": [],
+          "recorded_at": "2026-10-27T15:28:25.511615346Z",
+          "seal": {
+            "by": "server",
+            "mac": "3875b08692cb125525dbe0fb9cc6dad0216c7e192261716e2420ad909ea81080"
+          }
         }
       ],
       "created_at": "2026-10-26T22:09:06.855685366Z",
-      "updated_at": "2026-10-26T23:03:38.160101403Z",
+      "updated_at": "2026-10-27T15:28:25.511615346Z",
       "seal": {
         "by": "server",
-        "mac": "9442ae0e659858b34962a0249840f19a486b947394f00371d8d994e10f5c8ccf"
+        "mac": "70b9a24ece90fc9580d18aab113146538907fa263ceb978f50b7aa8a4645061e"
       }
     },
     {
@@ -110,7 +121,20 @@
       "status": {
         "state": "active"
       },
-      "evidence": [],
+      "evidence": [
+        {
+          "id": "EVD-0165",
+          "kind": "analysis",
+          "locator": "claims.json: derived_from CLM-0003 (CLM-0033..0049) @ M2 close; docs/verification/m2-live-results.md",
+          "summary": "All 17 child command claims are supported: the 13 v0.1 claims (M1, re-run green on hosted in M2) and the M2 gap claims CLM-0046..0049 (StreamInput, PTY create/resize/input), live on hosted run 20261027T125515Z-hosted-1922536 at 9910325.",
+          "stance": "supports",
+          "recorded_at": "2026-10-27T15:27:31.972284059Z",
+          "seal": {
+            "by": "server",
+            "mac": "a1990ddfa3f4f481fc9564792547fd76d6a2395d20ffd8e62f4dbb3997d99cac"
+          }
+        }
+      ],
       "verdicts": [
         {
           "verdict": "not_enough_info",
@@ -122,13 +146,26 @@
             "by": "server",
             "mac": "0264d0c5b4fbd8dcb7567cabbdbe912e223bd03e9c4f7b48995e959bb50cdfac"
           }
+        },
+        {
+          "verdict": "supported",
+          "rationale": "Every child command claim is supported live on hosted E2B; M2 closed the StreamInput and PTY gaps (CLM-0046..0049).",
+          "auditor": "claude-code/claude-opus-5-5 (M2 coordinator)",
+          "evidence_ids": [
+            "EVD-0165"
+          ],
+          "recorded_at": "2026-10-27T15:27:42.627346824Z",
+          "seal": {
+            "by": "server",
+            "mac": "dce5bd6c06f047d8261b8e21511191143feb597ed94012da4e0eb65442156a2f"
+          }
         }
       ],
       "created_at": "2026-10-26T22:09:06.855685366Z",
-      "updated_at": "2026-10-26T23:03:33.737181224Z",
+      "updated_at": "2026-10-27T15:27:42.627346824Z",
       "seal": {
         "by": "server",
-        "mac": "8be1e800e4c7b813868f334b8fb08c3c296633c2674cfa2a0ff825f7c2d6c4f5"
+        "mac": "35e458b054ea673a9f1f5b9dcce725f1cb563d2078f189f190e145e8dc341a45"
       }
     },
     {
@@ -150,7 +187,32 @@
       "status": {
         "state": "active"
       },
-      "evidence": [],
+      "evidence": [
+        {
+          "id": "EVD-0166",
+          "kind": "analysis",
+          "locator": "claims.json: derived_from CLM-0004 (CLM-0050..0066, 0128, 0129) @ M2 close; docs/verification/m2-live-results.md",
+          "summary": "All 19 child filesystem claims are supported: the 12 v0.1 claims (M1, re-run green on hosted in M2) and CLM-0062..0066, 0128, 0129 (batch, watch, signed URLs, streamed upload and download, metadata), live on hosted run 20261027T125515Z-hosted-1922536 at 9910325.",
+          "stance": "supports",
+          "recorded_at": "2026-10-27T15:27:34.269658132Z",
+          "seal": {
+            "by": "server",
+            "mac": "55519c3482df5d3a7ac7acfdcee1aa24d0d960cb96ba62668f16ef6cdc31f3bc"
+          }
+        },
+        {
+          "id": "EVD-0167",
+          "kind": "analysis",
+          "locator": "PeterGrace/e2b_client_rs#30; docs/superpowers/plans/2026-10-27-milestone-2-command-and-file-parity.md (Scope, deferred)",
+          "summary": "Known fidelity defect outside the claim set: EntryInfo ignores envd's is_symlink, so on newer envd list/get_info report a symlink as its target's type (the SDK maps it to SYMLINK). Deferred to M4 by the M2 plan; no SDK call is missing.",
+          "stance": "neutral",
+          "recorded_at": "2026-10-27T15:27:36.524419488Z",
+          "seal": {
+            "by": "server",
+            "mac": "d49958f3dbd3f8a93875a1b3b2ab880de0854b156079f761ecdfe4c7ef0e0898"
+          }
+        }
+      ],
       "verdicts": [
         {
           "verdict": "not_enough_info",
@@ -162,13 +224,26 @@
             "by": "server",
             "mac": "c872106fb3ade412f101343e6ac1598204cbb00aee92c0551b23574afc970a4b"
           }
+        },
+        {
+          "verdict": "supported",
+          "rationale": "Every child filesystem claim is supported live on hosted E2B; M2 closed the batch, watch, signed-URL, streaming and metadata gaps. The is_symlink mapping defect (#30, EVD-0167) is a known fidelity bug deferred to M4, not a missing surface.",
+          "auditor": "claude-code/claude-opus-5-5 (M2 coordinator)",
+          "evidence_ids": [
+            "EVD-0166"
+          ],
+          "recorded_at": "2026-10-27T15:27:44.577002679Z",
+          "seal": {
+            "by": "server",
+            "mac": "5b7b542e69f53b4a5fafbf36225cdfb315dd081f478e469982a2950371b963d4"
+          }
         }
       ],
       "created_at": "2026-10-26T22:09:06.855685366Z",
-      "updated_at": "2026-10-26T23:03:35.069990555Z",
+      "updated_at": "2026-10-27T15:27:44.577002679Z",
       "seal": {
         "by": "server",
-        "mac": "4cc609175fee81cf8b56163e83c472623af7ff19a21ef1793d4c86ef14b82bc0"
+        "mac": "3b217c8e5c1a91b58ecb729873f80fa3fad729323fa4f823a78d164d3f10e19b"
       }
     },
     {
@@ -214,6 +289,18 @@
             "by": "server",
             "mac": "17b89635ebd0a864b77f2a08e2718f3d299cebda2c5cc57773a5bd24fc3c0481"
           }
+        },
+        {
+          "id": "EVD-0168",
+          "kind": "analysis",
+          "locator": "claims.json: derived_from CLM-0005 @ M2 close; docs/verification/s4-evidence-map.md; just test @ 845dad6",
+          "summary": "All 63 child wire claims are supported by passing tests: the 50 M1 claims at 8cd5040 and the 13 M2 claims CLM-0130..0142 at 845dad6 (just test: 205 passed, 0 failed).",
+          "stance": "supports",
+          "recorded_at": "2026-10-27T15:27:38.208410292Z",
+          "seal": {
+            "by": "server",
+            "mac": "8a8547ab0222415e7d26c1b8c3805b1640ed76265d081fe5377e9d584642c803"
+          }
         }
       ],
       "verdicts": [
@@ -242,13 +329,26 @@
             "by": "server",
             "mac": "182ebc80b1f4ab217567187de0a13bcece7d49b8d1f37c92b8004f8c5c0986c9"
           }
+        },
+        {
+          "verdict": "supported",
+          "rationale": "Re-affirmed at M2 close: all 63 child wire claims, including the 13 added in M2, are supported by passing tests.",
+          "auditor": "claude-code/claude-opus-5-5 (M2 coordinator)",
+          "evidence_ids": [
+            "EVD-0168"
+          ],
+          "recorded_at": "2026-10-27T15:27:45.917050224Z",
+          "seal": {
+            "by": "server",
+            "mac": "9adcad06d3ffe681f2279330618e7f5115931aee4f1292e4dcb04e6ab1840e16"
+          }
         }
       ],
       "created_at": "2026-10-26T22:09:06.855685366Z",
-      "updated_at": "2026-10-27T00:24:57.292424434Z",
+      "updated_at": "2026-10-27T15:27:45.917050224Z",
       "seal": {
         "by": "server",
-        "mac": "ed79e092a427c0dc3d786da2362688f74d43ed663cc5b751c67a731d9dfe8abd"
+        "mac": "346800e8bee479d97663be54609121a9d95977b3839e18f3bd207b35ed5f4118"
       }
     },
     {
@@ -2749,15 +2849,43 @@
       "derived_from": [
         "CLM-0003"
       ],
-      "artifacts": [],
+      "artifacts": [
+        "src/commands.rs",
+        "src/stream_input.rs"
+      ],
       "tags": [
         "s2",
-        "gap"
+        "m2"
       ],
       "status": {
         "state": "active"
       },
-      "evidence": [],
+      "evidence": [
+        {
+          "id": "EVD-0129",
+          "kind": "demonstration",
+          "locator": "tests/live_commands.rs::clm_0046_stream_input_delivers_chunks_in_order @ hosted, docs/verification/runs/20261027T125515Z-hosted-1922536.log (9910325)",
+          "summary": "Passed live on hosted E2B: stdin chunks streamed with StreamInput reach the command in order and it exits after the input is closed.",
+          "stance": "supports",
+          "recorded_at": "2026-10-27T15:24:42.010577786Z",
+          "seal": {
+            "by": "server",
+            "mac": "f8836c91e65c01d3ebb1373b2c11582317f786f25b6b4c85f47c9f34a3176b6c"
+          }
+        },
+        {
+          "id": "EVD-0141",
+          "kind": "demonstration",
+          "locator": "clm_0046 @ sandbawks, docs/verification/m2-live-results.md (sandbawks) + runs 20261027T130108Z-sandbawks-2101151, 20261027T130557Z-sandbawks-rerun-2121210",
+          "summary": "Fails on sandbawks (closing the input stream gets NotFound \"HTTP 404\": the envd proxy doesn't route StreamInput), passes on hosted: sandbawks defect, gfd/sandbawks#664.",
+          "stance": "neutral",
+          "recorded_at": "2026-10-27T15:25:21.758312877Z",
+          "seal": {
+            "by": "server",
+            "mac": "ccd4a2b2eb22ec82a69d22b585f8874340a4156f987bdf6413767eb04e664414"
+          }
+        }
+      ],
       "verdicts": [
         {
           "verdict": "not_enough_info",
@@ -2769,13 +2897,26 @@
             "by": "server",
             "mac": "0570305bef91242fe7584c489a35a869f6076c6154fbf5836bea29ea6c11dc78"
           }
+        },
+        {
+          "verdict": "supported",
+          "rationale": "Live test asserting the claim passed on hosted E2B (canonical), run 20261027T125515Z-hosted-1922536 at 9910325. The sandbawks failure (EVD-0141) is gfd/sandbawks#664.",
+          "auditor": "claude-code/claude-opus-5-5 (M2 coordinator)",
+          "evidence_ids": [
+            "EVD-0129"
+          ],
+          "recorded_at": "2026-10-27T15:26:22.374908354Z",
+          "seal": {
+            "by": "server",
+            "mac": "51614a294a7aaf6ded97fdece841fa3e112a3108444cd050ace65bb8d65145bf"
+          }
         }
       ],
       "created_at": "2026-10-26T22:09:38.695113733Z",
-      "updated_at": "2026-10-26T23:03:12.707785636Z",
+      "updated_at": "2026-10-27T15:27:51.698226963Z",
       "seal": {
         "by": "server",
-        "mac": "6065dfc9c63a8dc67c25e06a31242449ee1727bb04739e5e2d934bfcf8156614"
+        "mac": "b828e08308aab09633417cb76c798435da0ba7727051f74b9619fb2212b02210"
       }
     },
     {
@@ -2788,15 +2929,42 @@
       "derived_from": [
         "CLM-0003"
       ],
-      "artifacts": [],
+      "artifacts": [
+        "src/pty.rs"
+      ],
       "tags": [
         "s2",
-        "gap"
+        "m2"
       ],
       "status": {
         "state": "active"
       },
-      "evidence": [],
+      "evidence": [
+        {
+          "id": "EVD-0130",
+          "kind": "demonstration",
+          "locator": "tests/live_commands.rs::clm_0047_pty_create_streams_terminal_output @ hosted, docs/verification/runs/20261027T125515Z-hosted-1922536.log (9910325)",
+          "summary": "Passed live on hosted E2B: pty().create starts a shell and its terminal output arrives as PTY data events.",
+          "stance": "supports",
+          "recorded_at": "2026-10-27T15:24:43.614203426Z",
+          "seal": {
+            "by": "server",
+            "mac": "1f2253b4c62f5d0ed43d271f9f863820cfc1e589a9576d6daca540d61d1663a3"
+          }
+        },
+        {
+          "id": "EVD-0142",
+          "kind": "demonstration",
+          "locator": "clm_0047 @ sandbawks, docs/verification/m2-live-results.md (sandbawks) + run 20261027T133834Z-sandbawks-rerun2-2291013",
+          "summary": "Passes on sandbawks in R2 (earlier attempts failed only on sandbox readiness, a capacity problem), as on hosted.",
+          "stance": "supports",
+          "recorded_at": "2026-10-27T15:25:23.464084356Z",
+          "seal": {
+            "by": "server",
+            "mac": "7f3358a51e0637a4d684da88ff75e36f4611dceabb4903458871c999f04ffbec"
+          }
+        }
+      ],
       "verdicts": [
         {
           "verdict": "not_enough_info",
@@ -2808,13 +2976,27 @@
             "by": "server",
             "mac": "5fb2cab0e563c9b2b71673400fff04da072a52855767a56ce1973bfb69aee0fb"
           }
+        },
+        {
+          "verdict": "supported",
+          "rationale": "Live test asserting the claim passed on hosted E2B (canonical), run 20261027T125515Z-hosted-1922536 at 9910325, and on sandbawks in R2.",
+          "auditor": "claude-code/claude-opus-5-5 (M2 coordinator)",
+          "evidence_ids": [
+            "EVD-0130",
+            "EVD-0142"
+          ],
+          "recorded_at": "2026-10-27T15:26:23.975047929Z",
+          "seal": {
+            "by": "server",
+            "mac": "1eaf2654a043f9b5c8a54541764bd51cf0ea5a0c45e9da6d38645eac53b7670d"
+          }
         }
       ],
       "created_at": "2026-10-26T22:09:38.695113733Z",
-      "updated_at": "2026-10-26T23:03:13.906867612Z",
+      "updated_at": "2026-10-27T15:27:52.451193975Z",
       "seal": {
         "by": "server",
-        "mac": "a4e89e5bdc8302d3a3d6bc41bde43ad91d2afc639fd8af89ce35e024a9aa60b5"
+        "mac": "8e8f04b314d8819a7fd740935a0a0cd85ae86b292e1cb2197f49ac33741fcb7a"
       }
     },
     {
@@ -2827,15 +3009,42 @@
       "derived_from": [
         "CLM-0003"
       ],
-      "artifacts": [],
+      "artifacts": [
+        "src/pty.rs"
+      ],
       "tags": [
         "s2",
-        "gap"
+        "m2"
       ],
       "status": {
         "state": "active"
       },
-      "evidence": [],
+      "evidence": [
+        {
+          "id": "EVD-0131",
+          "kind": "demonstration",
+          "locator": "tests/live_commands.rs::clm_0048_pty_resize_changes_terminal_size @ hosted, docs/verification/runs/20261027T125515Z-hosted-1922536.log (9910325)",
+          "summary": "Passed live on hosted E2B: after resize, the shell inside the PTY reports the new terminal size.",
+          "stance": "supports",
+          "recorded_at": "2026-10-27T15:24:45.258832355Z",
+          "seal": {
+            "by": "server",
+            "mac": "e39b1b1e2fa89a0027f55a6e4ba23c83217167d19b25c58cf6f75d57cab8a147"
+          }
+        },
+        {
+          "id": "EVD-0143",
+          "kind": "demonstration",
+          "locator": "clm_0048 @ sandbawks, docs/verification/m2-live-results.md (sandbawks) + run 20261027T130108Z-sandbawks-2101151",
+          "summary": "Passes on sandbawks in the run of record, as on hosted.",
+          "stance": "supports",
+          "recorded_at": "2026-10-27T15:25:24.862380669Z",
+          "seal": {
+            "by": "server",
+            "mac": "d5bc553f16b19a9462729563c0f9ad67a97b87b06384c4c8448aaf16214fc00e"
+          }
+        }
+      ],
       "verdicts": [
         {
           "verdict": "not_enough_info",
@@ -2847,13 +3056,27 @@
             "by": "server",
             "mac": "edc926b408b394ead341ff162f2039691bca310c6d7e7ff3c3bf0867b31882f8"
           }
+        },
+        {
+          "verdict": "supported",
+          "rationale": "Live test asserting the claim passed on hosted E2B (canonical), run 20261027T125515Z-hosted-1922536 at 9910325, and on sandbawks in the run of record.",
+          "auditor": "claude-code/claude-opus-5-5 (M2 coordinator)",
+          "evidence_ids": [
+            "EVD-0131",
+            "EVD-0143"
+          ],
+          "recorded_at": "2026-10-27T15:26:25.628204010Z",
+          "seal": {
+            "by": "server",
+            "mac": "22d3c3f66a1cee4267e0c94a4c25f3097be06c44b65bdcd053b0c77c05fb347f"
+          }
         }
       ],
       "created_at": "2026-10-26T22:09:38.695113733Z",
-      "updated_at": "2026-10-26T23:03:15.018502362Z",
+      "updated_at": "2026-10-27T15:27:53.205490942Z",
       "seal": {
         "by": "server",
-        "mac": "e4d42bd5ad4babd7bb420ec23f1d89986cd82b0b68196960f67ad77e3be51fd7"
+        "mac": "ff58095f58bb2e46b7f5d3b27aa7885bc0bbbd61d5cddd2372131af5fdb8e2af"
       }
     },
     {
@@ -2866,15 +3089,55 @@
       "derived_from": [
         "CLM-0003"
       ],
-      "artifacts": [],
+      "artifacts": [
+        "src/pty.rs",
+        "src/stream_input.rs"
+      ],
       "tags": [
         "s2",
-        "gap"
+        "m2"
       ],
       "status": {
         "state": "active"
       },
-      "evidence": [],
+      "evidence": [
+        {
+          "id": "EVD-0132",
+          "kind": "demonstration",
+          "locator": "tests/live_commands.rs::clm_0049_pty_input_reaches_the_shell @ hosted, docs/verification/runs/20261027T125515Z-hosted-1922536.log (9910325)",
+          "summary": "Passed live on hosted E2B: input sent to the PTY (send_stdin and stream_input) reaches the shell, which echoes and runs it.",
+          "stance": "supports",
+          "recorded_at": "2026-10-27T15:24:47.007529302Z",
+          "seal": {
+            "by": "server",
+            "mac": "1f7c73c5341f254752ca4af3caf3370859299dea255a1388a6d42b00380f539a"
+          }
+        },
+        {
+          "id": "EVD-0140",
+          "kind": "demonstration",
+          "locator": "tests/live_commands.rs::clm_0049_pty_input_reaches_the_shell @ hosted, docs/verification/runs/20261027T125515Z-hosted-1922536.log (9910325)",
+          "summary": "Corrects EVD-0132's summary (same run): the test sends input through Pty::stream_input only, not send_stdin (send_stdin is exercised by clm_0047 and clm_0048). The streamed input reached the shell, which printed in-42 and exited 0.",
+          "stance": "supports",
+          "recorded_at": "2026-10-27T15:25:12.565127368Z",
+          "seal": {
+            "by": "server",
+            "mac": "7ad4f26a2e47ffd40e653cb46e154f2e3bc03480a715c21d7dacf0dcd97348da"
+          }
+        },
+        {
+          "id": "EVD-0144",
+          "kind": "demonstration",
+          "locator": "clm_0049 @ sandbawks, docs/verification/m2-live-results.md (sandbawks) + runs 20261027T130108Z-sandbawks-2101151, 20261027T130557Z-sandbawks-rerun-2121210",
+          "summary": "Fails on sandbawks (Pty::stream_input uses the StreamInput RPC, whose close gets NotFound \"HTTP 404\"), passes on hosted: sandbawks defect, gfd/sandbawks#664.",
+          "stance": "neutral",
+          "recorded_at": "2026-10-27T15:25:26.862657516Z",
+          "seal": {
+            "by": "server",
+            "mac": "7069cbbedcf2cd544533e97f79a95219848be5a6ce892f49362d062e4553f38a"
+          }
+        }
+      ],
       "verdicts": [
         {
           "verdict": "not_enough_info",
@@ -2886,13 +3149,26 @@
             "by": "server",
             "mac": "abd0613c0babd55f0e5865b96b5e4596b40e77bdfd5a8cb376ccf0e92a52060f"
           }
+        },
+        {
+          "verdict": "supported",
+          "rationale": "Live test asserting the claim passed on hosted E2B (canonical), run 20261027T125515Z-hosted-1922536 at 9910325. Relies on EVD-0140, which corrects EVD-0132's description of the test (stream_input only). The sandbawks failure (EVD-0144) is gfd/sandbawks#664.",
+          "auditor": "claude-code/claude-opus-5-5 (M2 coordinator)",
+          "evidence_ids": [
+            "EVD-0140"
+          ],
+          "recorded_at": "2026-10-27T15:26:27.539751892Z",
+          "seal": {
+            "by": "server",
+            "mac": "bb271adcc9e6575c9921283552025e8326ad2df2dca75673ce1fc93bb7f5060a"
+          }
         }
       ],
       "created_at": "2026-10-26T22:09:38.695113733Z",
-      "updated_at": "2026-10-26T23:03:16.153321972Z",
+      "updated_at": "2026-10-27T15:27:54.005765579Z",
       "seal": {
         "by": "server",
-        "mac": "4b7e68b67b22766ba96397621a75b1b5f55b3d635a32589654165d431eaac85c"
+        "mac": "2d920fe9f452591ff221826c8a293de9fd16ff0017e509f10f09d9157f27f1d2"
       }
     },
     {
@@ -3778,15 +4054,42 @@
       "derived_from": [
         "CLM-0004"
       ],
-      "artifacts": [],
+      "artifacts": [
+        "src/filesystem.rs"
+      ],
       "tags": [
         "s3",
-        "gap"
+        "m2"
       ],
       "status": {
         "state": "active"
       },
-      "evidence": [],
+      "evidence": [
+        {
+          "id": "EVD-0133",
+          "kind": "demonstration",
+          "locator": "tests/live_files.rs::clm_0062_write_files_writes_every_file @ hosted, docs/verification/runs/20261027T125515Z-hosted-1922536.log (9910325)",
+          "summary": "Passed live on hosted E2B: write_files writes every entry (text and binary, including a new subdirectory) and each reads back byte for byte.",
+          "stance": "supports",
+          "recorded_at": "2026-10-27T15:24:48.858793123Z",
+          "seal": {
+            "by": "server",
+            "mac": "dfc05c78ea4cefc674dc7003a40bd196bd60c4817a61929b050a8823f94aa575"
+          }
+        },
+        {
+          "id": "EVD-0145",
+          "kind": "demonstration",
+          "locator": "clm_0062 @ sandbawks, docs/verification/m2-live-results.md (sandbawks, N1) + runs 20261027T130108Z-sandbawks-2101151, 20261027T130557Z-sandbawks-rerun-2121210",
+          "summary": "Fails on sandbawks (the multipart batch POST /files without a path query gets 400 \"missing field `path`\"; multipart because sandbawks reports envd 0.1.28, #675), passes on hosted: sandbawks defect, gfd/sandbawks#684.",
+          "stance": "neutral",
+          "recorded_at": "2026-10-27T15:25:29.063821950Z",
+          "seal": {
+            "by": "server",
+            "mac": "cd650d8f067d038db59d896cea798946578a0a3d39032586b0c356dade726eae"
+          }
+        }
+      ],
       "verdicts": [
         {
           "verdict": "not_enough_info",
@@ -3798,13 +4101,26 @@
             "by": "server",
             "mac": "eccfe163d31fc4fe73d62bd851de10f33819e2161234a2d71d4f9e1997b83468"
           }
+        },
+        {
+          "verdict": "supported",
+          "rationale": "Live test asserting the claim passed on hosted E2B (canonical), run 20261027T125515Z-hosted-1922536 at 9910325. The sandbawks failure (EVD-0145) is gfd/sandbawks#684.",
+          "auditor": "claude-code/claude-opus-5-5 (M2 coordinator)",
+          "evidence_ids": [
+            "EVD-0133"
+          ],
+          "recorded_at": "2026-10-27T15:26:29.231899812Z",
+          "seal": {
+            "by": "server",
+            "mac": "56a85cbec8438828339fcc59b1ab0bd3d352a9c67f2969a4ae4f9b8883406cb5"
+          }
         }
       ],
       "created_at": "2026-10-26T22:09:38.695113733Z",
-      "updated_at": "2026-10-26T23:03:17.482658639Z",
+      "updated_at": "2026-10-27T15:27:54.755391149Z",
       "seal": {
         "by": "server",
-        "mac": "1e73239802fa21854d81193933a4efeb3ffd1b2a2131f8295426b12c0dfb9bff"
+        "mac": "497b0a1e529f0f300cae88719e0ea99927425c2c0f1e39fd6cde133ea400eab6"
       }
     },
     {
@@ -3817,15 +4133,42 @@
       "derived_from": [
         "CLM-0004"
       ],
-      "artifacts": [],
+      "artifacts": [
+        "src/filesystem.rs"
+      ],
       "tags": [
         "s3",
-        "gap"
+        "m2"
       ],
       "status": {
         "state": "active"
       },
-      "evidence": [],
+      "evidence": [
+        {
+          "id": "EVD-0134",
+          "kind": "demonstration",
+          "locator": "tests/live_files.rs::clm_0063_watch_dir_reports_a_created_file @ hosted, docs/verification/runs/20261027T125515Z-hosted-1922536.log (9910325)",
+          "summary": "Passed live on hosted E2B: watch_dir yields a create event for a file written into the watched directory.",
+          "stance": "supports",
+          "recorded_at": "2026-10-27T15:24:50.409349070Z",
+          "seal": {
+            "by": "server",
+            "mac": "7c00675f6e88f8f574928b5487dd0887744d442757d07879cff34ffd73b163b1"
+          }
+        },
+        {
+          "id": "EVD-0146",
+          "kind": "demonstration",
+          "locator": "clm_0063 @ sandbawks, docs/verification/m2-live-results.md (sandbawks) + runs 20261027T130557Z-sandbawks-rerun-2121210, 20261027T133834Z-sandbawks-rerun2-2291013",
+          "summary": "Fails on sandbawks (WatchDir gets NotFound \"HTTP 404\": the envd proxy doesn't route the watcher RPCs), passes on hosted: sandbawks defect, gfd/sandbawks#664.",
+          "stance": "neutral",
+          "recorded_at": "2026-10-27T15:25:31.066409586Z",
+          "seal": {
+            "by": "server",
+            "mac": "9c376e054b5538f2f28fd1c398c627b84ab22f9043677bb607a8329ee285e53f"
+          }
+        }
+      ],
       "verdicts": [
         {
           "verdict": "not_enough_info",
@@ -3837,13 +4180,26 @@
             "by": "server",
             "mac": "4e3b515bb0c78d9bf4ecc75035cb563c193bd5fca1688a324cfef290a2bd201e"
           }
+        },
+        {
+          "verdict": "supported",
+          "rationale": "Live test asserting the claim passed on hosted E2B (canonical), run 20261027T125515Z-hosted-1922536 at 9910325. The sandbawks failure (EVD-0146) is gfd/sandbawks#664.",
+          "auditor": "claude-code/claude-opus-5-5 (M2 coordinator)",
+          "evidence_ids": [
+            "EVD-0134"
+          ],
+          "recorded_at": "2026-10-27T15:26:30.987139818Z",
+          "seal": {
+            "by": "server",
+            "mac": "c1d66e8f8f3a77b21b10021b2282dcb5059c0570f3ca1821fe17bb1eba5e87ba"
+          }
         }
       ],
       "created_at": "2026-10-26T22:09:38.695113733Z",
-      "updated_at": "2026-10-26T23:03:18.482755213Z",
+      "updated_at": "2026-10-27T15:27:55.562391111Z",
       "seal": {
         "by": "server",
-        "mac": "cb7780579b5a30f7437ad21e34598a8153640c2f53cda4e4643a664669cadad2"
+        "mac": "dd3ac25114fde9e8f2ea3449a461db625b5f02db6bf6504cfbd69eea66b13055"
       }
     },
     {
@@ -3856,15 +4212,42 @@
       "derived_from": [
         "CLM-0004"
       ],
-      "artifacts": [],
+      "artifacts": [
+        "src/sandbox.rs"
+      ],
       "tags": [
         "s3",
-        "gap"
+        "m2"
       ],
       "status": {
         "state": "active"
       },
-      "evidence": [],
+      "evidence": [
+        {
+          "id": "EVD-0135",
+          "kind": "demonstration",
+          "locator": "tests/live_files.rs::clm_0064_upload_url_accepts_a_multipart_post @ hosted, docs/verification/runs/20261027T125515Z-hosted-1922536.log (9910325)",
+          "summary": "Passed live on hosted E2B: a signed upload_url accepts a multipart POST from a client with no credentials, and the file is written.",
+          "stance": "supports",
+          "recorded_at": "2026-10-27T15:24:52.161984162Z",
+          "seal": {
+            "by": "server",
+            "mac": "3e8a498b750ff31baae210dedc44d621f827b6888bbda25ce5709b28541c630b"
+          }
+        },
+        {
+          "id": "EVD-0147",
+          "kind": "demonstration",
+          "locator": "clm_0064 @ sandbawks, docs/verification/m2-live-results.md (sandbawks, N5) + run 20261027T133834Z-sandbawks-rerun2-2291013",
+          "summary": "Passes on sandbawks in R2, but the URL is unsigned: sandbawks gives no envdAccessToken and envd's /files accepts uncredentialed writes, so this doesn't exercise signing. Security defect gfd/sandbawks#683.",
+          "stance": "neutral",
+          "recorded_at": "2026-10-27T15:25:33.164832803Z",
+          "seal": {
+            "by": "server",
+            "mac": "3d310d27cd4e9e6295607dace5d0d2f7fdaeb959d213d0f0f004b32e29925b17"
+          }
+        }
+      ],
       "verdicts": [
         {
           "verdict": "not_enough_info",
@@ -3876,13 +4259,26 @@
             "by": "server",
             "mac": "8fa2606e1458000e8e8bbfd997f2ad54780f10da170ef4734e8990081f2a8ec0"
           }
+        },
+        {
+          "verdict": "supported",
+          "rationale": "Live test asserting the claim passed on hosted E2B (canonical), run 20261027T125515Z-hosted-1922536 at 9910325. The sandbawks pass is unsigned (EVD-0147, gfd/sandbawks#683) and is not relied on.",
+          "auditor": "claude-code/claude-opus-5-5 (M2 coordinator)",
+          "evidence_ids": [
+            "EVD-0135"
+          ],
+          "recorded_at": "2026-10-27T15:26:32.575931328Z",
+          "seal": {
+            "by": "server",
+            "mac": "f5594cc67d620c33e6328044634863df61c79e9d9b5d9096f7caaf53521d36f6"
+          }
         }
       ],
       "created_at": "2026-10-26T22:09:38.695113733Z",
-      "updated_at": "2026-10-26T23:03:19.640139762Z",
+      "updated_at": "2026-10-27T15:27:56.310488735Z",
       "seal": {
         "by": "server",
-        "mac": "0bdbdc1b2ec1373e72ec819af53445b4e84bbebd7402c508948d7467293eb2cf"
+        "mac": "57ae8ced26c9d766ae414fe0a34fecc2990d32c995162eeff38c435b31db4d65"
       }
     },
     {
@@ -3895,15 +4291,42 @@
       "derived_from": [
         "CLM-0004"
       ],
-      "artifacts": [],
+      "artifacts": [
+        "src/sandbox.rs"
+      ],
       "tags": [
         "s3",
-        "gap"
+        "m2"
       ],
       "status": {
         "state": "active"
       },
-      "evidence": [],
+      "evidence": [
+        {
+          "id": "EVD-0136",
+          "kind": "demonstration",
+          "locator": "tests/live_files.rs::clm_0065_download_url_fetches_without_credentials @ hosted, docs/verification/runs/20261027T125515Z-hosted-1922536.log (9910325)",
+          "summary": "Passed live on hosted E2B: a signed, expiring download_url fetches the file with no credentials, and the same URL with its signature removed is refused.",
+          "stance": "supports",
+          "recorded_at": "2026-10-27T15:24:53.809128810Z",
+          "seal": {
+            "by": "server",
+            "mac": "7564486ffc177c291c79932216ff9f90a3ff2e229c2af13c180aa5f7324be4c9"
+          }
+        },
+        {
+          "id": "EVD-0148",
+          "kind": "demonstration",
+          "locator": "clm_0065 @ sandbawks, docs/verification/m2-live-results.md (sandbawks, N5) + run 20261027T133834Z-sandbawks-rerun2-2291013",
+          "summary": "Fails on sandbawks: no envdAccessToken, so the client refuses an expiring URL (InvalidArgument), as the SDK does; passes on hosted: sandbawks defect, gfd/sandbawks#683.",
+          "stance": "neutral",
+          "recorded_at": "2026-10-27T15:25:35.063889340Z",
+          "seal": {
+            "by": "server",
+            "mac": "9dda2395a735f35dd3ff91b5403350e8c524cae95e183e3e38e97a80f8df12ab"
+          }
+        }
+      ],
       "verdicts": [
         {
           "verdict": "not_enough_info",
@@ -3915,13 +4338,26 @@
             "by": "server",
             "mac": "3d82b3c43082b350269c61f15215a6e69d3cb22a7a13ee90325ae071eba2c264"
           }
+        },
+        {
+          "verdict": "supported",
+          "rationale": "Live test asserting the claim passed on hosted E2B (canonical), run 20261027T125515Z-hosted-1922536 at 9910325. The sandbawks failure (EVD-0148) is gfd/sandbawks#683.",
+          "auditor": "claude-code/claude-opus-5-5 (M2 coordinator)",
+          "evidence_ids": [
+            "EVD-0136"
+          ],
+          "recorded_at": "2026-10-27T15:26:34.277754287Z",
+          "seal": {
+            "by": "server",
+            "mac": "59c55aefc2ed9e3e1e57c21b6ebae183dc76220c4cc86074944bb2af4a4cd8e0"
+          }
         }
       ],
       "created_at": "2026-10-26T22:09:38.695113733Z",
-      "updated_at": "2026-10-26T23:03:20.848184465Z",
+      "updated_at": "2026-10-27T15:27:57.060024315Z",
       "seal": {
         "by": "server",
-        "mac": "98be0a54a8592880eb01fca3b921abc7ef05e66813fa6f496ad7809116e6f7e7"
+        "mac": "14baf45726bf84c4d850887bdc57903d70f82f9fbe245d58d799b4415b702945"
       }
     },
     {
@@ -3934,15 +4370,42 @@
       "derived_from": [
         "CLM-0004"
       ],
-      "artifacts": [],
+      "artifacts": [
+        "src/filesystem.rs"
+      ],
       "tags": [
         "s3",
-        "gap"
+        "m2"
       ],
       "status": {
         "state": "active"
       },
-      "evidence": [],
+      "evidence": [
+        {
+          "id": "EVD-0137",
+          "kind": "demonstration",
+          "locator": "tests/live_files.rs::clm_0066_write_stream_uploads_more_than_it_buffers @ hosted, docs/verification/runs/20261027T125515Z-hosted-1922536.log (9910325)",
+          "summary": "Passed live on hosted E2B: write_stream uploads 64 MiB from a reader, plain and gzip, and the sandbox reports the full size.",
+          "stance": "supports",
+          "recorded_at": "2026-10-27T15:24:55.660459460Z",
+          "seal": {
+            "by": "server",
+            "mac": "1f27dd6bb5e90da721ffd5a3a00224cd40da8caa8e4117e95916391104de29bd"
+          }
+        },
+        {
+          "id": "EVD-0149",
+          "kind": "demonstration",
+          "locator": "clm_0066 @ sandbawks, docs/verification/m2-live-results.md (sandbawks, N2) + runs 20261027T130108Z-sandbawks-2101151, 20261027T130557Z-sandbawks-rerun-2121210",
+          "summary": "Fails on sandbawks (nginx answers the 64 MiB streamed upload with an HTML 413), passes on hosted: sandbawks defect, gfd/sandbawks#685.",
+          "stance": "neutral",
+          "recorded_at": "2026-10-27T15:25:37.021721452Z",
+          "seal": {
+            "by": "server",
+            "mac": "bc02014c3a81f97c83bfabde9f4c32601b7fb0388e8f6aeccf89e59e4a11f96e"
+          }
+        }
+      ],
       "verdicts": [
         {
           "verdict": "not_enough_info",
@@ -3954,13 +4417,26 @@
             "by": "server",
             "mac": "ecaae02c451d56a0c015801d18f49f3e01816da9b1bb4f2c19d317d2225d3b78"
           }
+        },
+        {
+          "verdict": "supported",
+          "rationale": "Live test asserting the claim passed on hosted E2B (canonical), run 20261027T125515Z-hosted-1922536 at 9910325. The sandbawks failure (EVD-0149) is gfd/sandbawks#685.",
+          "auditor": "claude-code/claude-opus-5-5 (M2 coordinator)",
+          "evidence_ids": [
+            "EVD-0137"
+          ],
+          "recorded_at": "2026-10-27T15:26:35.978327331Z",
+          "seal": {
+            "by": "server",
+            "mac": "998b9fc3461308cef881752a1a9899807e3a54506553d280d06f39f94374caa0"
+          }
         }
       ],
       "created_at": "2026-10-26T22:09:38.695113733Z",
-      "updated_at": "2026-10-26T23:03:21.955305141Z",
+      "updated_at": "2026-10-27T15:27:57.810375457Z",
       "seal": {
         "by": "server",
-        "mac": "1821405fe6165cfd02a29855116a61f8c4d298dc4f2319e893d3730d4a0a1a1a"
+        "mac": "51a4e86699b4069c09e9fe89925d27971cebd68c7d1ee522528b786f60289d22"
       }
     },
     {
@@ -7376,19 +7852,57 @@
       ],
       "tags": [
         "s3",
-        "gap",
         "m2"
       ],
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0138",
+          "kind": "demonstration",
+          "locator": "tests/live_files.rs::clm_0128_read_stream_downloads_in_chunks @ hosted, docs/verification/runs/20261027T125515Z-hosted-1922536.log (9910325)",
+          "summary": "Passed live on hosted E2B: read_stream of an 8 MiB file yields several chunks whose total is the whole file.",
+          "stance": "supports",
+          "recorded_at": "2026-10-27T15:24:57.315716878Z",
+          "seal": {
+            "by": "server",
+            "mac": "0cdc1c2ec952ad1f305323ddcdd3edc27bcccbf37c13471ab63c3520418da6c6"
+          }
+        },
+        {
+          "id": "EVD-0150",
+          "kind": "demonstration",
+          "locator": "clm_0128 @ sandbawks, docs/verification/m2-live-results.md (sandbawks, N3) + runs 20261027T133834Z-sandbawks-rerun2-2291013, 20261027T144305Z-sandbawks-rerun3-2463003",
+          "summary": "Fails on sandbawks (GET /files of the 8 MiB file gets 500 \"an internal error occurred\" on a ready sandbox), passes on hosted: sandbawks defect, gfd/sandbawks#686.",
+          "stance": "neutral",
+          "recorded_at": "2026-10-27T15:25:39.013331038Z",
+          "seal": {
+            "by": "server",
+            "mac": "d70406ea7b19d4a23355835e35fbc8d2beb3a48d9659271bc3c647300bc5dd61"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "supported",
+          "rationale": "Live test asserting the claim passed on hosted E2B (canonical), run 20261027T125515Z-hosted-1922536 at 9910325. The sandbawks failure (EVD-0150) is gfd/sandbawks#686.",
+          "auditor": "claude-code/claude-opus-5-5 (M2 coordinator)",
+          "evidence_ids": [
+            "EVD-0138"
+          ],
+          "recorded_at": "2026-10-27T15:26:37.634684995Z",
+          "seal": {
+            "by": "server",
+            "mac": "56a005ff0b2673a18baf62e30c5cec5ed38d1e48e61d4e4b282dfa5fe84b1334"
+          }
+        }
+      ],
       "created_at": "2026-10-27T01:35:47.983077574Z",
-      "updated_at": "2026-10-27T01:35:47.983077574Z",
+      "updated_at": "2026-10-27T15:27:58.359233192Z",
       "seal": {
         "by": "server",
-        "mac": "01334fef2931fcac199fe472dd77c956cc810f2f553c7b58379a2e589ad6b419"
+        "mac": "bb1a240717ead0dbc68eebc34898b748a0db0bfba4ba050cad3c7e998ccfe883"
       }
     },
     {
@@ -7406,19 +7920,57 @@
       ],
       "tags": [
         "s3",
-        "gap",
         "m2"
       ],
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0139",
+          "kind": "demonstration",
+          "locator": "tests/live_files.rs::clm_0129_write_metadata_round_trips @ hosted, docs/verification/runs/20261027T125515Z-hosted-1922536.log (9910325)",
+          "summary": "Passed live on hosted E2B: metadata attached to a write comes back in WriteInfo and in EntryInfo from get_info and list.",
+          "stance": "supports",
+          "recorded_at": "2026-10-27T15:24:58.811677767Z",
+          "seal": {
+            "by": "server",
+            "mac": "92946e26b0318252de68cdafbe99183968e7df1ccb47ac9a95c8aeeed44afceb"
+          }
+        },
+        {
+          "id": "EVD-0151",
+          "kind": "demonstration",
+          "locator": "clm_0129 @ sandbawks, docs/verification/m2-live-results.md (sandbawks) + runs 20261027T130108Z-sandbawks-2101151, 20261027T130557Z-sandbawks-rerun-2121210",
+          "summary": "Refused on sandbawks before sending (\"file metadata needs envd 0.6.2 or newer; this template runs envd 0.1.28\"), the version gate working as designed; passes on hosted: sandbawks defect, gfd/sandbawks#675.",
+          "stance": "neutral",
+          "recorded_at": "2026-10-27T15:25:40.959038806Z",
+          "seal": {
+            "by": "server",
+            "mac": "2746897319e8b81d82ab524ae850239fe81c017698a441b37295ae3260da45bd"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "supported",
+          "rationale": "Live test asserting the claim passed on hosted E2B (canonical), run 20261027T125515Z-hosted-1922536 at 9910325. On sandbawks the version gate refuses before sending (EVD-0151, gfd/sandbawks#675).",
+          "auditor": "claude-code/claude-opus-5-5 (M2 coordinator)",
+          "evidence_ids": [
+            "EVD-0139"
+          ],
+          "recorded_at": "2026-10-27T15:26:39.225849214Z",
+          "seal": {
+            "by": "server",
+            "mac": "2f52e9aa5a5911ff0b4d1f2d5b7c522d56535c69fb09e3daa9efee2b237ae3e1"
+          }
+        }
+      ],
       "created_at": "2026-10-27T01:35:47.983077574Z",
-      "updated_at": "2026-10-27T01:35:47.983077574Z",
+      "updated_at": "2026-10-27T15:27:58.794725097Z",
       "seal": {
         "by": "server",
-        "mac": "8d740498ca1c444b1de240d5929ca8eb713a98b1261a22f96a618782ab14b65c"
+        "mac": "b819e34192276629a0ec019ae9390ef0eb97b1dffd4c7307e4493c0dc2837e8b"
       }
     },
     {
@@ -7439,19 +7991,45 @@
       ],
       "tags": [
         "s4",
-        "gap",
         "m2"
       ],
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0152",
+          "kind": "test",
+          "locator": "tests/envd_stream_input.rs::stream_input_sends_start_then_one_data_envelope_per_chunk; tests/envd_pty.rs::pty_stream_input_uses_the_pty_member; src/envd/process_pb.rs::tests::stream_input_messages_match_proto_json @ 845dad6 (docs/verification/s4-evidence-map.md)",
+          "summary": "All pass at 845dad6: the route, application/connect+json, and the envelopes in order (start with the pid, then one data with input.stdin per chunk; input.pty from Pty::stream_input); the JSON of start, data/stdin, data/pty and keepalive.",
+          "stance": "supports",
+          "recorded_at": "2026-10-27T15:25:47.227204248Z",
+          "seal": {
+            "by": "server",
+            "mac": "d19e7fa56c536b991fd3e60a98cfbb215bc160cf7a72ba6fcba4713add6a1fb5"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "supported",
+          "rationale": "The evidence-map tests asserting the wire shape pass at 845dad6 (just test: 205 passed, 0 failed).",
+          "auditor": "claude-code/claude-opus-5-5 (M2 coordinator)",
+          "evidence_ids": [
+            "EVD-0152"
+          ],
+          "recorded_at": "2026-10-27T15:26:44.868937327Z",
+          "seal": {
+            "by": "server",
+            "mac": "2b0a8883cc16ed629c609d9f60c6b4627e55146ccae4671a2fd02ca48eb515db"
+          }
+        }
+      ],
       "created_at": "2026-10-27T01:35:47.983077574Z",
-      "updated_at": "2026-10-27T01:48:38.251859831Z",
+      "updated_at": "2026-10-27T15:28:02.971260374Z",
       "seal": {
         "by": "server",
-        "mac": "a5531a36125e4171eca0c18f5e70d154668bbce480f7c22ab19023252f5ed660"
+        "mac": "b9df018a763fe037c3fc14e57d0d8a0e901bb8f01b03c16e2265be427d186454"
       }
     },
     {
@@ -7470,19 +8048,45 @@
       ],
       "tags": [
         "s4",
-        "gap",
         "m2"
       ],
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0153",
+          "kind": "test",
+          "locator": "src/stream_input.rs::tests::messages_start_then_data_then_keepalive_when_idle; tests/envd_stream_input.rs::stream_input_deadline_defaults_to_60_s; tests/envd_stream_input.rs::stream_input_sends_start_then_one_data_envelope_per_chunk @ 845dad6 (docs/verification/s4-evidence-map.md)",
+          "summary": "All pass at 845dad6: on Tokio's paused clock the keepalive comes exactly 50 s after the last chunk and the body ends when the sender drops; Connect-Timeout-Ms: 60000 by default; close returns only after the whole body was sent and envd answered.",
+          "stance": "supports",
+          "recorded_at": "2026-10-27T15:25:49.576087853Z",
+          "seal": {
+            "by": "server",
+            "mac": "2a77ce40c77ba7543bb00c5062655470ebbadb267efe53f659518a72596e1581"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "supported",
+          "rationale": "The evidence-map tests asserting the wire shape pass at 845dad6 (just test: 205 passed, 0 failed).",
+          "auditor": "claude-code/claude-opus-5-5 (M2 coordinator)",
+          "evidence_ids": [
+            "EVD-0153"
+          ],
+          "recorded_at": "2026-10-27T15:26:46.269307520Z",
+          "seal": {
+            "by": "server",
+            "mac": "7e06c9f5e1a58faf1ce533dc3440b799e0d4a3cf6cc729bf6ca8f773afc15cde"
+          }
+        }
+      ],
       "created_at": "2026-10-27T01:35:47.983077574Z",
-      "updated_at": "2026-10-27T01:48:38.265031562Z",
+      "updated_at": "2026-10-27T15:28:03.524617826Z",
       "seal": {
         "by": "server",
-        "mac": "1c8e3700042c3b145e8006d83c38ea2751e44181b57cfd8cae34ee852631b390"
+        "mac": "a60bfe91f33a95a0d4294d0183b7733c5fe8b70d1fadec47a6a012f27efe2eba"
       }
     },
     {
@@ -7500,19 +8104,45 @@
       ],
       "tags": [
         "s4",
-        "gap",
         "m2"
       ],
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0154",
+          "kind": "test",
+          "locator": "tests/envd_pty.rs::create_sends_bash_with_pty_size_and_terminal_env_defaults; src/envd/process_pb.rs::tests::pty_start_request_has_pty_size_and_no_stdin; src/pty.rs::tests::terminal_defaults_fill_only_unset_keys @ 845dad6 (docs/verification/s4-evidence-map.md)",
+          "summary": "All pass at 845dad6: the decoded Start envelope has cmd /bin/bash, args [\"-i\",\"-l\"], pty.size {80,24}, no stdin key, and envs where the caller's LANG wins while TERM and LC_ALL get their defaults.",
+          "stance": "supports",
+          "recorded_at": "2026-10-27T15:25:51.876746801Z",
+          "seal": {
+            "by": "server",
+            "mac": "344b3951836bf92f54db6e085c8a2f1bab42fbd39f6648e1ecd8fd984091fa65"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "supported",
+          "rationale": "The evidence-map tests asserting the wire shape pass at 845dad6 (just test: 205 passed, 0 failed).",
+          "auditor": "claude-code/claude-opus-5-5 (M2 coordinator)",
+          "evidence_ids": [
+            "EVD-0154"
+          ],
+          "recorded_at": "2026-10-27T15:26:47.711203553Z",
+          "seal": {
+            "by": "server",
+            "mac": "db8bb477862d96f384be1adf76ab9326439c912bf0148fa5bd480e81c770b2d9"
+          }
+        }
+      ],
       "created_at": "2026-10-27T01:35:47.983077574Z",
-      "updated_at": "2026-10-27T01:35:47.983077574Z",
+      "updated_at": "2026-10-27T15:28:04.071818535Z",
       "seal": {
         "by": "server",
-        "mac": "129dd1f58d9fb1979e3ed12c8732c32abc48d5d070e6872c7144e0455e419789"
+        "mac": "e1cc3e372fbb5360b81147cb84b18ec6ba811bed1e0dc7a7cd3188529083c7a1"
       }
     },
     {
@@ -7531,19 +8161,45 @@
       ],
       "tags": [
         "s4",
-        "gap",
         "m2"
       ],
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0155",
+          "kind": "test",
+          "locator": "tests/envd_pty.rs::create_sends_bash_with_pty_size_and_terminal_env_defaults; tests/envd_pty.rs::pty_handle_skips_stdout_and_command_handle_skips_pty_data; src/envd/process_pb.rs::tests::data_event_parses_pty_bytes @ 845dad6 (docs/verification/s4-evidence-map.md)",
+          "summary": "All pass at 845dad6: data.pty chunks come out of PtyHandle::next_event as PtyEvent::Data then Exit; with both stdout and pty chunks, PtyHandle surfaces only PTY bytes and CommandHandle only stdout.",
+          "stance": "supports",
+          "recorded_at": "2026-10-27T15:25:54.227448512Z",
+          "seal": {
+            "by": "server",
+            "mac": "5499e8b0248def0332ce430f3cc20a8f1638e4dfcfcc3a29e6d967c98297a727"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "supported",
+          "rationale": "The evidence-map tests asserting the wire shape pass at 845dad6 (just test: 205 passed, 0 failed).",
+          "auditor": "claude-code/claude-opus-5-5 (M2 coordinator)",
+          "evidence_ids": [
+            "EVD-0155"
+          ],
+          "recorded_at": "2026-10-27T15:26:49.114062466Z",
+          "seal": {
+            "by": "server",
+            "mac": "99a1390f97887279313390fc981a4ebffb0ff090cb9e2e977ee384952c9014d7"
+          }
+        }
+      ],
       "created_at": "2026-10-27T01:35:47.983077574Z",
-      "updated_at": "2026-10-27T01:35:47.983077574Z",
+      "updated_at": "2026-10-27T15:28:04.622928479Z",
       "seal": {
         "by": "server",
-        "mac": "4dd240a3fb188edad03003e16af74d1957bffc4390bebe11d456a63cd0f882d3"
+        "mac": "3c644e45af3376c0940c470bcedcc378057f156dfccb2d0f7ea46bdc02a6aa23"
       }
     },
     {
@@ -7561,19 +8217,45 @@
       ],
       "tags": [
         "s4",
-        "gap",
         "m2"
       ],
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0156",
+          "kind": "test",
+          "locator": "tests/envd_pty.rs::send_stdin_uses_the_pty_input_member; tests/envd_pty.rs::resize_sends_update_with_the_new_size; src/envd/process_pb.rs::tests::update_request_matches_proto_json @ 845dad6 (docs/verification/s4-evidence-map.md)",
+          "summary": "All pass at 845dad6: send_stdin hits /process.Process/SendInput with {process:{pid}, input:{pty}}; resize hits /process.Process/Update with {process:{pid}, pty:{size:{cols,rows}}}; both mocks expect(1).",
+          "stance": "supports",
+          "recorded_at": "2026-10-27T15:25:56.578044284Z",
+          "seal": {
+            "by": "server",
+            "mac": "8b287faa6307e89b61f6e2631ea9312e749335a826ade031e45810b1bde68c14"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "supported",
+          "rationale": "The evidence-map tests asserting the wire shape pass at 845dad6 (just test: 205 passed, 0 failed).",
+          "auditor": "claude-code/claude-opus-5-5 (M2 coordinator)",
+          "evidence_ids": [
+            "EVD-0156"
+          ],
+          "recorded_at": "2026-10-27T15:26:50.565726748Z",
+          "seal": {
+            "by": "server",
+            "mac": "fec9ff6b52e64bdda9300fe0b0cea189a961beb48fb06f0cbc5ac4ac997b3edf"
+          }
+        }
+      ],
       "created_at": "2026-10-27T01:35:47.983077574Z",
-      "updated_at": "2026-10-27T01:35:47.983077574Z",
+      "updated_at": "2026-10-27T15:28:05.174885495Z",
       "seal": {
         "by": "server",
-        "mac": "d7a61613dcf11efa66f005885132365f4a777acab9bd3b70f8da9e3ae288204c"
+        "mac": "cebd93175787bd5d0c1bb9c96e34a9152929700061fadae509e41735ece0ddba"
       }
     },
     {
@@ -7592,19 +8274,45 @@
       ],
       "tags": [
         "s4",
-        "gap",
         "m2"
       ],
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0157",
+          "kind": "test",
+          "locator": "tests/envd_watch.rs::watch_dir_sends_options_and_maps_events; tests/envd_watch.rs::watch_dir_must_open_with_a_start_event; src/envd/filesystem_pb.rs::tests::watch_dir_request_serializes_camel_case; src/envd/filesystem_pb.rs::tests::watch_dir_response_members_parse; src/filesystem.rs::tests::event_type_mapping_drops_unspecified_and_unknown @ 845dad6 (docs/verification/s4-evidence-map.md)",
+          "summary": "All pass at 845dad6: the WatchDir envelope carries path, recursive, includeEntry, allowNetworkMounts; a stream opening without start is Error::Protocol; create and write events (with entry) are yielded while keepalives and unspecified types are dropped; all five types map by name and number.",
+          "stance": "supports",
+          "recorded_at": "2026-10-27T15:25:59.431528647Z",
+          "seal": {
+            "by": "server",
+            "mac": "df12c612c66caffdd88bde746b298fa7bb654b629691f3aee297c6a834bea769"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "supported",
+          "rationale": "The evidence-map tests asserting the wire shape pass at 845dad6 (just test: 205 passed, 0 failed).",
+          "auditor": "claude-code/claude-opus-5-5 (M2 coordinator)",
+          "evidence_ids": [
+            "EVD-0157"
+          ],
+          "recorded_at": "2026-10-27T15:26:51.964814227Z",
+          "seal": {
+            "by": "server",
+            "mac": "f539ccc3d5c2422bfdde3a16bcf5a4c9f318f70cf9ba9d6ac95c66e8f28de99a"
+          }
+        }
+      ],
       "created_at": "2026-10-27T01:35:47.983077574Z",
-      "updated_at": "2026-10-27T01:35:47.983077574Z",
+      "updated_at": "2026-10-27T15:28:05.673648145Z",
       "seal": {
         "by": "server",
-        "mac": "fb50ae8bc5e600c58685ae95e41a2191d6d63628b7a7cc09affbe6d5624fb2bb"
+        "mac": "5b76878ec3f15b349c1ddc8a69c09578f748d040b831d42073d2b61bd00e3c81"
       }
     },
     {
@@ -7622,19 +8330,45 @@
       ],
       "tags": [
         "s4",
-        "gap",
         "m2"
       ],
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0158",
+          "kind": "test",
+          "locator": "tests/envd_watch.rs::watch_dir_options_are_refused_on_old_envd_without_a_request; src/filesystem.rs::tests::watch_options_default_and_version_gates @ 845dad6 (docs/verification/s4-evidence-map.md)",
+          "summary": "All pass at 845dad6: each option one patch below its gate (0.1.3, 0.6.2, 0.6.3) gets InvalidArgument with no WatchDir request sent; all three pass on 0.6.4 and the first failing gate is reported.",
+          "stance": "supports",
+          "recorded_at": "2026-10-27T15:26:01.580144768Z",
+          "seal": {
+            "by": "server",
+            "mac": "d1eedabb5a345db16e457af56fe0ed60df1092b725c595895423a793eafa7d55"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "supported",
+          "rationale": "The evidence-map tests asserting the version gates pass at 845dad6 (just test: 205 passed, 0 failed).",
+          "auditor": "claude-code/claude-opus-5-5 (M2 coordinator)",
+          "evidence_ids": [
+            "EVD-0158"
+          ],
+          "recorded_at": "2026-10-27T15:26:53.421213638Z",
+          "seal": {
+            "by": "server",
+            "mac": "bb66790d31024cbce7bc6f9c7801cd95ecebdb883ecf0fe61fa48ff409012d64"
+          }
+        }
+      ],
       "created_at": "2026-10-27T01:35:47.983077574Z",
-      "updated_at": "2026-10-27T01:35:47.983077574Z",
+      "updated_at": "2026-10-27T15:28:06.222242139Z",
       "seal": {
         "by": "server",
-        "mac": "228c62d2f9e1846d8ecdac073d6fa3c53c45a22b89318579ed0ece260485d8bd"
+        "mac": "5d53a0ac7f72c5c8b0b4ef3bb00a74609554adf074296d70003b8fb4aa9ed69d"
       }
     },
     {
@@ -7652,19 +8386,45 @@
       ],
       "tags": [
         "s4",
-        "gap",
         "m2"
       ],
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0159",
+          "kind": "test",
+          "locator": "tests/envd_write.rs::write_files_multipart_sends_one_request_without_a_path_param; tests/envd_write.rs::write_files_with_one_entry_sends_the_path_param; tests/envd_api.rs::write_file_uploads_multipart @ 845dad6 (docs/verification/s4-evidence-map.md)",
+          "summary": "All pass at 845dad6: two entries go as one multipart POST /files with no path query and a file part per path (expect(1)); one entry sends path=; the existing write test passes unchanged.",
+          "stance": "supports",
+          "recorded_at": "2026-10-27T15:26:03.779982476Z",
+          "seal": {
+            "by": "server",
+            "mac": "12d6fb397bb795fc39fc5d3105b6e52765ae037260b757061e975b453c904eb9"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "supported",
+          "rationale": "The evidence-map tests asserting the wire shape pass at 845dad6 (just test: 205 passed, 0 failed).",
+          "auditor": "claude-code/claude-opus-5-5 (M2 coordinator)",
+          "evidence_ids": [
+            "EVD-0159"
+          ],
+          "recorded_at": "2026-10-27T15:26:54.819125421Z",
+          "seal": {
+            "by": "server",
+            "mac": "06bd51b9ae6f915639150796e4bd6dfadaf5bd1147fba9bc195a2e8564b8609e"
+          }
+        }
+      ],
       "created_at": "2026-10-27T01:35:47.983077574Z",
-      "updated_at": "2026-10-27T01:35:47.983077574Z",
+      "updated_at": "2026-10-27T15:28:06.773838874Z",
       "seal": {
         "by": "server",
-        "mac": "2c8c3863a2b253e657eee2f08c5a1f47d0cb8566fd1eba7c19ba284a947f6183"
+        "mac": "6c3cdb464eaafcdb4962679053540ddb0642149d13fccffb156f758e4604555f"
       }
     },
     {
@@ -7682,19 +8442,45 @@
       ],
       "tags": [
         "s4",
-        "gap",
         "m2"
       ],
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0160",
+          "kind": "test",
+          "locator": "tests/envd_write.rs::{octet_stream_write_sends_one_request_per_file, gzip_write_compresses_the_body_and_sets_content_encoding, octet_stream_and_gzip_fall_back_to_plain_multipart_before_envd_0_5_7, octet_stream_uploads_run_concurrently}; tests/envd_stream_files.rs::{write_stream_sends_an_octet_stream_body, write_stream_with_gzip_compresses_on_the_fly, write_stream_falls_back_to_multipart_before_envd_0_5_7} @ 845dad6 (docs/verification/s4-evidence-map.md)",
+          "summary": "All pass at 845dad6: on envd 0.5.7 octet-stream sends one POST /files?path= per file; gzip(true) alone adds Content-Encoding: gzip over a body that gunzips to the data; on 0.5.6 both fall back to one plain multipart request; write_stream behaves the same.",
+          "stance": "supports",
+          "recorded_at": "2026-10-27T15:26:06.879911493Z",
+          "seal": {
+            "by": "server",
+            "mac": "dc04931ff92b90b9d9979b014621965763efc55384084fc378536e0b7eee562e"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "supported",
+          "rationale": "The evidence-map tests asserting the wire shape and the 0.5.7 fallback pass at 845dad6 (just test: 205 passed, 0 failed).",
+          "auditor": "claude-code/claude-opus-5-5 (M2 coordinator)",
+          "evidence_ids": [
+            "EVD-0160"
+          ],
+          "recorded_at": "2026-10-27T15:26:56.417773211Z",
+          "seal": {
+            "by": "server",
+            "mac": "ca81a6e8730b67242bfaeb791585464e517c6cd1d327ad11bac3303e00e2379e"
+          }
+        }
+      ],
       "created_at": "2026-10-27T01:35:47.983077574Z",
-      "updated_at": "2026-10-27T01:35:47.983077574Z",
+      "updated_at": "2026-10-27T15:28:07.325372810Z",
       "seal": {
         "by": "server",
-        "mac": "55a96e2877e53f637d80b3ddf417cc8835a1e6405c87648d79d1f8559d2db2f9"
+        "mac": "a10bd5209bd59033cce27dd59369e72e905932de6cc01cd047bb45ecb609ca51"
       }
     },
     {
@@ -7712,19 +8498,45 @@
       ],
       "tags": [
         "s4",
-        "gap",
         "m2"
       ],
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0161",
+          "kind": "test",
+          "locator": "tests/envd_write.rs::{metadata_is_sent_as_x_metadata_headers_on_every_upload, invalid_metadata_is_rejected_before_sending, metadata_is_refused_before_envd_0_6_2}; src/filesystem.rs::tests::{metadata_headers_are_prefixed_sorted_and_replace_repeated_keys, metadata_headers_accept_every_token_character_and_an_empty_value, metadata_headers_check_keys_before_the_version} @ 845dad6 (docs/verification/s4-evidence-map.md)",
+          "summary": "All pass at 845dad6: metadata goes as x-metadata-<key> headers on all five upload shapes; invalid keys or values and any metadata on envd 0.6.1 give InvalidArgument with no request sent.",
+          "stance": "supports",
+          "recorded_at": "2026-10-27T15:26:09.628511622Z",
+          "seal": {
+            "by": "server",
+            "mac": "f954755af67111ea9a6c79bc07254b270a68e0540199f6acc920653d0fc03b36"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "supported",
+          "rationale": "The evidence-map tests asserting the headers, validation and version gate pass at 845dad6 (just test: 205 passed, 0 failed).",
+          "auditor": "claude-code/claude-opus-5-5 (M2 coordinator)",
+          "evidence_ids": [
+            "EVD-0161"
+          ],
+          "recorded_at": "2026-10-27T15:26:57.861218159Z",
+          "seal": {
+            "by": "server",
+            "mac": "bd2bd9823cecc20807927169e6b8e64f51494da7d80f7e2ee6347770a0a37f1c"
+          }
+        }
+      ],
       "created_at": "2026-10-27T01:35:47.983077574Z",
-      "updated_at": "2026-10-27T01:35:47.983077574Z",
+      "updated_at": "2026-10-27T15:28:07.873019810Z",
       "seal": {
         "by": "server",
-        "mac": "48e916b72ea78ac0c51849dc49a110229da62b1998ac69f2c3e5e2f615c5c9ff"
+        "mac": "60452fd9fef82c0d72751e8077f8d9050e201c6493064f52682a3e909e19c08b"
       }
     },
     {
@@ -7742,19 +8554,45 @@
       ],
       "tags": [
         "s4",
-        "gap",
         "m2"
       ],
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0162",
+          "kind": "test",
+          "locator": "src/sandbox.rs::tests::{file_signature_matches_the_sdk_algorithm, signed_urls_carry_the_signature_not_the_token, expiration_is_whole_seconds_and_refuses_under_one_second}; tests/envd_file_urls.rs::{download_url_is_signed_with_the_access_token, upload_url_with_user_and_expiration, legacy_envd_signs_for_the_default_user} @ 845dad6 (docs/verification/s4-evidence-map.md)",
+          "summary": "All pass at 845dad6: both SDK signature vectors reproduce; URLs are <envd>/files?path=[&username=]&signature=v1_<unpadded b64 sha256>[&signature_expiration=]; the user defaults to \"user\" on envd 0.3.9; no URL contains the token.",
+          "stance": "supports",
+          "recorded_at": "2026-10-27T15:26:12.392442917Z",
+          "seal": {
+            "by": "server",
+            "mac": "346524bca2082f0e1a82837283cf041a5835f46b4aaca3bbe7e5e4fed0d671a9"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "supported",
+          "rationale": "The evidence-map tests asserting the URL and signature shape pass at 845dad6 (just test: 205 passed, 0 failed); hosted E2B accepted the signed URLs live (CLM-0064, CLM-0065).",
+          "auditor": "claude-code/claude-opus-5-5 (M2 coordinator)",
+          "evidence_ids": [
+            "EVD-0162"
+          ],
+          "recorded_at": "2026-10-27T15:26:59.667007701Z",
+          "seal": {
+            "by": "server",
+            "mac": "67628b1b739fd154715f942c76e82d5f108537ab0b0e39634d1452b4db814f83"
+          }
+        }
+      ],
       "created_at": "2026-10-27T01:35:47.983077574Z",
-      "updated_at": "2026-10-27T01:35:47.983077574Z",
+      "updated_at": "2026-10-27T15:28:08.430734008Z",
       "seal": {
         "by": "server",
-        "mac": "a7e606990473db5b2c07cb0f04fca7bcba1d9e7abfb813d132c3a0db2e23100c"
+        "mac": "44cd1a6b6d9bf294a9daee5e708c685aa91f4ebb6676c55fece44c216f2a39ff"
       }
     },
     {
@@ -7772,19 +8610,45 @@
       ],
       "tags": [
         "s4",
-        "gap",
         "m2"
       ],
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0163",
+          "kind": "test",
+          "locator": "tests/envd_file_urls.rs::unsecured_sandbox_gets_an_unsigned_url_and_rejects_expiration @ 845dad6 (docs/verification/s4-evidence-map.md)",
+          "summary": "Passes at 845dad6: with envdAccessToken null the upload URL has path but no signature or signature_expiration, and download_url with expires_in is InvalidArgument naming a secured sandbox.",
+          "stance": "supports",
+          "recorded_at": "2026-10-27T15:26:14.231067672Z",
+          "seal": {
+            "by": "server",
+            "mac": "9422ac40339b2737f8bd8fd3e1b8130a64b1fdcec25fcac7cd0f45774b13ccd7"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "supported",
+          "rationale": "The evidence-map test passes at 845dad6 (just test: 205 passed, 0 failed); sandbawks showed the same refusal live (CLM-0065, EVD-0148).",
+          "auditor": "claude-code/claude-opus-5-5 (M2 coordinator)",
+          "evidence_ids": [
+            "EVD-0163"
+          ],
+          "recorded_at": "2026-10-27T15:27:01.266053552Z",
+          "seal": {
+            "by": "server",
+            "mac": "e587e5775faeaec69ba0dece20749c3fb69cffc3c06c50117cda0fd17d4f0ae4"
+          }
+        }
+      ],
       "created_at": "2026-10-27T01:35:47.983077574Z",
-      "updated_at": "2026-10-27T01:35:47.983077574Z",
+      "updated_at": "2026-10-27T15:28:08.974849006Z",
       "seal": {
         "by": "server",
-        "mac": "30d88b67b236c6957bc1e4f82b4133dbc4cc5782912acf8334d1d7d3fbcde050"
+        "mac": "dd8563addaa32989d491f0a4cb4fb34ea4ce9d64465849384163351cca1bcbaf"
       }
     },
     {
@@ -7802,19 +8666,45 @@
       ],
       "tags": [
         "s4",
-        "gap",
         "m2"
       ],
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0164",
+          "kind": "test",
+          "locator": "tests/envd_stream_files.rs::{read_stream_yields_the_body_in_chunks, read_stream_is_not_bounded_by_the_request_timeout, read_stream_of_a_missing_file_is_envd_not_found} @ 845dad6 (docs/verification/s4-evidence-map.md)",
+          "summary": "All pass at 845dad6: GET /files?path=&username= is read chunk by chunk to the full 1 MiB body; with a 1 s request timeout and a 3 s answer read_stream still succeeds while read times out; a 404 surfaces from read_stream before any chunk.",
+          "stance": "supports",
+          "recorded_at": "2026-10-27T15:26:16.524957555Z",
+          "seal": {
+            "by": "server",
+            "mac": "fa490c4c6d26318d9856562daf29272d53ccd2537758be8d130b165f5db55b2a"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "supported",
+          "rationale": "The evidence-map tests asserting the request and chunked, unbounded body pass at 845dad6 (just test: 205 passed, 0 failed).",
+          "auditor": "claude-code/claude-opus-5-5 (M2 coordinator)",
+          "evidence_ids": [
+            "EVD-0164"
+          ],
+          "recorded_at": "2026-10-27T15:27:02.705937766Z",
+          "seal": {
+            "by": "server",
+            "mac": "d2171537eeafc1c593ad09009e1a477e7ed8b9d5646655f0de1545234b19f47d"
+          }
+        }
+      ],
       "created_at": "2026-10-27T01:35:47.983077574Z",
-      "updated_at": "2026-10-27T01:35:47.983077574Z",
+      "updated_at": "2026-10-27T15:28:09.357254524Z",
       "seal": {
         "by": "server",
-        "mac": "2f9b1b179fefbe8727dcc46fdc2d3fe809847f96f8100617ce109bddb65ff1f8"
+        "mac": "60121a74d1a5778006aa14e9c6e0538393e53efb59f69b6150233b5b105635a3"
       }
     }
   ]

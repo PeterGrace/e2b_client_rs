@@ -11,8 +11,8 @@
 //! - **envd PTY sessions** ([`Pty`]): interactive terminals with their own
 //!   output stream ([`PtyHandle`]), input, resize and kill.
 //! - **envd filesystem service** ([`Filesystem`]): read and write files
-//!   (one at a time or in a batch, multipart, octet-stream or gzip, see
-//!   [`WriteOptions`]), stream uploads from an `AsyncRead` and downloads as
+//!   (one at a time or in a batch, multipart, octet-stream or gzip, with
+//!   optional metadata, see [`WriteOptions`]), stream uploads from an `AsyncRead` and downloads as
 //!   chunks ([`FileStream`]), list directories, stat, make directories, move
 //!   and remove, and watch a directory for changes ([`WatchHandle`]).
 //! - **Signed file URLs** ([`Sandbox::upload_url`], [`Sandbox::download_url`]):
@@ -60,6 +60,13 @@ mod pty;
 mod sandbox;
 mod stream_input;
 mod wire;
+
+// Compiles the README's examples as doctests under `cargo test`, so they
+// can't drift from the API. `cfg(doctest)` keeps this type out of normal
+// builds and out of the docs.
+#[cfg(doctest)]
+#[doc = include_str!("../README.md")]
+struct ReadmeDoctests;
 
 pub use client::Client;
 pub use commands::{
