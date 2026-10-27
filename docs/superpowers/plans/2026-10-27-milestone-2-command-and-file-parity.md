@@ -1201,7 +1201,7 @@ async fn pty_transcript(mut handle: e2b_client::PtyHandle) -> (String, i32) {
 }
 ```
 
-- `clm_0047_pty_create_streams_terminal_output`: create 80x24; `send_stdin(pid, "echo pty-$((40+2))\nexit 3\n")`; transcript contains `pty-42` (only the shell can produce it: the echoed input reads `pty-$((40+2))`), and the exit code is 3. Also assert `TERM` reached the shell: send `echo term-$TERM` and expect `term-xterm-256color`.
+- `clm_0047_pty_create_streams_terminal_output`: create 80x24, then send all input in one `send_stdin(pid, "echo pty-$((40+2))\necho term-$TERM\nexit 3\n")`, so both checks run before `exit`. The transcript contains `pty-42` (only the shell can produce it: the echoed input reads `pty-$((40+2))`) and `term-xterm-256color` (the TERM default reached the shell), and the exit code is 3.
 - `clm_0048_pty_resize_changes_terminal_size`: create 80x24; `resize(pid, PtySize::new(132, 43))`; `send_stdin("stty size; exit\n")`; transcript contains `43 132`.
 - `clm_0049_pty_input_reaches_the_shell`: create; open `stream_input`, send `"echo in-"` then `"$((6*7))\n"` then `"exit\n"`, close it; transcript contains `in-42`. This covers both `send_stdin` (CLM-0047) and streamed PTY input.
 
@@ -1344,9 +1344,10 @@ pub(crate) struct WatchDirRequest<'a> {
 /// `filesystem.WatchDirResponse`: a oneof of `start`, `filesystem`, `keepalive`.
 #[derive(Debug, Clone, Default, Deserialize)]
 pub(crate) struct WatchDirResponse {
-    /// Present (as an empty object) on the opening event.
+    /// Present (as an empty object) on the opening event. A `Value` rather
+    /// than `serde::de::IgnoredAny`, which is not `Clone`.
     #[serde(default)]
-    pub(crate) start: Option<serde::de::IgnoredAny>,
+    pub(crate) start: Option<serde_json::Value>,
     #[serde(default)]
     pub(crate) filesystem: Option<FilesystemEventWire>,
 }
@@ -1362,8 +1363,6 @@ pub(crate) struct FilesystemEventWire {
     pub(crate) entry: Option<EntryInfoWire>,
 }
 ```
-
-(`IgnoredAny` is not `Clone`; if the derive fails, drop `Clone` from `WatchDirResponse` or use `Option<serde_json::Value>`.)
 
 - [ ] **Step 3: Public API in `src/filesystem.rs`**
 
