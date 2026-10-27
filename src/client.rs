@@ -332,12 +332,7 @@ impl Client {
             .query(&params.query())
             .send()
             .await?;
-        let next_token = response
-            .headers()
-            .get(HEADER_NEXT_TOKEN)
-            .and_then(|value| value.to_str().ok())
-            .filter(|token| !token.is_empty())
-            .map(str::to_owned);
+        let next_token = next_token_of(&response);
         let sandboxes: Option<Vec<SandboxInfo>> = parse_success(response).await?;
         Ok(SandboxPage {
             sandboxes: sandboxes.unwrap_or_default(),
@@ -471,6 +466,26 @@ impl Client {
     ) -> Result<reqwest::Response> {
         Ok(self.request(method, segments)?.json(body).send().await?)
     }
+}
+
+/// The next page token from `x-next-token` (`e2b/paginator.py:48-50`), or
+/// `None` on the last page.
+///
+/// # Arguments
+///
+/// * `response` - a list response, borrowed so its body can still be read.
+///
+/// # Returns
+///
+/// The token, or `None` when the header is missing, empty or not ASCII.
+fn next_token_of(response: &reqwest::Response) -> Option<String> {
+    response
+        .headers()
+        .get(HEADER_NEXT_TOKEN)
+        // `to_str` fails on a non-ASCII header; `.ok()` turns that into `None`.
+        .and_then(|value| value.to_str().ok())
+        .filter(|token| !token.is_empty())
+        .map(str::to_owned)
 }
 
 /// Converts a non-2xx response into [`Error::Api`], keeping the E2B error

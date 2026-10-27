@@ -7,7 +7,7 @@
 use std::collections::HashMap;
 use std::time::Duration;
 
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, SecondsFormat, Utc};
 use serde::{Deserialize, Serialize};
 
 /// The template the SDKs use when none is given (`e2b/sandbox/main.py:32`).
@@ -288,16 +288,47 @@ pub struct SandboxInfo {
     pub domain: Option<String>,
 }
 
+/// Sort order for [`ListSandboxesParams::order`]: by start time, across the
+/// whole result set before paging (`e2b/sandbox_async/sandbox_api.py:91`).
+///
+/// `#[non_exhaustive]` means code outside this crate must keep a `_` arm when
+/// it `match`es on the enum, so a variant can be added later without breaking
+/// callers.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum SortOrder {
+    /// Oldest first (`asc`).
+    Ascending,
+    /// Newest first (`desc`).
+    Descending,
+}
+
+impl SortOrder {
+    /// The wire spelling of the `order` query parameter
+    /// (`e2b/api/client/api/sandboxes/get_v2_sandboxes.py:14-58`).
+    fn as_wire(self) -> &'static str {
+        match self {
+            Self::Ascending => "asc",
+            Self::Descending => "desc",
+        }
+    }
+}
+
 /// Filters and paging for [`crate::Client::list_sandboxes`].
 ///
 /// # Examples
 ///
 /// ```
-/// use e2b_client::{ListSandboxesParams, SandboxState};
+/// use chrono::{DateTime, Utc};
+/// use e2b_client::{ListSandboxesParams, SandboxState, SortOrder};
 ///
+/// let since: DateTime<Utc> = "2026-10-27T12:00:00Z".parse().expect("time");
 /// let params = ListSandboxesParams::new()
 ///     .metadata("owner", "docs")
 ///     .state(SandboxState::Running)
+///     .template("base")
+///     .started_after(since)
+///     .order(SortOrder::Descending)
 ///     .limit(10);
 /// # let _ = params;
 /// ```
@@ -305,6 +336,9 @@ pub struct SandboxInfo {
 pub struct ListSandboxesParams {
     metadata: Vec<(String, String)>,
     states: Vec<SandboxState>,
+    order: Option<SortOrder>,
+    started_after: Option<DateTime<Utc>>,
+    template: Option<String>,
     limit: Option<u32>,
     next_token: Option<String>,
 }
@@ -350,6 +384,52 @@ impl ListSandboxesParams {
         self
     }
 
+    /// Sort by start time. Unset, the server's order applies.
+    ///
+    /// # Arguments
+    ///
+    /// * `order` - oldest or newest first.
+    ///
+    /// # Returns
+    ///
+    /// The parameters, for chaining.
+    #[must_use]
+    pub fn order(mut self, order: SortOrder) -> Self {
+        self.order = Some(order);
+        self
+    }
+
+    /// Only sandboxes started at or after `time`.
+    ///
+    /// # Arguments
+    ///
+    /// * `time` - the earliest start time.
+    ///
+    /// # Returns
+    ///
+    /// The parameters, for chaining.
+    #[must_use]
+    pub fn started_after(mut self, time: DateTime<Utc>) -> Self {
+        self.started_after = Some(time);
+        self
+    }
+
+    /// Only sandboxes from `template` (a template ID or name).
+    ///
+    /// # Arguments
+    ///
+    /// * `template` - the template ID or name. `impl Into<String>` accepts
+    ///   both a `&str` and an owned `String`.
+    ///
+    /// # Returns
+    ///
+    /// The parameters, for chaining.
+    #[must_use]
+    pub fn template(mut self, template: impl Into<String>) -> Self {
+        self.template = Some(template.into());
+        self
+    }
+
     /// Maximum number of sandboxes per page.
     ///
     /// # Arguments
@@ -386,9 +466,12 @@ impl ListSandboxesParams {
     /// percent-encoded (`encodeURIComponent`), the pairs are form-encoded into
     /// one string, and that string is the `metadata` parameter
     /// (`e2b/sandbox_async/paginator.py:50-57`; JS `dist/index.js:5656-5658`).
-    /// States are comma-joined.
+    /// States are comma-joined. `order` is `asc` or `desc`, `startedAfter`
+    /// is an RFC 3339 time in Python's `isoformat` form and `template` is sent as given. The pairs come in
+    /// the order `metadata, state, order, startedAfter, template, limit,
+    /// nextToken`, each left out when unset.
     pub(crate) fn query(&self) -> Vec<(&'static str, String)> {
-        let mut query = Vec::with_capacity(4);
+        let mut query = Vec::with_capacity(7);
         if !self.metadata.is_empty() {
             let mut form = url::form_urlencoded::Serializer::new(String::new());
             for (key, value) in &self.metadata {
@@ -400,6 +483,15 @@ impl ListSandboxesParams {
             let states: Vec<&str> = self.states.iter().map(|state| state.as_wire()).collect();
             query.push(("state", states.join(",")));
         }
+        if let Some(order) = self.order {
+            query.push(("order", order.as_wire().to_owned()));
+        }
+        if let Some(time) = self.started_after {
+            query.push(("startedAfter", isoformat(time)));
+        }
+        if let Some(template) = &self.template {
+            query.push(("template", template.clone()));
+        }
         if let Some(limit) = self.limit {
             query.push(("limit", limit.to_string()));
         }
@@ -408,6 +500,31 @@ impl ListSandboxesParams {
         }
         query
     }
+}
+
+/// Python's `datetime.isoformat()` of an aware UTC time, as the SDK sends
+/// `startedAfter` (`get_v2_sandboxes.py:46-49`): `+00:00` for UTC, and six
+/// fractional digits only when the microseconds are not zero. Python has no
+/// nanoseconds, so a finer part is truncated to microseconds.
+///
+/// chrono's plain `to_rfc3339` picks 3, 6 or 9 digits from the value, which
+/// differs from Python for millisecond and nanosecond times.
+///
+/// # Arguments
+///
+/// * `time` - the time to format.
+///
+/// # Returns
+///
+/// The formatted time, e.g. `2026-10-27T12:00:00.123000+00:00`.
+fn isoformat(time: DateTime<Utc>) -> String {
+    let format = if time.timestamp_subsec_micros() == 0 {
+        SecondsFormat::Secs
+    } else {
+        SecondsFormat::Micros
+    };
+    // `false`: write the offset as `+00:00`, not `Z`.
+    time.to_rfc3339_opts(format, false)
 }
 
 /// JavaScript's `encodeURIComponent`: everything except `A-Z a-z 0-9 - _ . ! ~ * ' ( )`.
@@ -510,6 +627,67 @@ mod tests {
                 ("nextToken", "tok".to_owned()),
             ]
         );
+    }
+
+    #[test]
+    fn list_query_orders_new_filters_like_the_sdk() {
+        // Arrange
+        let started_after: DateTime<Utc> = "2026-10-27T12:00:00Z".parse().expect("time");
+        let params = ListSandboxesParams::new()
+            .next_token("tok")
+            .limit(5)
+            .template("base")
+            .started_after(started_after)
+            .order(SortOrder::Ascending)
+            .state(SandboxState::Running)
+            .metadata("k", "v");
+
+        // Act
+        let query = params.query();
+
+        // Assert: the setters were called in reverse, the pairs are not.
+        assert_eq!(
+            query,
+            vec![
+                ("metadata", "k=v".to_owned()),
+                ("state", "running".to_owned()),
+                ("order", "asc".to_owned()),
+                ("startedAfter", "2026-10-27T12:00:00+00:00".to_owned()),
+                ("template", "base".to_owned()),
+                ("limit", "5".to_owned()),
+                ("nextToken", "tok".to_owned()),
+            ]
+        );
+    }
+
+    #[test]
+    fn isoformat_matches_python_for_whole_milli_micro_and_nanosecond_times() {
+        // Arrange: the outputs are what Python's `isoformat()` prints for the
+        // same times (Python truncates to microseconds when it parses them).
+        let cases = [
+            ("2026-10-27T12:00:00Z", "2026-10-27T12:00:00+00:00"),
+            ("2026-10-27T12:00:00.5Z", "2026-10-27T12:00:00.500000+00:00"),
+            (
+                "2026-10-27T12:00:00.123456Z",
+                "2026-10-27T12:00:00.123456+00:00",
+            ),
+            (
+                "2026-10-27T12:00:00.123456789Z",
+                "2026-10-27T12:00:00.123456+00:00",
+            ),
+            (
+                "2026-10-27T12:00:00.000000500Z",
+                "2026-10-27T12:00:00+00:00",
+            ),
+        ];
+
+        for (input, expected) in cases {
+            // Act
+            let time: DateTime<Utc> = input.parse().expect("time");
+
+            // Assert
+            assert_eq!(isoformat(time), expected, "{input}");
+        }
     }
 
     #[test]

@@ -109,7 +109,7 @@ SDK sources are e2b 2.61.0, the same packages as `docs/protocol-notes.md` (`py:`
 | `secure` is accepted and ignored (every sandbox is secured) | `py: sandbox_async/main.py:177, 197` |
 | reqwest: `RequestBuilder::header(name, value)` and `query(&T: Serialize)` (feature `query`, already enabled) | `reqwest-0.13.5/src/async_impl/request.rs:197, 366`; `Cargo.toml` features |
 | `url::Url::path_segments_mut().extend(..)` percent-encodes `/`, `%`, space and `?` in a segment but not `:`; servers decode both (the crate's `Client::request` already relies on it; `tests/rest_api.rs` has no `:` case) | `url-2.5.8/src/parser.rs:20-38, 1210-1212`; `url-2.5.8/src/path_segments.rs:236-256`; `src/client.rs:401-413` |
-| chrono 0.4.45 with `std`: `DateTime::timestamp() -> i64` and `to_rfc3339() -> String` (`+00:00` for UTC, as Python's `isoformat`) | `chrono-0.4.45/src/datetime/mod.rs:200, 634`; `Cargo.toml:59, 96` |
+| chrono 0.4.45 with `std`: `DateTime::timestamp() -> i64`, `timestamp_subsec_micros()` and `to_rfc3339_opts(SecondsFormat, use_z) -> String` (`use_z: false` gives `+00:00` for UTC, as Python's `isoformat`; `Secs` or `Micros` matches its fraction, where plain `to_rfc3339` may write 3 or 9 digits) | `chrono-0.4.45/src/datetime/mod.rs:200, 634`; `Cargo.toml:59, 96` |
 | tokio 1.54.1 `sync::OnceCell` (feature `sync`, already enabled): `get`, `set`, `get_or_try_init` | `tokio-1.54.1/src/sync/mod.rs:452-492`; `tokio-1.54.1/src/sync/once_cell.rs:277, 400` |
 | uuid 1.29.0: `Uuid::new_v4()` behind feature `v4`; `Display` is the lowercase hyphenated form; needs rustc 1.89 (here 1.97.1) | `uuid-1.29.0/src/v4.rs:33`; `uuid-1.29.0/src/fmt.rs:31-35`; `uuid-1.29.0/Cargo.toml:14, 113, 134` |
 | secrecy 0.10.3: `SecretString: From<String>`, `Debug` prints `[REDACTED]` (already used for the envd token) | `secrecy-0.10.3/src/lib.rs:141-145, 214`; `src/sandbox.rs:212-224` |
@@ -872,14 +872,14 @@ In `query()`, after the `state` block and before `limit`, with the capacity rais
             query.push(("order", order.as_wire().to_owned()));
         }
         if let Some(time) = self.started_after {
-            // Python's `isoformat()` of an aware time: `+00:00` for UTC
-            // (`get_v2_sandboxes.py:46-49`).
-            query.push(("startedAfter", time.to_rfc3339()));
+            query.push(("startedAfter", isoformat(time)));
         }
         if let Some(template) = &self.template {
             query.push(("template", template.clone()));
         }
 ```
+
+> **Corrected (issue #62, 2026-10-27).** `to_rfc3339()` writes 3, 6 or 9 fractional digits depending on the value, while Python's `isoformat()` writes none for a whole second and otherwise exactly 6 (Python has no nanoseconds). `startedAfter` now goes through a private `fn isoformat(time: DateTime<Utc>) -> String` in `src/models.rs`: `to_rfc3339_opts(SecondsFormat::Secs, false)` when `timestamp_subsec_micros()` is 0, else `SecondsFormat::Micros` (which truncates nanoseconds). The unit test `isoformat_matches_python_for_whole_milli_micro_and_nanosecond_times` pins it.
 
 Update the doc comment on `query()` to name the new pairs. In `src/client.rs`, move the header read out of `list_sandboxes` into a helper that Task 8 reuses:
 
