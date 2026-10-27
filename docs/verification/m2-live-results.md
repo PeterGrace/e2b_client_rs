@@ -151,7 +151,7 @@ last attempt.
 | clm_0010_create_timeout_sets_end_at | CLM-0010 | pass | | pass | pass | |
 | clm_0011_auto_pause_pauses_at_timeout | CLM-0011 | fail | R1 fail | pass | sandbawks ([sandbawks#679](https://git.gfpd.us/gfd/sandbawks/issues/679), [sandbawks#665](https://git.gfpd.us/gfd/sandbawks/issues/665)) | `timed out after 120s waiting for auto-pause at timeout` |
 | clm_0012_internet_access_false_blocks_outbound | CLM-0012 | fail | R1 fail, R2 fail, R3 fail | pass | sandbawks ([sandbawks#667](https://git.gfpd.us/gfd/sandbawks/issues/667)); passed in M1 | `sandbox without internet access got an HTTP reply from 1.1.1.1:80: CommandResult { stdout: "", stderr: "", exit_code: 0, ... }` |
-| clm_0013_connect_running_sandbox_runs_commands | CLM-0013 | fail | R1 fail, R2 pass | pass | pass (run of record: capacity) | |
+| clm_0013_connect_running_sandbox_runs_commands | CLM-0013 | fail | R1 fail, R2 pass | pass | pass (earlier attempts: capacity) | |
 | clm_0014_connect_resumes_paused_sandbox_with_files | CLM-0014 | fail | R1 fail, R2 fail | pass | sandbawks ([sandbawks#679](https://git.gfpd.us/gfd/sandbawks/issues/679)) | `left: Running` `right: Paused` |
 | clm_0015_connect_unknown_sandbox_is_not_found | CLM-0015 | pass | | pass | pass | |
 | clm_0016_get_info_returns_detail | CLM-0016 | pass | | pass | pass | |
