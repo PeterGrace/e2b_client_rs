@@ -81,6 +81,27 @@ async fn get_metrics_without_a_range_sends_no_query() {
 }
 
 #[tokio::test]
+async fn get_metrics_with_a_null_body_is_empty() {
+    // Arrange: the API may answer `null` rather than `[]` for no samples.
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path(format!("/sandboxes/{SANDBOX_ID}/metrics")))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::Value::Null))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    // Act
+    let metrics = client_for(&server)
+        .get_sandbox_metrics(SANDBOX_ID, &MetricsParams::default())
+        .await
+        .expect("metrics");
+
+    // Assert
+    assert!(metrics.is_empty());
+}
+
+#[tokio::test]
 async fn get_metrics_of_a_missing_sandbox_is_not_found() {
     let server = MockServer::start().await;
     Mock::given(method("GET"))

@@ -490,8 +490,9 @@ Expected: compile error, `MetricsParams` and `get_sandbox_metrics` not found.
 > `std::time::SystemTime`, or add `clock` deliberately). Additions beyond this
 > step: unit tests `query_without_a_range_is_empty` and
 > `query_sends_each_set_bound_as_unix_seconds` in `src/metrics.rs`, and a
-> `no_run` example on `Client::get_sandbox_metrics`; the CLM-0155 row names
-> them with the three mock tests. "Oldest first" became "in the order the API
+> `no_run` example on `Client::get_sandbox_metrics`, and a fourth mock test,
+> `get_metrics_with_a_null_body_is_empty` (a 200 with `null` is an empty
+> list); the CLM-0155 row names them with the mock tests. "Oldest first" became "in the order the API
 > returns them": neither SDK documents an order.
 
 `src/metrics.rs`:
