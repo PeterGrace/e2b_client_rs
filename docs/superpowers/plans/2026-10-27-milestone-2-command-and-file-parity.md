@@ -1812,12 +1812,12 @@ git commit -m "feat: Filesystem::write_files with octet-stream and gzip encoding
 - `write_stream_sends_an_octet_stream_body` (CLM-0138 streamed path): envd 0.5.7; `write_stream("/w/big.bin", std::io::Cursor::new(vec![7u8; 300_000]), &WriteOptions::default())`; the mock matches `content-type: application/octet-stream`, and its body equals the 300 000 bytes.
 - `write_stream_with_gzip_compresses_on_the_fly`: `gzip(true)`; `content-encoding: gzip`; the gunzipped body equals the input.
 - `write_stream_falls_back_to_multipart_before_envd_0_5_7`: envd 0.5.6; multipart, field `file`, filename the path, with the data in the body.
-- `write_stream_is_not_bounded_by_the_request_timeout` (CLM-0066, 0142): `common::client_with_timeout(&server, Some(Duration::from_secs(1)))` builds the sandbox (via `common::sandbox_from_json_with_client(server, &client, created)`, which `sandbox_from_json` now calls with `client_for`). The mock answers after `set_delay(Duration::from_secs(3))`; `write_stream` succeeds, and `write` of the same data fails with a timeout transport error.
+- `write_stream_is_not_bounded_by_the_request_timeout` (CLM-0066): `common::client_with_timeout(&server, Some(Duration::from_secs(1)))` builds the sandbox (via `common::sandbox_from_json_with_client(server, &client, created)`, which `sandbox_from_json` now calls with `client_for`). The mock answers after `set_delay(Duration::from_secs(3))`; `write_stream` succeeds, and `write` of the same data fails with a timeout transport error.
 - `read_stream_yields_the_body_in_chunks` (CLM-0142): `GET /files` with `query_param("path", "/w/big.bin")` answers 1 MiB; collecting `next_chunk` until `None` gives the 1 MiB.
 - `read_stream_is_not_bounded_by_the_request_timeout` (CLM-0142): as above, with a 3 s delay and a 1 s request timeout: `read_stream` succeeds and `read` fails.
-
-> **Corrected (issue #35, 2026-10-27).** The timeout tests use a 1 s request timeout and a 3 s delay instead of 100 ms and 300 ms, so creating the sandbox stays well inside the timeout on a slow CI runner. One more test shipped: `write_stream_surfaces_a_reader_error_as_transport` (a reader that fails on its first read gives `Error::Transport`, as the rustdoc promises).
 - `read_stream_of_a_missing_file_is_envd_not_found`: 404 with `{"message": "no such file"}` gives `Error::Envd { status: 404, .. }` from `read_stream` itself, not from the first chunk.
+
+> **Corrected (issue #35, 2026-10-27).** The timeout tests use a 1 s request timeout and a 3 s delay instead of 100 ms and 300 ms, so creating the sandbox stays well inside the timeout on a slow CI runner. One more test shipped: `write_stream_surfaces_a_reader_error_as_transport` (a reader that fails on its first read gives `Error::Transport`, as the rustdoc promises). `write_stream_is_not_bounded_by_the_request_timeout` backs CLM-0066 only: CLM-0142 is the download claim.
 
 Run: `cargo test --test envd_stream_files` — Expected: compile errors.
 
