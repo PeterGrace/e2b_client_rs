@@ -1,0 +1,61 @@
+# M1 Task 7: live run on sandbawks
+
+Issue #11, Task 7 of `docs/superpowers/plans/2026-10-26-milestone-1-verify-v0.1.md`.
+
+## What changed
+
+- `docs/verification/m1-live-results.md`: new section "sandbawks", with one
+  row per `clm_*` test (46) and a column for the hosted E2B result. It
+  classifies every failure and lists twelve sandbawks defects (S1-S12), each
+  with the client call, the observed request and response, and the expected
+  E2B behaviour with an SDK citation. The coordinator files them on
+  gfd/sandbawks.
+- `docs/verification/runs/`: the logs of all four runs,
+  `20261026T225357Z-sandbawks-998331`, `20261026T225651Z-sandbawks-1078537`
+  (the run of record), `20261026T230103Z-sandbawks-rerun-1207087`
+  (single-test reruns) and `20261026T233507Z-sandbawks-2244779` (the
+  coordinator's second full run, see the update below). Each was key-checked
+  before it was copied: 0 matches for both keys.
+- `justfile`: `test-live` now passes `--no-fail-fast`. Without it, cargo
+  skipped `live_files` and `live_lifecycle` once `live_commands` had failed,
+  so a single failure hid two thirds of the results. This happens on any
+  server.
+- `tests/live_sweep.rs`: the sweep now checks `metadata["e2b-client-test"]`
+  against the run id itself before it kills a sandbox. sandbawks ignores the
+  `metadata` and `state` filters of `GET /v2/sandboxes`, so the first run's
+  sweep killed three of the server's warm-pool sandboxes, which it did not own.
+  Nothing changes on hosted E2B, which honours the filter.
+- Plan: a dated correction note in the Task 7 section only (the template, the
+  two harness fixes, the capacity caveat, and 46 tests rather than 47).
+
+## Why three runs of mine (the fourth is the coordinator's, below)
+
+1. The first `just test-live sandbawks` used the default template `base`,
+   which sandbawks doesn't have. Create still answered 201 `running`. All 13
+   command tests failed against sandboxes that could never start, and cargo
+   skipped the other two binaries. This run tested nothing about sandbawks.
+2. The run of record repeated the run with
+   `E2B_TEMPLATE_SANDBAWKS=compound-sandbox`, after the two harness fixes:
+   17 passed, 29 failed.
+3. Each of the 29 failures was then rerun on its own, to separate capacity
+   from defects. The two-sandbox warm pool runs dry at four threads, and cold
+   creates are unschedulable for lack of memory.
+
+## Result
+
+25 of 46 tests pass. Of the 21 failures, 16 are sandbawks defects that pass on
+hosted E2B, and 5 are inconclusive because the sandbox never became ready. No
+crate bugs were found. CLM-0014 passed vacuously on sandbawks, because pause
+is a no-op there. That is a test weakness. After review, the test asserts
+`Paused` right after the pause, so on sandbawks it now fails honestly on S11.
+
+## Update: merge with the hosted results, and a second full run
+
+- Merged `origin/main` after #22. The results file now has the intro once,
+  then "Hosted E2B", then "sandbawks".
+- Added the coordinator's second full run, `20261026T233507Z-sandbawks-2244779`,
+  made with `E2B_TEMPLATE_SANDBAWKS=compound-sandbox` in `.env`: 22 passed,
+  24 failed (12 capacity-masked), and the sweep killed 0. Its log was
+  key-checked (0 and 0) before it was copied.
+- Linked every failure, and the S1-S12 defects, to the gfd/sandbawks issues
+  filed for them (#665 and #674-#682).

@@ -25,7 +25,8 @@ test-live target:
     export E2B_TEST_RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)-{{target}}-$$"
     mkdir -p target/live-logs
     log="target/live-logs/${E2B_TEST_RUN_ID}.log"
-    cargo test --test live_lifecycle --test live_commands --test live_files \
+    # --no-fail-fast: a failing binary must not stop the others from running.
+    cargo test --no-fail-fast --test live_lifecycle --test live_commands --test live_files \
         -- --ignored --test-threads=4 --show-output 2>&1 | tee "$log"
     status=${PIPESTATUS[0]}
     cargo test --test live_sweep -- --ignored --show-output 2>&1 | tee -a "$log"

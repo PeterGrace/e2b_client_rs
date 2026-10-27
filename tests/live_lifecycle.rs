@@ -215,6 +215,11 @@ async fn clm_0014_connect_resumes_paused_sandbox_with_files() {
         .await
         .expect("write");
     assert!(sandbox.pause().await.expect("pause"));
+    // Without this, a server whose pause is a no-op passes the test vacuously.
+    assert_eq!(
+        sandbox.get_info().await.expect("info after pause").state,
+        SandboxState::Paused
+    );
 
     // Act
     let resumed = sandbox
