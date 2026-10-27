@@ -69,6 +69,23 @@ template building, and a blocking API.
 Every wire detail, with citations into the official SDK sources, is in
 [docs/protocol-notes.md](docs/protocol-notes.md).
 
+## Verification status
+
+Every behaviour listed above is backed by a claim in `claims.json`, the claims
+ledger. Each claim has a recorded verdict and the evidence behind it.
+
+As of 2026-10-26 (milestone 1):
+
+- **Hosted E2B:** all 46 behaviours above passed in a live run.
+- **Wire-protocol claims:** all 51 are backed by passing mock and unit tests.
+- **Refuted claims:** 0. Two were refuted during M1 and fixed: empty config
+  values, and the envd version gate on `close_stdin`.
+- **Not yet implemented:** the features under "Out of scope for now" are
+  tracked as `not_enough_info` claims for milestones 2 to 5.
+
+Live results are in `docs/verification/`. The road to a crates.io release is
+in `docs/superpowers/specs/2026-10-26-claims-audit-and-publishability-design.md`.
+
 ## Development
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). In short: `just lint` and `just test`.
