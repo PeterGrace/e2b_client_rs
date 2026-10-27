@@ -221,6 +221,31 @@ Behaviour:
 | Filesystem RPCs send the user via the `Authorization` header | `py: sandbox_async/filesystem/filesystem.py:517, 551, 583, 609, 640, 668` |
 | `is_running`: `GET /health`, 502 → not running | `py: sandbox_async/main.py:134-168` |
 
+## Uploads
+
+`Filesystem::write_files(&[WriteEntry], &WriteOptions)` writes a batch of
+in-memory files (`src/filesystem.rs`). `Filesystem::write` is a one-entry
+`write_files` with default options, so its wire request is unchanged.
+
+| Fact | Citation |
+|---|---|
+| `write_files([])` returns `[]` without a request | `py: sandbox_async/filesystem/filesystem.py:360-361` |
+| `write` is `write_files` with one entry | `py: sandbox_async/filesystem/filesystem.py:291-329` |
+| Multipart (the default for in-memory data): one `POST /files` for all files, every part named `file` with filename = path; the `path` query is sent only for exactly one file; `username` as for reads | `py: sandbox_async/filesystem/filesystem.py:445-462`; `py: sandbox/filesystem/filesystem.py:267-280` |
+| Octet-stream: one `POST /files?path=<p>[&username=<u>]` per file, `Content-Type: application/octet-stream`, the body is the file; the requests run concurrently (`asyncio.gather`) and the results are concatenated in entry order | `py: sandbox_async/filesystem/filesystem.py:400-444` |
+| Gzip: the octet-stream request with `Content-Encoding: gzip` and a gzip body; gzip implies octet-stream, since the encoding applies to the whole request body | `py: sandbox_async/filesystem/filesystem.py:380-384, 409-411`; `py: sandbox/filesystem/filesystem.py:323-339` |
+| Octet-stream and gzip need envd 0.5.7: `use_octet_stream = (use_octet_stream or gzip) and envd >= 0.5.7`, so older envd gets *uncompressed* multipart | `py: sandbox_async/filesystem/filesystem.py:369-384`; `py: envd/versions.py:8` |
+| Every answer is a JSON array of `{name, type, path}`; an empty array (or not an array) is an error | `py: sandbox_async/filesystem/filesystem.py:431-438, 480-487`; `py: sandbox/filesystem/filesystem.py:56-90` |
+| An in-memory upload is bounded by the request timeout | `py: sandbox_async/filesystem/filesystem.py:386-393` |
+
+Differences: the SDK compresses an in-memory gzip upload whole
+(`gzip.compress`) and sends it with a `Content-Length`. This crate
+compresses it as it is sent (`async-compression`'s `GzipEncoder` over the
+buffer), so the request is chunked and the compressed copy is never held
+whole. envd decodes both; hosted envd 0.10.0 accepted it live on 2026-10-27.
+`write` returns the first entry of the answer, where the SDK errors unless
+there is exactly one; that is the v0.1 behaviour, kept.
+
 ## Directory watching
 
 `Filesystem::watch_dir` returns a `WatchHandle` over the server-streaming
@@ -258,7 +283,8 @@ stream is `Ok(None)`; the error that ends a watch is returned by
   output; here `next_event()` hands chunks to the caller and `wait()` only
   collects what is left, so output is held once.
 - **Not implemented in v0.1:** signed file URLs,
-  octet-stream and gzip uploads, sandbox health probing on transport errors, metrics, snapshots, fork, network updates,
+  streamed uploads from a reader (octet-stream and gzip uploads of in-memory
+  data are in, see "Uploads"), sandbox health probing on transport errors, metrics, snapshots, fork, network updates,
   template builds, and the sync API.
 
 ## Verification against a live server

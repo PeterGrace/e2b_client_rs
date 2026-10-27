@@ -5,11 +5,15 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use async_compression::tokio::bufread::GzipEncoder;
 use bytes::Bytes;
 use chrono::{DateTime, Utc};
 use reqwest::Method;
+use reqwest::header::{CONTENT_ENCODING, CONTENT_TYPE, HeaderValue};
 use reqwest::multipart::{Form, Part};
 use serde::Deserialize;
+use tokio::io::AsyncBufRead;
+use tokio_util::io::ReaderStream;
 
 use crate::envd::connect::{ConnectStream, Empty};
 use crate::envd::filesystem_pb::{
@@ -128,6 +132,132 @@ struct UploadedEntry {
     path: String,
     #[serde(default, rename = "type")]
     file_type: Option<EnumValue>,
+}
+
+impl From<UploadedEntry> for WriteInfo {
+    fn from(entry: UploadedEntry) -> Self {
+        Self {
+            file_type: FileType::from_wire(entry.file_type.as_ref()),
+            name: entry.name,
+            path: entry.path,
+        }
+    }
+}
+
+/// One file for [`Filesystem::write_files`]: where to write, and what.
+///
+/// # Examples
+///
+/// ```
+/// use e2b_client::WriteEntry;
+///
+/// let entries = [
+///     WriteEntry::new("/home/user/a.txt", "alpha"),
+///     WriteEntry::new("/home/user/b.bin", vec![0_u8, 1, 2]),
+/// ];
+/// # let _ = entries;
+/// ```
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WriteEntry {
+    path: String,
+    data: Bytes,
+}
+
+impl WriteEntry {
+    /// Creates an entry.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - where to write.
+    /// * `data` - the content (`&'static str`, `String`, `Vec<u8>`, `Bytes`...).
+    ///
+    /// # Returns
+    ///
+    /// The entry.
+    #[must_use]
+    pub fn new(path: impl Into<String>, data: impl Into<Bytes>) -> Self {
+        Self {
+            path: path.into(),
+            data: data.into(),
+        }
+    }
+}
+
+/// How [`Filesystem::write_files`] uploads: as which user, and with which
+/// encoding.
+///
+/// By default uploads are `multipart/form-data`, the SDKs' default for
+/// in-memory data, with all files in one request. Octet-stream and gzip
+/// send one request per file, and need envd 0.5.7 or newer: on older envd
+/// they fall back to uncompressed multipart, as the SDKs do.
+///
+/// # Examples
+///
+/// ```
+/// use e2b_client::WriteOptions;
+///
+/// // Gzip-compressed octet-stream uploads, written as root.
+/// let options = WriteOptions::default().gzip(true).user("root");
+/// # let _ = options;
+/// ```
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct WriteOptions {
+    user: Option<String>,
+    octet_stream: bool,
+    gzip: bool,
+}
+
+impl WriteOptions {
+    /// Writes as `user` (who will own the files) instead of the sandbox's
+    /// default user.
+    ///
+    /// # Arguments
+    ///
+    /// * `user` - the user name, e.g. `"root"`.
+    ///
+    /// # Returns
+    ///
+    /// The options, for chaining.
+    #[must_use]
+    pub fn user(mut self, user: impl Into<String>) -> Self {
+        self.user = Some(user.into());
+        self
+    }
+
+    /// Uploads each file as its own `application/octet-stream` request
+    /// instead of one multipart request. Needs envd 0.5.7 or newer; older
+    /// envd gets multipart.
+    ///
+    /// # Arguments
+    ///
+    /// * `octet_stream` - whether to use octet-stream uploads.
+    ///
+    /// # Returns
+    ///
+    /// The options, for chaining.
+    #[must_use]
+    pub fn octet_stream(mut self, octet_stream: bool) -> Self {
+        self.octet_stream = octet_stream;
+        self
+    }
+
+    /// Gzip-compresses each file's body and sends `Content-Encoding: gzip`.
+    /// Implies octet-stream, because the encoding applies to the whole
+    /// request body. Needs envd 0.5.7 or newer; older envd gets
+    /// *uncompressed* multipart, as in the SDKs.
+    ///
+    /// # Arguments
+    ///
+    /// * `gzip` - whether to compress uploads.
+    ///
+    /// # Returns
+    ///
+    /// The options, for chaining.
+    #[must_use]
+    pub fn gzip(mut self, gzip: bool) -> Self {
+        self.gzip = gzip;
+        self
+    }
 }
 
 /// What happened to a watched entry (`filesystem.EventType`).
@@ -437,13 +567,120 @@ impl Filesystem {
         Self { envd }
     }
 
+    /// The `/files` query for a read: `path`, plus `username` when a user
+    /// applies.
     fn file_query<'a>(&self, path: &'a str, user: Option<&'a str>) -> Vec<(&'static str, &'a str)> {
+        self.upload_query(Some(path), user)
+    }
+
+    /// The `/files` query for an upload: `path` when given (a multipart
+    /// upload of several files has none), plus `username` when a user
+    /// applies.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - the target path, if the request names one.
+    /// * `user` - the caller's user, resolved with `effective_user`.
+    ///
+    /// # Returns
+    ///
+    /// The query pairs, borrowed from the arguments.
+    fn upload_query<'a>(
+        &self,
+        path: Option<&'a str>,
+        user: Option<&'a str>,
+    ) -> Vec<(&'static str, &'a str)> {
         let mut query = Vec::with_capacity(2);
-        query.push(("path", path));
-        if let Some(user) = self.envd.effective_user(user) {
-            query.push(("username", user));
-        }
+        // `extend` with an `Option` adds its value when it is `Some`, like
+        // appending only when the value is not `None` in Python.
+        query.extend(path.map(|path| ("path", path)));
+        query.extend(
+            self.envd
+                .effective_user(user)
+                .map(|user| ("username", user)),
+        );
         query
+    }
+
+    /// Whether an upload with `options` goes as octet-stream: asked for
+    /// (gzip implies it) and supported by this sandbox's envd
+    /// (`e2b/sandbox_async/filesystem/filesystem.py:369-384`).
+    fn uses_octet_stream(&self, options: &WriteOptions) -> bool {
+        (options.octet_stream || options.gzip)
+            && self.envd.version() >= EnvdVersion::OCTET_STREAM_UPLOAD
+    }
+
+    /// Uploads one file as an `application/octet-stream` body
+    /// (`POST /files?path=<p>`), with `Content-Encoding: gzip` when
+    /// `options.gzip` is set (the caller compresses `body`).
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - where to write.
+    /// * `body` - the request body.
+    /// * `options` - user and gzip.
+    /// * `timeout` - the whole-request deadline, or `None` for none.
+    ///
+    /// # Returns
+    ///
+    /// What envd reports about the written file.
+    ///
+    /// # Errors
+    ///
+    /// As [`Filesystem::write`].
+    async fn post_octet_stream(
+        &self,
+        path: &str,
+        body: reqwest::Body,
+        options: &WriteOptions,
+        timeout: Option<Duration>,
+    ) -> Result<Vec<WriteInfo>> {
+        let mut request = self
+            .envd
+            .http_request_with_timeout(Method::POST, FILES_ROUTE, timeout)
+            .query(&self.upload_query(Some(path), options.user.as_deref()))
+            .header(
+                CONTENT_TYPE,
+                HeaderValue::from_static("application/octet-stream"),
+            );
+        if options.gzip {
+            request = request.header(CONTENT_ENCODING, HeaderValue::from_static("gzip"));
+        }
+        written_entries(request.body(body).send().await?).await
+    }
+
+    /// Uploads a multipart form of `file` parts (`POST /files`).
+    ///
+    /// # Arguments
+    ///
+    /// * `form` - the parts, each named `file` with the target path as its
+    ///   filename.
+    /// * `path` - the `path` query, sent only for a single-file upload.
+    /// * `options` - the user.
+    /// * `timeout` - the whole-request deadline, or `None` for none.
+    ///
+    /// # Returns
+    ///
+    /// What envd reports about each written file.
+    ///
+    /// # Errors
+    ///
+    /// As [`Filesystem::write`].
+    async fn post_multipart(
+        &self,
+        form: Form,
+        path: Option<&str>,
+        options: &WriteOptions,
+        timeout: Option<Duration>,
+    ) -> Result<Vec<WriteInfo>> {
+        let response = self
+            .envd
+            .http_request_with_timeout(Method::POST, FILES_ROUTE, timeout)
+            .query(&self.upload_query(path, options.user.as_deref()))
+            .multipart(form)
+            .send()
+            .await?;
+        written_entries(response).await
     }
 
     /// Downloads a file (`GET /files?path=...`).
@@ -495,7 +732,8 @@ impl Filesystem {
 
     /// Uploads a file, creating parent directories and overwriting any
     /// existing file (`POST /files?path=...`, multipart field `file`, the SDKs'
-    /// default upload encoding: JS `dist/index.js:2226-2249`).
+    /// default upload encoding: JS `dist/index.js:2226-2249`). It is a
+    /// one-entry [`Filesystem::write_files`] with default options.
     ///
     /// # Arguments
     ///
@@ -517,32 +755,101 @@ impl Filesystem {
         data: impl Into<Bytes>,
         user: Option<&str>,
     ) -> Result<WriteInfo> {
-        let data: Bytes = data.into();
-        // `u64::try_from` cannot fail for an in-memory buffer on 64-bit targets.
-        let length = u64::try_from(data.len()).unwrap_or(u64::MAX);
-        let part = Part::stream_with_length(data, length).file_name(path.to_owned());
-        let form = Form::new().part("file", part);
-        let response = self
-            .envd
-            .http_request(Method::POST, FILES_ROUTE)
-            .query(&self.file_query(path, user))
-            .multipart(form)
-            .send()
-            .await?;
-        if !response.status().is_success() {
-            return Err(envd_http_error(response).await);
-        }
-        let body = response.bytes().await?;
-        let entries: Vec<UploadedEntry> = serde_json::from_slice(&body)?;
-        let entry = entries
+        let options = WriteOptions {
+            user: user.map(str::to_owned),
+            ..WriteOptions::default()
+        };
+        self.write_files(&[WriteEntry::new(path, data)], &options)
+            .await?
             .into_iter()
             .next()
-            .ok_or_else(|| Error::Protocol("envd reported no written file".into()))?;
-        Ok(WriteInfo {
-            file_type: FileType::from_wire(entry.file_type.as_ref()),
-            name: entry.name,
-            path: entry.path,
-        })
+            .ok_or_else(no_written_file)
+    }
+
+    /// Writes several files (`POST /files`), creating parent directories and
+    /// overwriting existing files.
+    ///
+    /// Multipart (the default) sends all files in one request, with the
+    /// `path` query only when there is exactly one file. Octet-stream and
+    /// gzip send one request per file, concurrently; on envd older than
+    /// 0.5.7 they fall back to uncompressed multipart. Every request is
+    /// bounded by the client's request timeout.
+    ///
+    /// The octet-stream requests all start at once, with no limit, as the
+    /// SDK's `asyncio.gather` does: a batch of N files opens N requests to
+    /// envd. For a very large batch, call `write_files` on chunks of
+    /// `entries` (`entries.chunks(64)`) to bound it.
+    ///
+    /// # Arguments
+    ///
+    /// * `entries` - the files.
+    /// * `options` - user and encoding.
+    ///
+    /// # Returns
+    ///
+    /// What envd reports about each written file, in envd's order (for
+    /// octet-stream, the order of `entries`). An empty `entries` returns an
+    /// empty list without a request.
+    ///
+    /// # Errors
+    ///
+    /// As [`Filesystem::write`]. With octet-stream, the first failing
+    /// upload's error is returned, and the other uploads are dropped
+    /// (cancelled) where still running.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use e2b_client::{Sandbox, WriteEntry, WriteOptions};
+    ///
+    /// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
+    /// let entries = [
+    ///     WriteEntry::new("/home/user/a.txt", "alpha"),
+    ///     WriteEntry::new("/home/user/sub/b.txt", "beta"),
+    /// ];
+    /// let written = sandbox.files().write_files(&entries, &WriteOptions::default()).await?;
+    /// assert_eq!(written.len(), 2);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn write_files(
+        &self,
+        entries: &[WriteEntry],
+        options: &WriteOptions,
+    ) -> Result<Vec<WriteInfo>> {
+        if entries.is_empty() {
+            return Ok(Vec::new());
+        }
+        let timeout = self.envd.request_timeout();
+        if self.uses_octet_stream(options) {
+            // `Bytes::clone` is a reference-count bump, not a copy of the data.
+            // `map` builds the upload futures lazily; none runs until
+            // `try_join_all` polls them all together, like `asyncio.gather`.
+            let uploads = entries.iter().map(|entry| {
+                let body = if options.gzip {
+                    gzip_body(std::io::Cursor::new(entry.data.clone()))
+                } else {
+                    reqwest::Body::from(entry.data.clone())
+                };
+                self.post_octet_stream(&entry.path, body, options, timeout)
+            });
+            let written = futures_util::future::try_join_all(uploads).await?;
+            return Ok(written.into_iter().flatten().collect());
+        }
+        let form = entries.iter().fold(Form::new(), |form, entry| {
+            // `u64::try_from` cannot fail for an in-memory buffer on 64-bit targets.
+            let length = u64::try_from(entry.data.len()).unwrap_or(u64::MAX);
+            let part =
+                Part::stream_with_length(entry.data.clone(), length).file_name(entry.path.clone());
+            form.part("file", part)
+        });
+        // A slice pattern: `[only]` matches a slice of exactly one element.
+        let single_path = match entries {
+            [only] => Some(only.path.as_str()),
+            _ => None,
+        };
+        self.post_multipart(form, single_path, options, timeout)
+            .await
     }
 
     /// Lists a directory (`ListDir`).
@@ -800,6 +1107,53 @@ impl Filesystem {
     }
 }
 
+/// The error for an upload answer that lists no written file
+/// (`e2b/sandbox_async/filesystem/filesystem.py:424-428`).
+fn no_written_file() -> Error {
+    Error::Protocol("envd reported no written file".into())
+}
+
+/// Reads an upload response: the JSON array of written entries.
+///
+/// # Arguments
+///
+/// * `response` - envd's answer to a `POST /files`.
+///
+/// # Returns
+///
+/// One [`WriteInfo`] per entry, in envd's order.
+///
+/// # Errors
+///
+/// [`Error::Envd`] for a non-2xx status, [`Error::Protocol`] for an empty
+/// array, [`Error::Decode`] or [`Error::Transport`].
+async fn written_entries(response: reqwest::Response) -> Result<Vec<WriteInfo>> {
+    if !response.status().is_success() {
+        return Err(envd_http_error(response).await);
+    }
+    let body = response.bytes().await?;
+    let entries: Vec<UploadedEntry> = serde_json::from_slice(&body)?;
+    if entries.is_empty() {
+        return Err(no_written_file());
+    }
+    Ok(entries.into_iter().map(WriteInfo::from).collect())
+}
+
+/// A request body that gzip-compresses `source` as it is sent, so the
+/// compressed data is never held whole in memory.
+///
+/// # Arguments
+///
+/// * `source` - the plain bytes, as a buffered async reader. It must be
+///   `Send + 'static` because reqwest may poll the body on another task.
+///
+/// # Returns
+///
+/// A streamed body (sent with chunked transfer encoding).
+fn gzip_body(source: impl AsyncBufRead + Send + 'static) -> reqwest::Body {
+    reqwest::Body::wrap_stream(ReaderStream::new(GzipEncoder::new(source)))
+}
+
 fn entry_of(response: EntryResponse) -> Result<EntryInfo> {
     response
         .entry
@@ -886,6 +1240,34 @@ mod tests {
             matches!(&err, Error::InvalidArgument(message) if message.contains("0.6.4")),
             "{err:?}"
         );
+    }
+
+    #[test]
+    fn write_options_default_to_multipart_and_chain() {
+        assert_eq!(
+            WriteOptions::default(),
+            WriteOptions {
+                user: None,
+                octet_stream: false,
+                gzip: false
+            }
+        );
+        let options = WriteOptions::default()
+            .user("root")
+            .octet_stream(true)
+            .gzip(true);
+        assert_eq!(options.user.as_deref(), Some("root"));
+        assert!(options.octet_stream && options.gzip);
+    }
+
+    #[test]
+    fn uploaded_entry_converts_to_write_info() {
+        let entry: UploadedEntry =
+            serde_json::from_str(r#"{"name":"a","type":"dir","path":"/w/a"}"#).expect("json");
+        let info = WriteInfo::from(entry);
+        assert_eq!(info.name, "a");
+        assert_eq!(info.path, "/w/a");
+        assert_eq!(info.file_type, FileType::Directory);
     }
 
     #[test]

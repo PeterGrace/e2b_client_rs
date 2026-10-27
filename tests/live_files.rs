@@ -5,7 +5,7 @@ mod live_support;
 use std::collections::HashSet;
 use std::time::Duration;
 
-use e2b_client::{FileType, FilesystemEventType, WatchOptions};
+use e2b_client::{FileType, FilesystemEventType, WatchOptions, WriteEntry, WriteOptions};
 use live_support::LiveSandbox;
 
 #[tokio::test]
@@ -305,6 +305,38 @@ async fn clm_0061_user_selects_file_owner() {
         .owner;
     assert_eq!(root_owner, "root");
     assert_eq!(user_owner, "user");
+}
+
+#[tokio::test]
+#[ignore = "live: run with `just test-live <target>`"]
+async fn clm_0062_write_files_writes_every_file() {
+    let sandbox = LiveSandbox::new().await;
+    let files = sandbox.files();
+    // Every byte value, so a binary file in a new subdirectory is covered.
+    let binary: Vec<u8> = (0..=255_u8).collect();
+    let entries = [
+        WriteEntry::new("/tmp/batch/a.txt", "alpha"),
+        WriteEntry::new("/tmp/batch/sub/b.bin", binary.clone()),
+    ];
+
+    let written = files
+        .write_files(&entries, &WriteOptions::default())
+        .await
+        .expect("write_files");
+
+    let mut paths: Vec<&str> = written.iter().map(|info| info.path.as_str()).collect();
+    paths.sort_unstable();
+    assert_eq!(paths, ["/tmp/batch/a.txt", "/tmp/batch/sub/b.bin"]);
+    let text = files
+        .read("/tmp/batch/a.txt", None)
+        .await
+        .expect("read a.txt");
+    let bytes = files
+        .read("/tmp/batch/sub/b.bin", None)
+        .await
+        .expect("read b.bin");
+    assert_eq!(text.as_ref(), b"alpha");
+    assert!(bytes.as_ref() == binary.as_slice(), "b.bin changed");
 }
 
 #[tokio::test]

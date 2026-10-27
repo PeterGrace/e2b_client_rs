@@ -128,7 +128,7 @@ SDK sources are e2b 2.61.0, the same packages as `docs/protocol-notes.md` (`py:`
 |---|---|
 | `claims.json` | plan PR; Task 11 |
 | `justfile`, `CONTRIBUTING.md` (run-log header) | 1 |
-| `Cargo.toml` | 2 (futures-util, reqwest `stream`, tokio `rt`/`sync`), 5 (async-compression, tokio-util, tokio `io-util`, futures-util `alloc`), 8 (sha2) |
+| `Cargo.toml` | 2 (futures-util, reqwest `stream`, tokio `rt`/`sync`), 5 (async-compression, tokio-util, futures-util `alloc`), 6 (tokio `io-util`), 8 (sha2) |
 | `src/envd/mod.rs` | 2 (`client_stream`, shared stream POST, keepalive constants, `within_request_timeout`), 4 (watch version constants), 5 (`OCTET_STREAM_UPLOAD`, untimed requests), 7 (`FILE_METADATA`), 8 (keep the access token, `direct_base`) |
 | `src/envd/process_pb.rs` | 2 (`ProcessInput` oneof, `StreamInputRequest`), 3 (`PtyConfig`, `StartRequest.pty`/`stdin`, `DataEvent.pty`, `UpdateRequest`) |
 | `src/envd/filesystem_pb.rs` | 4 (`WatchDirRequest`, `WatchDirResponse`, `FilesystemEventWire`), 7 (`EntryInfoWire.metadata`) |
@@ -1603,10 +1603,11 @@ git commit -m "feat: Filesystem::watch_dir with recursive, entry and network-mou
 # Gzip-compresses uploads on the fly (the SDKs' `gzip=True` upload).
 async-compression = { version = "0.4.42", features = ["tokio", "gzip"] }
 futures-util = { version = "0.3.34", default-features = false, features = ["alloc"] }
-tokio = { version = "1.54.1", features = ["time", "rt", "sync", "io-util"] }
 # Turns an AsyncRead into a byte stream for request bodies.
 tokio-util = { version = "0.7.20", default-features = false, features = ["io"] }
 ```
+
+> **Corrected (issue #34, 2026-10-27).** Task 5 does not add tokio's `io-util` feature: nothing in it needs one. `std::io::Cursor<Bytes>` is `AsyncRead` and `AsyncBufRead` without it (`tokio-1.54.1/src/io/async_buf_read.rs:111`). Task 6 adds `io-util`, for `BufReader`. `Cargo.lock` pins async-compression 0.4.42 (with compression-codecs 0.4.38 and compression-core 0.4.32), the versions the Verified facts cite; a plain `cargo add` resolves 0.4.51.
 
 - [ ] **Step 2: Write the failing mock tests**
 
@@ -1755,10 +1756,11 @@ Builder methods `user`, `octet_stream(bool)` and `gzip(bool)` (gzip implies octe
 Private helpers shared by Tasks 5 to 7:
 
 - `fn uses_octet_stream(&self, options: &WriteOptions) -> bool { (options.octet_stream || options.gzip) && self.envd.version() >= EnvdVersion::OCTET_STREAM_UPLOAD }`
-- `fn upload_query(&self, path: Option<&str>, user: Option<&str>) -> Vec<(&'static str, String)>`: `path` when given, `username` from `effective_user`. `file_query` stays for reads.
+- `fn upload_query<'a>(&self, path: Option<&'a str>, user: Option<&'a str>) -> Vec<(&'static str, &'a str)>`: `path` when given, `username` from `effective_user`, borrowed rather than copied. `file_query(path, user)` stays for reads and is `upload_query(Some(path), user)`.
 - `async fn post_octet_stream(&self, path: &str, body: reqwest::Body, options: &WriteOptions, timeout: Option<Duration>) -> Result<Vec<WriteInfo>>`: `Content-Type: application/octet-stream`, and `Content-Encoding: gzip` when `options.gzip`.
 - `async fn post_multipart(&self, form: Form, path: Option<&str>, options: &WriteOptions, timeout: Option<Duration>) -> Result<Vec<WriteInfo>>`.
-- `async fn written_entries(response: reqwest::Response) -> Result<Vec<WriteInfo>>`: a non-2xx status gives `envd_http_error`; an empty array gives `Error::Protocol("envd reported no written file")`.
+- `async fn written_entries(response: reqwest::Response) -> Result<Vec<WriteInfo>>`: a non-2xx status gives `envd_http_error`; an empty array gives `no_written_file()`, that is `Error::Protocol("envd reported no written file")`. Each entry converts through `impl From<UploadedEntry> for WriteInfo`.
+- `fn no_written_file() -> Error`: the shared "no written file" error, also used by `write` (and by Task 6's `write_stream`).
 - `fn gzip_body(source: impl AsyncBufRead + Send + 'static) -> reqwest::Body { reqwest::Body::wrap_stream(ReaderStream::new(GzipEncoder::new(source))) }`.
 
 The `timeout` parameter exists for Task 6. Add `EnvdClient::http_request_with_timeout(method, path, timeout: Option<Duration>)`, and make `http_request` call it with `self.request_timeout`.
@@ -1767,15 +1769,15 @@ The `timeout` parameter exists for Task 6. Add `EnvdClient::http_request_with_ti
 
 ```rust
     pub async fn write(&self, path: &str, data: impl Into<Bytes>, user: Option<&str>) -> Result<WriteInfo> {
-        let mut options = WriteOptions::default();
-        if let Some(user) = user {
-            options = options.user(user);
-        }
+        let options = WriteOptions {
+            user: user.map(str::to_owned),
+            ..WriteOptions::default()
+        };
         self.write_files(&[WriteEntry::new(path, data)], &options)
             .await?
             .into_iter()
             .next()
-            .ok_or_else(|| Error::Protocol("envd reported no written file".into()))
+            .ok_or_else(no_written_file)
     }
 ```
 
@@ -1799,7 +1801,7 @@ git commit -m "feat: Filesystem::write_files with octet-stream and gzip encoding
 ### Task 6: Streamed upload and download (CLM-0066, 0128, 0142)
 
 **Files:**
-- Modify: `src/filesystem.rs`, `src/lib.rs`
+- Modify: `Cargo.toml` (tokio `io-util`, see below), `src/filesystem.rs`, `src/lib.rs`
 - Create: `tests/envd_stream_files.rs`
 - Modify: `tests/live_files.rs`, `docs/protocol-notes.md`, `docs/verification/s4-evidence-map.md`
 
@@ -1875,12 +1877,11 @@ Run: `cargo test --test envd_stream_files` — Expected: compile errors.
             let plain = WriteOptions { gzip: false, ..options.clone() };
             self.post_multipart(Form::new().part("file", part), Some(path), &plain, None).await?
         };
-        written
-            .into_iter()
-            .next()
-            .ok_or_else(|| Error::Protocol("envd reported no written file".into()))
+        written.into_iter().next().ok_or_else(no_written_file)
     }
 ```
+
+> **Corrected (issue #34, 2026-10-27).** `BufReader` needs tokio's `io-util` feature, which Task 5 did not add. Add it to the `[dependencies]` tokio line in `Cargo.toml`: `features = ["time", "rt", "sync", "io-util"]`, and import `tokio::io::{AsyncRead, BufReader}` (`AsyncBufRead`, `ReaderStream` and `GzipEncoder` are already imported). `gzip_body` takes `impl AsyncBufRead + Send + 'static`, so `BufReader<impl AsyncRead + Send + 'static>` fits it directly.
 
 The doc example uses a byte slice rather than `tokio::fs::File`, because the library does not enable tokio's `fs` feature.
 
@@ -1981,7 +1982,7 @@ git commit -m "feat: streamed and gzip uploads from AsyncRead, streamed download
 - [ ] **Step 2: Implementation**
 
 - `EnvdVersion::FILE_METADATA = 0.6.2` (`e2b/envd/versions.py:9`).
-- `EntryInfoWire` and `UploadedEntry` gain `#[serde(default)] metadata: HashMap<String, String>`. (Note from issue #33: `FilesystemEventWire.entry` is an `EntryInfoWire` mapped through `EntryInfo::from`, so `include_entry` watch events carry the metadata with no further change; extend `src/envd/filesystem_pb.rs::tests::watch_dir_response_members_parse` if you want that pinned.) `EntryInfo` and `WriteInfo` gain `pub metadata: HashMap<String, String>` ("user metadata stored as `user.e2b.*` extended attributes; empty when none is set").
+- `EntryInfoWire` and `UploadedEntry` gain `#[serde(default)] metadata: HashMap<String, String>` (carry `UploadedEntry`'s into `WriteInfo` in the `impl From<UploadedEntry> for WriteInfo` that Task 5 added). (Note from issue #33: `FilesystemEventWire.entry` is an `EntryInfoWire` mapped through `EntryInfo::from`, so `include_entry` watch events carry the metadata with no further change; extend `src/envd/filesystem_pb.rs::tests::watch_dir_response_members_parse` if you want that pinned.) `EntryInfo` and `WriteInfo` gain `pub metadata: HashMap<String, String>` ("user metadata stored as `user.e2b.*` extended attributes; empty when none is set").
 - `WriteOptions` gains `metadata: BTreeMap<String, String>` (sorted, so the headers come out in a stable order for tests), set with `pub fn metadata(mut self, key: impl Into<String>, value: impl Into<String>) -> Self`.
 - `fn metadata_headers(&self, options: &WriteOptions) -> Result<HeaderMap>`: empty map gives empty headers; else check the version, then validate each pair (a key is non-empty and every byte is in `b"!#$%&'*+-.^_`|~"` or ASCII alphanumeric; a value has every byte in `0x20..=0x7e`), and build `x-metadata-<key>` headers with `HeaderName::from_bytes` / `HeaderValue::from_str`, mapping failures to `InvalidArgument`. It is called once at the top of `write_files` and `write_stream`, before any request, and the headers are added in `post_multipart` and `post_octet_stream`.
 
