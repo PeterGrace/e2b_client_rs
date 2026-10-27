@@ -236,7 +236,7 @@ is the SDK's `stop()`.
 | `FilesystemEvent {name = 1, type = 2, entry = 3?}`; `name` is relative to the watched directory; `entry` only with `include_entry`, and may be absent for removals and renames away | `py: envd/filesystem/filesystem_pb.py:457-497`; `py: sandbox/filesystem/watch_handle.py:49-70` |
 | `EventType`: `UNSPECIFIED = 0`, `CREATE = 1`, `WRITE = 2`, `REMOVE = 3`, `RENAME = 4`, `CHMOD = 5`; unspecified and unknown types are dropped, as are keepalives | `py: envd/filesystem/filesystem_pb.py:774-810`; `py: sandbox/filesystem/watch_handle.py:36-46`; `py: sandbox_async/filesystem/watch_handle.py:47-64` |
 | Version gates, checked before any request: `recursive` needs envd 0.1.4, `include_entry` 0.6.3, `allow_network_mounts` 0.6.4 (the SDKs raise `TemplateException`; here `Error::InvalidArgument`) | `py: sandbox_async/filesystem/filesystem.py:705-721`; `py: envd/versions.py:3, 10, 11` |
-| Headers: the user header and `Keepalive-Ping-Interval: 50`; the watch timeout (default 60 s, `0`/`None` for none) is sent as `Connect-Timeout-Ms` and bounds the whole stream | `py: sandbox_async/filesystem/filesystem.py:685, 723-740` |
+| Headers: the user header and `Keepalive-Ping-Interval: 50`; the watch timeout (default 60 s; the SDK's `0`/`None` for none is only `None` here, since `Some(Duration::ZERO)` is sent as `Connect-Timeout-Ms: 1` and ends the watch at once, as for the other options structs) is sent as `Connect-Timeout-Ms` and bounds the whole stream | `py: sandbox_async/filesystem/filesystem.py:685, 723-740` |
 | The stream must open with `start`, awaited within the request timeout; anything else is an error | `py: sandbox_async/filesystem/filesystem.py:742-766` |
 
 The SDK's `on_event`/`on_exit` callbacks are replaced by the handle's

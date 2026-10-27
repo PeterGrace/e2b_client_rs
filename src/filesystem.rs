@@ -298,6 +298,10 @@ impl WatchOptions {
     /// [`DEFAULT_WATCH_TIMEOUT`] (60 s), as in the SDKs. The deadline counts
     /// from when the watch opens, not from the last event.
     ///
+    /// Python note: the SDK's `timeout=0` means no limit, but here only
+    /// `None` does. `Some(Duration::ZERO)` is a deadline that has already
+    /// passed (sent as `Connect-Timeout-Ms: 1`), so the watch ends at once.
+    ///
     /// # Arguments
     ///
     /// * `timeout` - the stream deadline.
