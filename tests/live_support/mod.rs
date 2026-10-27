@@ -218,6 +218,15 @@ where
     }
 }
 
+/// Whether `sandbox` gets no HTTP reply from `ip` on two probes in a row
+/// (see [`http_reply`]), so that one transient failure does not read as
+/// egress being denied.
+pub async fn no_http_reply_twice(sandbox: &Sandbox, ip: &str) -> bool {
+    // Rust note: `&&` short-circuits as in Python's `and`, so a reply on the
+    // first probe skips the second.
+    !http_reply(sandbox, ip).await && !http_reply(sandbox, ip).await
+}
+
 /// Whether `sandbox` gets an HTTP reply from port 80 of `ip`, within 10 s.
 ///
 /// It needs a reply, not just a connection: hosted E2B completes the TCP

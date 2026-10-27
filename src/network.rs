@@ -1,11 +1,13 @@
 //! Sandbox network settings: outbound allow and deny lists, DNS servers,
 //! public traffic, and per-host header rules, set at create through
-//! [`crate::CreateSandboxParams::network`] and read back in
+//! [`crate::CreateSandboxParams::network`] and, through [`NetworkUpdate`], by
+//! [`crate::Client::update_sandbox_network`], and read back in
 //! [`crate::SandboxInfo::network`].
 //!
-//! The JSON shapes are `SandboxNetworkConfig`, `SandboxNetworkRule` and
-//! `SandboxNetworkTransform` (`e2b/api/client/models/`); the SDK builds them
-//! in `e2b/sandbox/sandbox_api.py:826-869, 928-996`.
+//! The JSON shapes are `SandboxNetworkConfig`, `SandboxNetworkUpdateConfig`,
+//! `SandboxNetworkRule` and `SandboxNetworkTransform`
+//! (`e2b/api/client/models/`); the SDK builds them in
+//! `e2b/sandbox/sandbox_api.py:826-869, 928-996, 1128-1152`.
 
 use std::collections::BTreeMap;
 use std::fmt;
@@ -254,6 +256,67 @@ impl NetworkConfig {
     }
 }
 
+/// A replacement for a running sandbox's egress settings
+/// ([`crate::Client::update_sandbox_network`], `SandboxNetworkUpdate`,
+/// `e2b/sandbox/sandbox_api.py:515-561`).
+///
+/// The update replaces the whole egress configuration: every field left
+/// unset is cleared on the server (DNS servers go back to `8.8.8.8`). Repeat
+/// every setting that should stay. An update with nothing set is sent as
+/// `{}`, which clears everything.
+///
+/// # Examples
+///
+/// ```
+/// use e2b_client::{ALL_TRAFFIC, NetworkUpdate};
+///
+/// // Deny all egress except one address; any earlier rules are cleared.
+/// let lock_down = NetworkUpdate::new().deny_out([ALL_TRAFFIC]).allow_out(["1.1.1.1"]);
+/// # let _ = lock_down;
+/// ```
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
+pub struct NetworkUpdate {
+    // Rust note: as in `NetworkConfig`, `flatten` writes the camelCase egress
+    // fields at the top level of the JSON object.
+    #[serde(flatten)]
+    egress: Egress,
+    // The spec spells this one field in snake_case, so it has no
+    // `rename_all` (`sandbox_network_update_config.py:102-103`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    allow_internet_access: Option<bool>,
+}
+
+impl NetworkUpdate {
+    /// An update that sets nothing: sent as is, it clears every egress
+    /// setting.
+    ///
+    /// # Returns
+    ///
+    /// An empty update.
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    egress_setters!();
+
+    /// Allows or denies all internet access; `false` is the same as
+    /// `deny_out([ALL_TRAFFIC])`.
+    ///
+    /// # Arguments
+    ///
+    /// * `allow` - whether the sandbox may reach the internet.
+    ///
+    /// # Returns
+    ///
+    /// The update, for chaining.
+    #[must_use]
+    pub fn allow_internet_access(mut self, allow: bool) -> Self {
+        self.allow_internet_access = Some(allow);
+        self
+    }
+}
+
 /// A rule for outbound HTTP and HTTPS requests to one host: headers to set
 /// on each request (`SandboxNetworkRule`, `e2b/sandbox/sandbox_api.py:149-224`).
 ///
@@ -445,6 +508,33 @@ mod tests {
                 .is_empty()
         );
         assert!(!NetworkConfig::new().allow_public_traffic(true).is_empty());
+    }
+
+    #[test]
+    fn update_sends_allow_internet_access_in_snake_case_next_to_camel_case_egress() {
+        // Arrange
+        let update = NetworkUpdate::new()
+            .dns_servers(Vec::<String>::new())
+            .allow_internet_access(false);
+
+        // Act
+        let value = serde_json::to_value(&update).expect("serialize");
+
+        // Assert
+        assert_eq!(
+            value,
+            json!({"dnsServers": [], "allow_internet_access": false})
+        );
+    }
+
+    #[test]
+    fn update_debug_hides_rule_header_values() {
+        let update = NetworkUpdate::new().rule("a.test", NetworkRule::new().header("K", "s3cret"));
+
+        let debug = format!("{update:?}");
+
+        assert!(debug.contains("a.test"), "{debug}");
+        assert!(!debug.contains("s3cret"), "{debug}");
     }
 
     #[test]

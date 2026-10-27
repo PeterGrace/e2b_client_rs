@@ -84,8 +84,9 @@ All JSON. Request/response models are the generated OpenAPI models under
 
 ## Network
 
-The create body's `network` object (`SandboxNetworkConfig`) and what the
-sandbox detail reports back. The crate builds it with `NetworkConfig` and
+The create body's `network` object (`SandboxNetworkConfig`), the network
+update body (`SandboxNetworkUpdateConfig`), and what the sandbox detail reports
+back. The crate builds them with `NetworkConfig`, `NetworkUpdate` and
 `NetworkRule` (`src/network.rs`).
 
 | Fact | Citation |
@@ -98,6 +99,10 @@ sandbox detail reports back. The crate builds it with `NetworkConfig` and
 | `ALL_TRAFFIC` is `0.0.0.0/0`; `allow_internet_access: false` works like `denyOut: ["0.0.0.0/0"]`, and both may be sent | `py: sandbox/network.py:1-8`; `py: sandbox_async/main.py:197` |
 | Detail: `allowInternetAccess` (bool or `null`) and `network` (the create shape, or `null`); list entries carry neither | `py: api/client/models/sandbox_detail.py:51-69, 174-250`; `py: api/client/models/listed_sandbox.py` |
 | Hosted E2B reports `allowInternetAccess: false` as given, not as a `denyOut` entry; it echoes `allowOut`, `dnsServers` and `rules` (header values included) and adds `allowPublicTraffic: true` when unset. A sandbox created without either reports both as `null` | live, hosted E2B, 2026-10-27 |
+| Update: `PUT /sandboxes/{id}/network`, 204 → done (the crate, as for the other routes, takes any 2xx as success); 404 → not found; other statuses are errors | `py: api/client/api/sandboxes/put_sandboxes_sandbox_id_network.py:21-55`; `py: sandbox_async/sandbox_api.py:190-209`; `js: 5420` |
+| Update body: `allowOut`, `denyOut`, `dnsServers`, `egressProxy`, `rules` in camelCase, and `allow_internet_access` in snake_case; each is sent only when set, and an update with nothing set is sent as `{}` (not left out, as an empty create `network` is). The crate does not send `egressProxy` (deferred) | `py: api/client/models/sandbox_network_update_config.py:50-103`; `py: sandbox/sandbox_api.py:1128-1152` |
+| The update replaces the whole egress configuration: a field it leaves out is cleared, so `dnsServers` goes back to `8.8.8.8` and an omitted `rules` or `egressProxy` is dropped. The sandbox is not restarted | `py: sandbox/sandbox_api.py:515-561` |
+| Hosted E2B applies an update at once, without a restart: an update with only `allow_internet_access: true` clears a create-time `denyOut: ["0.0.0.0/0"]`, and `denyOut: ["0.0.0.0/0"]` closes egress again, each seen by the first probe after the 204, with a tmpfs file kept | live, hosted E2B, 2026-10-27 (`clm_0144`) |
 
 ## Connect-RPC framing
 
@@ -350,8 +355,8 @@ the download URL with its `signature` pair removed with a 4xx.
 - **`wait()` does not replay consumed output.** The SDK handle buffers all
   output; here `next_event()` hands chunks to the caller and `wait()` only
   collects what is left, so output is held once.
-- **Not implemented yet.** Milestone 3: snapshots and fork, network
-  updates, and the remaining SDK 2.61 create fields. Milestone 4:
+- **Not implemented yet.** Milestone 3: snapshots and fork, and the
+  remaining SDK 2.61 create fields. Milestone 4:
   the `is_symlink` file type (#30) and dropping the v1 connect fallback.
   Unscheduled: sandbox health probing on transport errors. Out of scope by
   design: template builds and a sync API.
