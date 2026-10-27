@@ -95,7 +95,9 @@ pub(crate) enum InputKind {
 /// Get one from [`crate::Commands::stream_input`]. Chunks reach the process in
 /// the order they were sent. Call [`close`](Self::close) to end the stream and
 /// learn whether envd accepted it. Dropping the stream without `close` also
-/// ends it, but any error is then lost.
+/// ends it, but any error is then lost, and the call keeps running on its own
+/// task until envd answers or the deadline passes. With `.timeout(None)` and a
+/// server that never answers, that task is never cleaned up.
 ///
 /// The stream's deadline ([`StreamInputOptions::timeout`], 60 s by default)
 /// bounds the whole stream. The keepalive sent after 50 s without input stops
