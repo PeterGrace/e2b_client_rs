@@ -15,6 +15,8 @@ publish = false
 name = "e2b_client"
 
 [dependencies]
+# Gzip-compresses uploads on the fly (the SDKs' `gzip=True` upload).
+async-compression = { version = "0.4.42", features = ["tokio", "gzip"] }
 # proto3 JSON `bytes` fields are base64 strings.
 base64 = "0.23.1"
 # Zero-copy buffers for Connect envelope decoding and command output.
@@ -23,8 +25,9 @@ bytes = "1.12.1"
 chrono = { version = "0.4.45", default-features = false, features = ["serde", "std"] }
 # encodeURIComponent-compatible encoding for the list metadata filter.
 percent-encoding = "2.3.2"
-# Stream combinators for request bodies (`stream::unfold`).
-futures-util = { version = "0.3.34", default-features = false }
+# Stream combinators for request bodies (`stream::unfold`); `alloc` for
+# `future::try_join_all`, which runs concurrent uploads.
+futures-util = { version = "0.3.34", default-features = false, features = ["alloc"] }
 # HTTP/1.1 and HTTP/2 client over rustls; multipart for file uploads; `stream`
 # for streamed request bodies (client-streaming Connect calls).
 reqwest = { version = "0.13.5", default-features = false, features = ["json", "multipart", "http2", "rustls", "query", "stream"] }
@@ -37,6 +40,8 @@ thiserror = "2.0.21"
 # Deadlines on streams and stream opening; a background task (`rt`) and a
 # bounded channel (`sync`) drive client-streaming calls.
 tokio = { version = "1.54.1", features = ["time", "rt", "sync"] }
+# Turns an AsyncRead into a byte stream for request bodies.
+tokio-util = { version = "0.7.20", default-features = false, features = ["io"] }
 # URL building and form encoding.
 url = "2.5.8"
 

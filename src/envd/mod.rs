@@ -87,6 +87,9 @@ impl EnvdVersion {
     /// envd 0.6.4 allowed watching network mounts
     /// (`e2b/envd/versions.py:11`).
     pub(crate) const WATCH_NETWORK_MOUNTS: Self = Self::new(0, 6, 4);
+    /// envd 0.5.7 accepts `application/octet-stream` (and gzip) uploads;
+    /// older envd only takes multipart (`e2b/envd/versions.py:8`).
+    pub(crate) const OCTET_STREAM_UPLOAD: Self = Self::new(0, 5, 7);
 
     /// Creates a version from its parts.
     ///
@@ -225,6 +228,16 @@ impl EnvdClient {
     /// The sandbox's envd version.
     pub(crate) fn version(&self) -> EnvdVersion {
         self.version
+    }
+
+    /// The client's request timeout, which bounds unary calls, stream
+    /// opening and in-memory uploads.
+    ///
+    /// # Returns
+    ///
+    /// The timeout, or `None` when requests are unbounded.
+    pub(crate) fn request_timeout(&self) -> Option<Duration> {
+        self.request_timeout
     }
 
     /// The user to act as: the caller's choice, or `"user"` on envd older than
@@ -445,11 +458,33 @@ impl EnvdClient {
     /// Starts a request to envd's plain HTTP API at `path`, with the sandbox
     /// headers and the request timeout applied.
     pub(crate) fn http_request(&self, method: Method, path: &str) -> RequestBuilder {
+        self.http_request_with_timeout(method, path, self.request_timeout)
+    }
+
+    /// Starts a request to envd's plain HTTP API at `path`, with the sandbox
+    /// headers and a whole-request `timeout` in place of the request timeout.
+    ///
+    /// # Arguments
+    ///
+    /// * `method` - the HTTP method.
+    /// * `path` - the route, e.g. `/files`.
+    /// * `timeout` - the deadline for the whole request, or `None` for none
+    ///   (streamed transfers, which a deadline would cut off).
+    ///
+    /// # Returns
+    ///
+    /// The request builder, ready for a query and body.
+    pub(crate) fn http_request_with_timeout(
+        &self,
+        method: Method,
+        path: &str,
+        timeout: Option<Duration>,
+    ) -> RequestBuilder {
         let builder = self
             .http
             .request(method, format!("{}{path}", self.direct_base))
             .headers(self.headers.clone());
-        match self.request_timeout {
+        match timeout {
             Some(timeout) => builder.timeout(timeout),
             None => builder,
         }
@@ -549,6 +584,7 @@ mod tests {
         assert_eq!(EnvdVersion::RECURSIVE_WATCH.to_string(), "0.1.4");
         assert_eq!(EnvdVersion::FS_EVENT_ENTRY_INFO.to_string(), "0.6.3");
         assert_eq!(EnvdVersion::WATCH_NETWORK_MOUNTS.to_string(), "0.6.4");
+        assert_eq!(EnvdVersion::OCTET_STREAM_UPLOAD.to_string(), "0.5.7");
     }
 
     #[test]
