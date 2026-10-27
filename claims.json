@@ -5,10 +5,10 @@
     "by": "server",
     "mac": "1e4abf90e6c0fc60d73fc219a0ba7226aac34b82ff803a3502417c434c384f3e"
   },
-  "next_evidence_seq": 104,
+  "next_evidence_seq": 127,
   "next_evidence_seq_seal": {
     "by": "server",
-    "mac": "71fe858d683d19fc71bd0df24a5f21c534298ed3b32d828e4df1bbdb2ff51d1c"
+    "mac": "9a57864cd402159d064f782df721a936726fce0010334207b1be80bbcb69caa7"
   },
   "claims": [
     {
@@ -408,6 +408,18 @@
             "by": "server",
             "mac": "d0b6cd376dfb9e52c6711138784d41cedcd0056ffb2986d11dd3248e58267867"
           }
+        },
+        {
+          "id": "EVD-0105",
+          "kind": "demonstration",
+          "locator": "clm_0009 @ sandbawks, docs/verification/m1-live-results.md (sandbawks) + runs 20261026T225651Z-sandbawks-1078537, 20261026T233507Z-sandbawks-2244779",
+          "summary": "Fails on sandbawks 0.1.28 (stdout \"\\n\"), passes on hosted: sandbawks defect, create envVars not applied, filed gfd/sandbawks#681.",
+          "stance": "neutral",
+          "recorded_at": "2026-10-27T00:19:39.387784668Z",
+          "seal": {
+            "by": "server",
+            "mac": "dcdbd8784319ef05d403530bd9e44f9c43b24931e2de730a691dab37a3295946"
+          }
         }
       ],
       "verdicts": [
@@ -423,13 +435,26 @@
             "by": "server",
             "mac": "f307e56037603b7648c656690387960aada0c0d6cd14c69eb08ebabef55e366a"
           }
+        },
+        {
+          "verdict": "supported",
+          "rationale": "Re-affirmed after adding sandbawks evidence (EVD-0105, neutral): hosted E2B is canonical and passes; the sandbawks failure is gfd/sandbawks#681.",
+          "auditor": "claude-code/claude-opus-5-5 (M1 coordinator)",
+          "evidence_ids": [
+            "EVD-0056"
+          ],
+          "recorded_at": "2026-10-27T00:20:34.608026560Z",
+          "seal": {
+            "by": "server",
+            "mac": "0e57a6a10b3cadd76df14663660ede4849f503e9037e1a3367d6734975eed557"
+          }
         }
       ],
       "created_at": "2026-10-26T22:09:06.855685366Z",
-      "updated_at": "2026-10-26T23:01:27.063941687Z",
+      "updated_at": "2026-10-27T00:20:34.608026560Z",
       "seal": {
         "by": "server",
-        "mac": "772fcffc954f8c57bd8ce72c44aab5b61603f552f0a2d584e1d7adfa68ccd000"
+        "mac": "561e71c8200720bf2b2ee666ac4b4ad93b3f149566571819108de4fff67dfa10"
       }
     },
     {
@@ -520,6 +545,18 @@
             "by": "server",
             "mac": "7005a199bcedc997c4422141f7c3a42536fd4fd2a619469a3b148f926c2b19b6"
           }
+        },
+        {
+          "id": "EVD-0106",
+          "kind": "demonstration",
+          "locator": "clm_0011 @ sandbawks, docs/verification/m1-live-results.md (sandbawks) + runs 20261026T225651Z-sandbawks-1078537, 20261026T233507Z-sandbawks-2244779",
+          "summary": "Fails on sandbawks (no auto-pause within 120 s), passes on hosted: sandbawks defect, pause is a no-op, gfd/sandbawks#679 and #665.",
+          "stance": "neutral",
+          "recorded_at": "2026-10-27T00:19:41.290579349Z",
+          "seal": {
+            "by": "server",
+            "mac": "41c77b21739bf38bab9634bba7a8a73e8ceeff9af664e2c611d061b36af8afa6"
+          }
         }
       ],
       "verdicts": [
@@ -535,13 +572,26 @@
             "by": "server",
             "mac": "b131bb5b9487490c27e71f1d7402907a98f090dab5010469ac53c1431a3a8ee5"
           }
+        },
+        {
+          "verdict": "supported",
+          "rationale": "Re-affirmed after adding sandbawks evidence (EVD-0106, neutral): hosted passes; sandbawks failure is gfd/sandbawks#679/#665.",
+          "auditor": "claude-code/claude-opus-5-5 (M1 coordinator)",
+          "evidence_ids": [
+            "EVD-0058"
+          ],
+          "recorded_at": "2026-10-27T00:20:36.181743560Z",
+          "seal": {
+            "by": "server",
+            "mac": "534d97d0e50cd5880b1f86978a5124451d484a8e49f7a053d84c952ff6f68090"
+          }
         }
       ],
       "created_at": "2026-10-26T22:09:06.855685366Z",
-      "updated_at": "2026-10-26T23:01:30.052038268Z",
+      "updated_at": "2026-10-27T00:20:36.181743560Z",
       "seal": {
         "by": "server",
-        "mac": "c56883994cc0c5ef027f5d92d15b0b1f31e4deb6b8552d9249ee001ee8df0179"
+        "mac": "2198a1f6beae49eed549ddb3c909571948be8c5ea0dc40994204018408613216"
       }
     },
     {
@@ -688,6 +738,18 @@
             "by": "server",
             "mac": "27f43a592ca14c8eaa869201bf4cf113767dfe0b6d8f0fbe4346785fbee8d00c"
           }
+        },
+        {
+          "id": "EVD-0104",
+          "kind": "demonstration",
+          "locator": "tests/live_lifecycle.rs::clm_0014_connect_resumes_paused_sandbox_with_files @ hosted, docs/verification/runs/20261027T001912Z-hosted-clm0014-3495419.log (51340c2)",
+          "summary": "Re-run after PR #23 tightened the test to assert state Paused before resuming: passed live on hosted E2B; file intact after resume, commands run, state Running. Sweep killed 0.",
+          "stance": "supports",
+          "recorded_at": "2026-10-27T00:19:37.505095195Z",
+          "seal": {
+            "by": "server",
+            "mac": "0245c420e1039dc1186a65b4c3ae8bda070050e4ef24a70bfb16ee974ccfd8e8"
+          }
         }
       ],
       "verdicts": [
@@ -703,13 +765,26 @@
             "by": "server",
             "mac": "fef5ffcecc3c72fe74d33cf94fd1244d39aee50ea104c9ad70842604c1a4ecbd"
           }
+        },
+        {
+          "verdict": "supported",
+          "rationale": "Re-verified with the tightened test (asserts Paused before resuming) on hosted E2B at 51340c2; supersedes the earlier verdict that relied on the weaker test.",
+          "auditor": "claude-code/claude-opus-5-5 (M1 coordinator)",
+          "evidence_ids": [
+            "EVD-0104"
+          ],
+          "recorded_at": "2026-10-27T00:20:22.276198824Z",
+          "seal": {
+            "by": "server",
+            "mac": "dd6d47809809909f0b8c2337a54a052340b0986dbcca4f547023ea8e3d9ab735"
+          }
         }
       ],
       "created_at": "2026-10-26T22:09:06.855685366Z",
-      "updated_at": "2026-10-26T23:01:34.851900621Z",
+      "updated_at": "2026-10-27T00:20:22.276198824Z",
       "seal": {
         "by": "server",
-        "mac": "f6e9f5b2eb89145afe804e44f69740526e538158ed499a433d2abdff4f637c6d"
+        "mac": "11e4437498f945297f293d231ad31331302aa0dee29c96ec9ce2d782fac66ee1"
       }
     },
     {
@@ -912,6 +987,18 @@
             "by": "server",
             "mac": "88fdb54fb826899473234f6975c07352b1ede0dfac8a1e0c047bf307a947bd59"
           }
+        },
+        {
+          "id": "EVD-0107",
+          "kind": "demonstration",
+          "locator": "clm_0018 @ sandbawks, docs/verification/m1-live-results.md (sandbawks) + runs 20261026T225651Z-sandbawks-1078537, 20261026T233507Z-sandbawks-2244779",
+          "summary": "Fails on sandbawks (pool sandboxes returned despite the filter), passes on hosted: sandbawks defect, list ignores filters, gfd/sandbawks#676.",
+          "stance": "neutral",
+          "recorded_at": "2026-10-27T00:19:43.079983600Z",
+          "seal": {
+            "by": "server",
+            "mac": "86deda3b739fdb3afc7a277047066f7aa1bc46d99f8fd80056db7e668dab24ab"
+          }
         }
       ],
       "verdicts": [
@@ -927,13 +1014,26 @@
             "by": "server",
             "mac": "5b50ab6d79d135e78338e4cfe7a58ea9e8928ca5a90ed9dca7540794526cc28c"
           }
+        },
+        {
+          "verdict": "supported",
+          "rationale": "Re-affirmed after adding sandbawks evidence (EVD-0107, neutral): hosted passes; sandbawks failure is gfd/sandbawks#676.",
+          "auditor": "claude-code/claude-opus-5-5 (M1 coordinator)",
+          "evidence_ids": [
+            "EVD-0065"
+          ],
+          "recorded_at": "2026-10-27T00:20:37.652007026Z",
+          "seal": {
+            "by": "server",
+            "mac": "1eb65160cc556759e6ba109c23a5e256580b73440247526e2e570e49e80ab62e"
+          }
         }
       ],
       "created_at": "2026-10-26T22:09:06.855685366Z",
-      "updated_at": "2026-10-26T23:01:40.779207514Z",
+      "updated_at": "2026-10-27T00:20:37.652007026Z",
       "seal": {
         "by": "server",
-        "mac": "0b5c8b27e12a50b1dafcc3095e230005cb15671f3d2a3006eafcf529989b4b83"
+        "mac": "a7cd67b0eea413bc6675662bb0a7b43e19e75e377ab9a5ab745a687d2c19f4c8"
       }
     },
     {
@@ -968,6 +1068,18 @@
             "by": "server",
             "mac": "a64f624b22b07597e99d1c324f4c0fd09a582c49ea72775bacfe541bd3c0bad2"
           }
+        },
+        {
+          "id": "EVD-0108",
+          "kind": "demonstration",
+          "locator": "clm_0019 @ sandbawks, docs/verification/m1-live-results.md (sandbawks) + runs 20261026T225651Z-sandbawks-1078537, 20261026T233507Z-sandbawks-2244779",
+          "summary": "Fails on sandbawks (state filter ignored), passes on hosted: sandbawks defect, gfd/sandbawks#676.",
+          "stance": "neutral",
+          "recorded_at": "2026-10-27T00:19:44.764726183Z",
+          "seal": {
+            "by": "server",
+            "mac": "b2cf0d9903642b244b7f8b5155d2230da91af5c2a5b15356c05c3b4b4dbb2a30"
+          }
         }
       ],
       "verdicts": [
@@ -983,13 +1095,26 @@
             "by": "server",
             "mac": "4c78507126885765560ad1894f6c4447c35430aba82a772633dde8952f94566b"
           }
+        },
+        {
+          "verdict": "supported",
+          "rationale": "Re-affirmed after adding sandbawks evidence (EVD-0108, neutral): hosted passes; sandbawks failure is gfd/sandbawks#676.",
+          "auditor": "claude-code/claude-opus-5-5 (M1 coordinator)",
+          "evidence_ids": [
+            "EVD-0066"
+          ],
+          "recorded_at": "2026-10-27T00:20:39.153479087Z",
+          "seal": {
+            "by": "server",
+            "mac": "718b6376a086ee542fbf0fb19c9270168ae37fd5eb81a0ce50e7d3cb68b72276"
+          }
         }
       ],
       "created_at": "2026-10-26T22:09:06.855685366Z",
-      "updated_at": "2026-10-26T23:01:42.287281239Z",
+      "updated_at": "2026-10-27T00:20:39.153479087Z",
       "seal": {
         "by": "server",
-        "mac": "2919a79f6c2f43abadc0b8b93b1a8a6f7aadaa2b8c7f18b5597fbe41d3e25e5e"
+        "mac": "6f1456742e3db9c71fcb5f91eaa0516a33908fb61a9089e60988c553bb1bb457"
       }
     },
     {
@@ -1024,6 +1149,18 @@
             "by": "server",
             "mac": "e3bb8cb5331e4a47e69cebf0c719cd3ea88b519961b26865031979bdb86ea30d"
           }
+        },
+        {
+          "id": "EVD-0109",
+          "kind": "demonstration",
+          "locator": "clm_0020 @ sandbawks, docs/verification/m1-live-results.md (sandbawks) + runs 20261026T225651Z-sandbawks-1078537, 20261026T233507Z-sandbawks-2244779",
+          "summary": "Fails on sandbawks (page union includes unfiltered pool sandboxes), passes on hosted: sandbawks defect, gfd/sandbawks#676.",
+          "stance": "neutral",
+          "recorded_at": "2026-10-27T00:19:46.603672123Z",
+          "seal": {
+            "by": "server",
+            "mac": "a6a47bb7d35b1f9e14c23f59151325a76a2c7cf5bb933aa9cffd4efbc636971a"
+          }
         }
       ],
       "verdicts": [
@@ -1039,13 +1176,26 @@
             "by": "server",
             "mac": "fc1b1f2222744393c546be4136aa90e33b6dedfddcd1cdae60a64ee8adff9f8b"
           }
+        },
+        {
+          "verdict": "supported",
+          "rationale": "Re-affirmed after adding sandbawks evidence (EVD-0109, neutral): hosted passes; sandbawks failure is gfd/sandbawks#676.",
+          "auditor": "claude-code/claude-opus-5-5 (M1 coordinator)",
+          "evidence_ids": [
+            "EVD-0067"
+          ],
+          "recorded_at": "2026-10-27T00:20:40.719726639Z",
+          "seal": {
+            "by": "server",
+            "mac": "2747990cd5012446a24c3366fd1aa454cfc32a744235537f1a88c461e4637ac6"
+          }
         }
       ],
       "created_at": "2026-10-26T22:09:06.855685366Z",
-      "updated_at": "2026-10-26T23:01:43.715010662Z",
+      "updated_at": "2026-10-27T00:20:40.719726639Z",
       "seal": {
         "by": "server",
-        "mac": "b8b2d312bda2f7e69314dcad2f7385fbe3dcfc40532e55d3cec36df1dd82a1c1"
+        "mac": "52203c4c68925442d8369417d50dc67b42a585b5824503fa4dbb459ac514a02c"
       }
     },
     {
@@ -1192,6 +1342,18 @@
             "by": "server",
             "mac": "4156dbdea5a56ffdd77a3695de243b8a48d6f86e1c2edfcc5da9f275bd316b9e"
           }
+        },
+        {
+          "id": "EVD-0110",
+          "kind": "demonstration",
+          "locator": "clm_0023 @ sandbawks, docs/verification/m1-live-results.md (sandbawks) + runs 20261026T225651Z-sandbawks-1078537, 20261026T233507Z-sandbawks-2244779",
+          "summary": "Fails on sandbawks (state stays Running after pause), passes on hosted: sandbawks defect, gfd/sandbawks#679.",
+          "stance": "neutral",
+          "recorded_at": "2026-10-27T00:19:48.354700010Z",
+          "seal": {
+            "by": "server",
+            "mac": "dd48b5fb809d7073867ecce7a1030ef4b7f50d6bcdf7786ace55936a94ccb207"
+          }
         }
       ],
       "verdicts": [
@@ -1207,13 +1369,26 @@
             "by": "server",
             "mac": "f1323631cd8d031ea72a83d5ce43644ad01f33b0f6de1e7a8e77a081ecdc63e0"
           }
+        },
+        {
+          "verdict": "supported",
+          "rationale": "Re-affirmed after adding sandbawks evidence (EVD-0110, neutral): hosted passes; sandbawks failure is gfd/sandbawks#679.",
+          "auditor": "claude-code/claude-opus-5-5 (M1 coordinator)",
+          "evidence_ids": [
+            "EVD-0070"
+          ],
+          "recorded_at": "2026-10-27T00:20:42.195320961Z",
+          "seal": {
+            "by": "server",
+            "mac": "de5a1563130630eaa05813bfa5bc1c0eb16ae7ccf58457e4654ca8bca4de2109"
+          }
         }
       ],
       "created_at": "2026-10-26T22:09:06.855685366Z",
-      "updated_at": "2026-10-26T23:01:48.188036495Z",
+      "updated_at": "2026-10-27T00:20:42.195320961Z",
       "seal": {
         "by": "server",
-        "mac": "2741521e14a02000d8f433b367508b380f152c93f72b20e7ff498b3ccf2f8666"
+        "mac": "e63fd4451404c8354f4ec982fe866340c268412d81cff4f3ec65a0774f449524"
       }
     },
     {
@@ -1248,6 +1423,18 @@
             "by": "server",
             "mac": "beaa656dca915ba809f6906cec82e7aff7c2f5e045295679314ad23958e979d7"
           }
+        },
+        {
+          "id": "EVD-0111",
+          "kind": "demonstration",
+          "locator": "clm_0024 @ sandbawks, docs/verification/m1-live-results.md (sandbawks) + runs 20261026T225651Z-sandbawks-1078537, 20261026T233507Z-sandbawks-2244779",
+          "summary": "Fails on sandbawks (second pause succeeds, no 409), passes on hosted: sandbawks defect, gfd/sandbawks#679.",
+          "stance": "neutral",
+          "recorded_at": "2026-10-27T00:19:50.066958101Z",
+          "seal": {
+            "by": "server",
+            "mac": "7926d46864cf30dd1cd0c6f63f54c1bb4927edf9750006844f417b9e8efe6bc3"
+          }
         }
       ],
       "verdicts": [
@@ -1263,13 +1450,26 @@
             "by": "server",
             "mac": "c0deb60adc09e759da0a52233b2b7a73c2a6538cae61542411c570ab1579f8f2"
           }
+        },
+        {
+          "verdict": "supported",
+          "rationale": "Re-affirmed after adding sandbawks evidence (EVD-0111, neutral): hosted passes; sandbawks failure is gfd/sandbawks#679.",
+          "auditor": "claude-code/claude-opus-5-5 (M1 coordinator)",
+          "evidence_ids": [
+            "EVD-0071"
+          ],
+          "recorded_at": "2026-10-27T00:20:43.722617920Z",
+          "seal": {
+            "by": "server",
+            "mac": "f39304309e5793a4cb6054a91c5b003b945853d58c46b88be6f740964814ed8c"
+          }
         }
       ],
       "created_at": "2026-10-26T22:09:06.855685366Z",
-      "updated_at": "2026-10-26T23:01:49.631713805Z",
+      "updated_at": "2026-10-27T00:20:43.722617920Z",
       "seal": {
         "by": "server",
-        "mac": "dff6430bb3663dafadbb736de019327b149a0dbfe43a3567d28f08786caf0b52"
+        "mac": "522013ee1580f6be05ec4d02275831811fa2be1974979210de04ca4c2dd40d99"
       }
     },
     {
@@ -1416,6 +1616,18 @@
             "by": "server",
             "mac": "7ba0fb51cd9ec30645a7ce91acdd94914aad3b6c055c03ed9201fad846be1232"
           }
+        },
+        {
+          "id": "EVD-0112",
+          "kind": "demonstration",
+          "locator": "clm_0027 @ sandbawks, docs/verification/m1-live-results.md (sandbawks) + runs 20261026T225651Z-sandbawks-1078537, 20261026T233507Z-sandbawks-2244779",
+          "summary": "Fails on sandbawks (/health of killed sandbox 404 with k8s message, not 502), passes on hosted: sandbawks defect, gfd/sandbawks#679.",
+          "stance": "neutral",
+          "recorded_at": "2026-10-27T00:19:51.883475821Z",
+          "seal": {
+            "by": "server",
+            "mac": "9506d1faa2eb58ce87a1de186e26fe8cde66d1231e3df4fa734510698a295ac7"
+          }
         }
       ],
       "verdicts": [
@@ -1431,13 +1643,26 @@
             "by": "server",
             "mac": "972849ffadda5ecee5e80a6594a5af0eefb6fad6d13cbe67222bb0647a25ee1a"
           }
+        },
+        {
+          "verdict": "supported",
+          "rationale": "Re-affirmed after adding sandbawks evidence (EVD-0112, neutral): hosted passes; sandbawks failure is gfd/sandbawks#679.",
+          "auditor": "claude-code/claude-opus-5-5 (M1 coordinator)",
+          "evidence_ids": [
+            "EVD-0074"
+          ],
+          "recorded_at": "2026-10-27T00:20:45.272909765Z",
+          "seal": {
+            "by": "server",
+            "mac": "a72bdba505fd07ded40380f99910155f57d0f5acaa1890c5072074e9d6754fb0"
+          }
         }
       ],
       "created_at": "2026-10-26T22:09:06.855685366Z",
-      "updated_at": "2026-10-26T23:01:53.966362698Z",
+      "updated_at": "2026-10-27T00:20:45.272909765Z",
       "seal": {
         "by": "server",
-        "mac": "3f7ce942a6ac08fc1781d2c51c062793c62b150765f935ec583ea30940c7f076"
+        "mac": "4bcdfa3f0c3c4962a1a0fe21e1bcfe789fb93cee5496287de0b5bcf5e7e54e13"
       }
     },
     {
@@ -1948,6 +2173,18 @@
             "by": "server",
             "mac": "013ae8fe4e5f9e4f938f787c894fb6714b8fbfbe489052366cea00a549cffe60"
           }
+        },
+        {
+          "id": "EVD-0113",
+          "kind": "demonstration",
+          "locator": "clm_0038 @ sandbawks, docs/verification/m1-live-results.md (sandbawks) + runs 20261026T225651Z-sandbawks-1078537, 20261026T233507Z-sandbawks-2244779",
+          "summary": "Fails on sandbawks (whoami as root prints dev; template has no user account), passes on hosted: sandbawks defect, gfd/sandbawks#682.",
+          "stance": "neutral",
+          "recorded_at": "2026-10-27T00:19:53.655196806Z",
+          "seal": {
+            "by": "server",
+            "mac": "1c9c3cfe5cb4dcd33bba613a0c668b941e13c42ee16766fdb418c13b2eeddaf0"
+          }
         }
       ],
       "verdicts": [
@@ -1963,13 +2200,26 @@
             "by": "server",
             "mac": "f90e8cead2893de2c3cb75905d2738b493f83fbb98d554bd4b0f5fb25ee240ce"
           }
+        },
+        {
+          "verdict": "supported",
+          "rationale": "Re-affirmed after adding sandbawks evidence (EVD-0113, neutral): hosted passes; sandbawks failure is gfd/sandbawks#682.",
+          "auditor": "claude-code/claude-opus-5-5 (M1 coordinator)",
+          "evidence_ids": [
+            "EVD-0080"
+          ],
+          "recorded_at": "2026-10-27T00:20:46.764118424Z",
+          "seal": {
+            "by": "server",
+            "mac": "ccfe8a7751ab1970c0b00b66b2a2c127a5095fc9779e2ea8c53e4e12414eea3c"
+          }
         }
       ],
       "created_at": "2026-10-26T22:09:38.695113733Z",
-      "updated_at": "2026-10-26T23:02:04.994969798Z",
+      "updated_at": "2026-10-27T00:20:46.764118424Z",
       "seal": {
         "by": "server",
-        "mac": "2c6bd5d7f1dc2de5f156c9ebc080791992c20e1a785fe485c2cd2cf5c6a3ef86"
+        "mac": "3a3331e8eb389f30671d35b99b643eb2e83223c7ae0f8202b8f0af11b088c230"
       }
     },
     {
@@ -2060,6 +2310,18 @@
             "by": "server",
             "mac": "1904078dcb474b36380880378a4ba9add5193a82734199caa2bd1c7b74809b96"
           }
+        },
+        {
+          "id": "EVD-0114",
+          "kind": "demonstration",
+          "locator": "clm_0040 @ sandbawks, docs/verification/m1-live-results.md (sandbawks) + runs 20261026T225651Z-sandbawks-1078537, 20261026T233507Z-sandbawks-2244779",
+          "summary": "Fails on sandbawks (Connect stream opens without a start event), passes on hosted: sandbawks defect, gfd/sandbawks#677.",
+          "stance": "neutral",
+          "recorded_at": "2026-10-27T00:19:55.503796571Z",
+          "seal": {
+            "by": "server",
+            "mac": "f2de6eaf478c245da255982346d671360af8ed9fa2fe0856f694866fbe766bb4"
+          }
         }
       ],
       "verdicts": [
@@ -2075,13 +2337,26 @@
             "by": "server",
             "mac": "70373f6ac2bd2903d393fb0aeb37e2b25619546ac0736c0deab05cb7c54b6498"
           }
+        },
+        {
+          "verdict": "supported",
+          "rationale": "Re-affirmed after adding sandbawks evidence (EVD-0114, neutral): hosted passes; sandbawks failure is gfd/sandbawks#677.",
+          "auditor": "claude-code/claude-opus-5-5 (M1 coordinator)",
+          "evidence_ids": [
+            "EVD-0082"
+          ],
+          "recorded_at": "2026-10-27T00:20:48.309369983Z",
+          "seal": {
+            "by": "server",
+            "mac": "4285f73b00970c4f6f234521f0894872529070b107c0b9afad46bcab6a6e6a38"
+          }
         }
       ],
       "created_at": "2026-10-26T22:09:38.695113733Z",
-      "updated_at": "2026-10-26T23:02:07.925183189Z",
+      "updated_at": "2026-10-27T00:20:48.309369983Z",
       "seal": {
         "by": "server",
-        "mac": "49084ed9900adbfa6b3db986b695e51657d215e29e982dd9c099e66dbe1c7f25"
+        "mac": "5fa73b0466c3fb0d6b43e264795f237d930116826353e9ed81c9832e6335e3f7"
       }
     },
     {
@@ -2172,6 +2447,18 @@
             "by": "server",
             "mac": "94eb57ff472d558e88d98ead5e7dc9dc80f0927e37e9d738917613468a4e9909"
           }
+        },
+        {
+          "id": "EVD-0115",
+          "kind": "demonstration",
+          "locator": "clm_0042 @ sandbawks, docs/verification/m1-live-results.md (sandbawks) + runs 20261026T225651Z-sandbawks-1078537, 20261026T233507Z-sandbawks-2244779",
+          "summary": "Inconclusive on sandbawks: send_stdin got Unavailable \"still starting up\" (Pod unschedulable); create returned before ready, gfd/sandbawks#674. Passes on hosted.",
+          "stance": "neutral",
+          "recorded_at": "2026-10-27T00:19:57.518076369Z",
+          "seal": {
+            "by": "server",
+            "mac": "0c426a78ffba186849a3856f11b9aa518f6da9e67bc6b15ccb4a4111c3f5632b"
+          }
         }
       ],
       "verdicts": [
@@ -2187,13 +2474,26 @@
             "by": "server",
             "mac": "fe67001b60a30ada815b92d8664ef329975bf36427cc711a1a26593366c12a89"
           }
+        },
+        {
+          "verdict": "supported",
+          "rationale": "Re-affirmed after adding sandbawks evidence (EVD-0115, neutral, capacity-masked): hosted passes.",
+          "auditor": "claude-code/claude-opus-5-5 (M1 coordinator)",
+          "evidence_ids": [
+            "EVD-0084"
+          ],
+          "recorded_at": "2026-10-27T00:20:49.745657081Z",
+          "seal": {
+            "by": "server",
+            "mac": "c65b8d0118348992d221e973417902a63011ae0c6c16aa6e9517db2a64f5fa4d"
+          }
         }
       ],
       "created_at": "2026-10-26T22:09:38.695113733Z",
-      "updated_at": "2026-10-26T23:02:10.911099560Z",
+      "updated_at": "2026-10-27T00:20:49.745657081Z",
       "seal": {
         "by": "server",
-        "mac": "ca2fe2e9a6bd9de3ae18295a84f167e16712b9ce71fbadfee82cb9fdcc87642c"
+        "mac": "59eb67ff84f9d33464a290a9cc192b93d626eae283777063e2c5897ddcadd691"
       }
     },
     {
@@ -2228,6 +2528,18 @@
             "by": "server",
             "mac": "8d71de31d6066deb5dfd84faf442bffdc6b7f87a146c5c1a70e0d0853f17a592"
           }
+        },
+        {
+          "id": "EVD-0116",
+          "kind": "demonstration",
+          "locator": "clm_0043 @ sandbawks, docs/verification/m1-live-results.md (sandbawks) + runs 20261026T225651Z-sandbawks-1078537, 20261026T233507Z-sandbawks-2244779",
+          "summary": "Fails on sandbawks: envdVersion reported as 0.1.28 so close_stdin is (correctly, per SDK) refused, gfd/sandbawks#675; second run also hit pid 0 from the start event, gfd/sandbawks#677. Passes on hosted.",
+          "stance": "neutral",
+          "recorded_at": "2026-10-27T00:19:59.754333402Z",
+          "seal": {
+            "by": "server",
+            "mac": "a73bcf9c85f63c7559a67871a9fb8026ff7c470eb1a57ee672f0f69ca20317cb"
+          }
         }
       ],
       "verdicts": [
@@ -2243,13 +2555,26 @@
             "by": "server",
             "mac": "281ab8cd12a5bfcce8138187759a4f4f10b39b8f5555dfd750e1fd3b91ff6717"
           }
+        },
+        {
+          "verdict": "supported",
+          "rationale": "Re-affirmed after adding sandbawks evidence (EVD-0116, neutral): hosted passes; sandbawks failure is gfd/sandbawks#675/#677.",
+          "auditor": "claude-code/claude-opus-5-5 (M1 coordinator)",
+          "evidence_ids": [
+            "EVD-0085"
+          ],
+          "recorded_at": "2026-10-27T00:20:51.306160187Z",
+          "seal": {
+            "by": "server",
+            "mac": "f079c5c6e91f5384847f0ead5944436e971dcbd14f9d443c9c270dc4e0eccd06"
+          }
         }
       ],
       "created_at": "2026-10-26T22:09:38.695113733Z",
-      "updated_at": "2026-10-26T23:02:12.392789025Z",
+      "updated_at": "2026-10-27T00:20:51.306160187Z",
       "seal": {
         "by": "server",
-        "mac": "b392335b28b94ed566c41a861c301fd6f85537ac20a905e188bbba8d1c40d4aa"
+        "mac": "b15e3ec1675e62cf4a859bb246aaa7f340f70a9c584c0c672fa4f888d55435e7"
       }
     },
     {
@@ -2284,6 +2609,18 @@
             "by": "server",
             "mac": "676cd22ab04c5ce6b9d3e0d6263ec1231ae3f425f09df3c0a43e7f301f726549"
           }
+        },
+        {
+          "id": "EVD-0117",
+          "kind": "demonstration",
+          "locator": "clm_0044 @ sandbawks, docs/verification/m1-live-results.md (sandbawks) + runs 20261026T225651Z-sandbawks-1078537, 20261026T233507Z-sandbawks-2244779",
+          "summary": "Fails on sandbawks (SIGTERM'd pid still listed after end), passes on hosted: sandbawks defect, gfd/sandbawks#677.",
+          "stance": "neutral",
+          "recorded_at": "2026-10-27T00:20:01.604197718Z",
+          "seal": {
+            "by": "server",
+            "mac": "63880b6e016fe542eb7c1523a4cff9c4f23da2e6da601a58274ecf046d436747"
+          }
         }
       ],
       "verdicts": [
@@ -2299,13 +2636,26 @@
             "by": "server",
             "mac": "6c5bedff03321bc119b28c0dba414d5ffe14079e5be663e79482b7109a0d33de"
           }
+        },
+        {
+          "verdict": "supported",
+          "rationale": "Re-affirmed after adding sandbawks evidence (EVD-0117, neutral): hosted passes; sandbawks failure is gfd/sandbawks#677.",
+          "auditor": "claude-code/claude-opus-5-5 (M1 coordinator)",
+          "evidence_ids": [
+            "EVD-0086"
+          ],
+          "recorded_at": "2026-10-27T00:20:52.861039057Z",
+          "seal": {
+            "by": "server",
+            "mac": "0c5e0b8ef2c757c4706004f1074f44e13a630afef2ad4563c7e673974149540c"
+          }
         }
       ],
       "created_at": "2026-10-26T22:09:38.695113733Z",
-      "updated_at": "2026-10-26T23:02:13.865810083Z",
+      "updated_at": "2026-10-27T00:20:52.861039057Z",
       "seal": {
         "by": "server",
-        "mac": "88e9b74ede69c2dce76ae968a81a365401707443da7fa2f03efebb91f55d0e84"
+        "mac": "12a1397df135bfa616c603f555d0e4ffbda747adf13d2f9b16183483bb333d7d"
       }
     },
     {
@@ -2664,6 +3014,18 @@
             "by": "server",
             "mac": "4a3a0b109b46c079278e16ddc8ca4c36e3203d70cb44bf2517eda95c21cc7f33"
           }
+        },
+        {
+          "id": "EVD-0118",
+          "kind": "demonstration",
+          "locator": "clm_0052 @ sandbawks, docs/verification/m1-live-results.md (sandbawks) + runs 20261026T225651Z-sandbawks-1078537, 20261026T233507Z-sandbawks-2244779",
+          "summary": "Inconclusive on sandbawks: write got 503 \"still starting up\" (capacity), gfd/sandbawks#674. Passes on hosted.",
+          "stance": "neutral",
+          "recorded_at": "2026-10-27T00:20:03.465736041Z",
+          "seal": {
+            "by": "server",
+            "mac": "35490efc6184e2da6a3a799ba283115cf23a5954ac49b19d9b73bfe78df5b2d9"
+          }
         }
       ],
       "verdicts": [
@@ -2679,13 +3041,26 @@
             "by": "server",
             "mac": "8175f258a7229f35685f74f4d15321f6b3779722ee66ccec95951f975600ec94"
           }
+        },
+        {
+          "verdict": "supported",
+          "rationale": "Re-affirmed after adding sandbawks evidence (EVD-0118, neutral, capacity-masked): hosted passes.",
+          "auditor": "claude-code/claude-opus-5-5 (M1 coordinator)",
+          "evidence_ids": [
+            "EVD-0090"
+          ],
+          "recorded_at": "2026-10-27T00:20:54.238580940Z",
+          "seal": {
+            "by": "server",
+            "mac": "e7610523d3be45fee74d94afff56c665cc31c5e9cc156f0433643c0358c08411"
+          }
         }
       ],
       "created_at": "2026-10-26T22:09:38.695113733Z",
-      "updated_at": "2026-10-26T23:02:19.777647061Z",
+      "updated_at": "2026-10-27T00:20:54.238580940Z",
       "seal": {
         "by": "server",
-        "mac": "68f33214470f1890e03bdf95db235f48657dad9cdd63d4d6e374acba6a274fa2"
+        "mac": "edf1efa8e0b743181983a891172e24f49398f887cdf40048476c34cd9ffa3fc7"
       }
     },
     {
@@ -2777,6 +3152,18 @@
             "by": "server",
             "mac": "3bedf18a4754087da2fbc39887ac0f340af14541397779d04de5cd10d57d3767"
           }
+        },
+        {
+          "id": "EVD-0119",
+          "kind": "demonstration",
+          "locator": "clm_0054 @ sandbawks, docs/verification/m1-live-results.md (sandbawks) + runs 20261026T225651Z-sandbawks-1078537, 20261026T233507Z-sandbawks-2244779",
+          "summary": "Fails on sandbawks (write without existing parent gives 404), passes on hosted: sandbawks defect, gfd/sandbawks#678.",
+          "stance": "neutral",
+          "recorded_at": "2026-10-27T00:20:05.253722010Z",
+          "seal": {
+            "by": "server",
+            "mac": "0ff3446019c9ec38e078a04bd9a2acedb0a61dae84266a94473c1e06fc5ab1ac"
+          }
         }
       ],
       "verdicts": [
@@ -2792,13 +3179,26 @@
             "by": "server",
             "mac": "02d0ecbf8e06783a2a3b00982d265098507c2b7d4b35506813f433a384ffb99f"
           }
+        },
+        {
+          "verdict": "supported",
+          "rationale": "Re-affirmed after adding sandbawks evidence (EVD-0119, neutral): hosted passes; sandbawks failure is gfd/sandbawks#678.",
+          "auditor": "claude-code/claude-opus-5-5 (M1 coordinator)",
+          "evidence_ids": [
+            "EVD-0092"
+          ],
+          "recorded_at": "2026-10-27T00:20:55.839078410Z",
+          "seal": {
+            "by": "server",
+            "mac": "a5777d0ab149b4cfaf429729fac24f350d060ecb96a6cc2899e1f2b27487b4bc"
+          }
         }
       ],
       "created_at": "2026-10-26T22:09:38.695113733Z",
-      "updated_at": "2026-10-26T23:02:22.708532553Z",
+      "updated_at": "2026-10-27T00:20:55.839078410Z",
       "seal": {
         "by": "server",
-        "mac": "4c2e6eac4347ae5b27bff8b5c01b7de6e9a04699bdce61347f5377b06583be80"
+        "mac": "b694d636959fc5960c5f7fb99fcb737e53b1c61496757c8bff47c00842bfe629"
       }
     },
     {
@@ -2833,6 +3233,18 @@
             "by": "server",
             "mac": "00dc4e14177f3e75dd7cf742479fea112f51fdad9411853c854e745002f1c3dc"
           }
+        },
+        {
+          "id": "EVD-0120",
+          "kind": "demonstration",
+          "locator": "clm_0055 @ sandbawks, docs/verification/m1-live-results.md (sandbawks) + runs 20261026T225651Z-sandbawks-1078537, 20261026T233507Z-sandbawks-2244779",
+          "summary": "Fails on sandbawks (write without existing parent gives 404), passes on hosted: sandbawks defect, gfd/sandbawks#678.",
+          "stance": "neutral",
+          "recorded_at": "2026-10-27T00:20:06.955592117Z",
+          "seal": {
+            "by": "server",
+            "mac": "84b6e620dde7e2262c1bc55902ee1bea03c2fa6318da7b2ee5290ee6207d45bd"
+          }
         }
       ],
       "verdicts": [
@@ -2848,13 +3260,26 @@
             "by": "server",
             "mac": "9bc9eee155015e1ce23365b3de9862c30e59d4777a1a60970a180419ead2e12d"
           }
+        },
+        {
+          "verdict": "supported",
+          "rationale": "Re-affirmed after adding sandbawks evidence (EVD-0120, neutral): hosted passes; sandbawks failure is gfd/sandbawks#678.",
+          "auditor": "claude-code/claude-opus-5-5 (M1 coordinator)",
+          "evidence_ids": [
+            "EVD-0093"
+          ],
+          "recorded_at": "2026-10-27T00:20:57.357536370Z",
+          "seal": {
+            "by": "server",
+            "mac": "5ac356bb88a07741adef7ffbd8974b9f08eb7254a4bc6d9306f98b3215f7cdfe"
+          }
         }
       ],
       "created_at": "2026-10-26T22:09:38.695113733Z",
-      "updated_at": "2026-10-26T23:02:24.216254802Z",
+      "updated_at": "2026-10-27T00:20:57.357536370Z",
       "seal": {
         "by": "server",
-        "mac": "b35348841d41180ba9c73291fc994d744e7b31b16e65a33fbb079305eab1b524"
+        "mac": "bc9dddfa47d74421672312b2d799ca3fec256e220f0f1289877468047d8a7b6a"
       }
     },
     {
@@ -2889,6 +3314,18 @@
             "by": "server",
             "mac": "2c76d39075fcba53b36e426d08bb1f2c16d9d569f88f382859240d52512d3840"
           }
+        },
+        {
+          "id": "EVD-0121",
+          "kind": "demonstration",
+          "locator": "clm_0056 @ sandbawks, docs/verification/m1-live-results.md (sandbawks) + runs 20261026T225651Z-sandbawks-1078537, 20261026T233507Z-sandbawks-2244779",
+          "summary": "Inconclusive on sandbawks: write got 503 \"still starting up\" (capacity), gfd/sandbawks#674. Passes on hosted.",
+          "stance": "neutral",
+          "recorded_at": "2026-10-27T00:20:08.710078668Z",
+          "seal": {
+            "by": "server",
+            "mac": "6ce201b8745366de08278e20699ddb71e364e19940bbefd2b8d9332998e16dea"
+          }
         }
       ],
       "verdicts": [
@@ -2904,13 +3341,26 @@
             "by": "server",
             "mac": "0fca82a24d5c067006351d6b4d666d14cbdfdf09108414517b532aafaff20f81"
           }
+        },
+        {
+          "verdict": "supported",
+          "rationale": "Re-affirmed after adding sandbawks evidence (EVD-0121, neutral, capacity-masked): hosted passes.",
+          "auditor": "claude-code/claude-opus-5-5 (M1 coordinator)",
+          "evidence_ids": [
+            "EVD-0094"
+          ],
+          "recorded_at": "2026-10-27T00:20:58.781617285Z",
+          "seal": {
+            "by": "server",
+            "mac": "4f4f64e0651ee29579219f66f138c105bbcf1f6347b3649fbd637511f9a266db"
+          }
         }
       ],
       "created_at": "2026-10-26T22:09:38.695113733Z",
-      "updated_at": "2026-10-26T23:02:25.656139610Z",
+      "updated_at": "2026-10-27T00:20:58.781617285Z",
       "seal": {
         "by": "server",
-        "mac": "1d0837456d7a92a802ae05bf7c6deaa4bbe72d7f7225a4ff5d3de8e361c68449"
+        "mac": "561e4d817d2a8c42e041ee72509cbbb5220075684b71c62de31c43ef44da0c58"
       }
     },
     {
@@ -2945,6 +3395,18 @@
             "by": "server",
             "mac": "04f602cc87f52b5c324a6d7d252f7c803c38b13013d89ca84d13e535b27966d0"
           }
+        },
+        {
+          "id": "EVD-0122",
+          "kind": "demonstration",
+          "locator": "clm_0057 @ sandbawks, docs/verification/m1-live-results.md (sandbawks) + runs 20261026T225651Z-sandbawks-1078537, 20261026T233507Z-sandbawks-2244779",
+          "summary": "Inconclusive on sandbawks: write got 503 \"still starting up\" (capacity), gfd/sandbawks#674. Passes on hosted.",
+          "stance": "neutral",
+          "recorded_at": "2026-10-27T00:20:10.508699662Z",
+          "seal": {
+            "by": "server",
+            "mac": "24bd773133b0dbc18cb56b739b9c1508f5dfdad451ab62c8d6bcdff81e99ab1c"
+          }
         }
       ],
       "verdicts": [
@@ -2960,13 +3422,26 @@
             "by": "server",
             "mac": "986db4e155634e44fbfdb8b38d2cac8c37f538985c7562734cf982ff36dc6709"
           }
+        },
+        {
+          "verdict": "supported",
+          "rationale": "Re-affirmed after adding sandbawks evidence (EVD-0122, neutral, capacity-masked): hosted passes.",
+          "auditor": "claude-code/claude-opus-5-5 (M1 coordinator)",
+          "evidence_ids": [
+            "EVD-0095"
+          ],
+          "recorded_at": "2026-10-27T00:21:00.238566256Z",
+          "seal": {
+            "by": "server",
+            "mac": "7491839d93fe0ea34e5f553e2789d3c53c5be1a36d0b0a07f158939cb7748886"
+          }
         }
       ],
       "created_at": "2026-10-26T22:09:38.695113733Z",
-      "updated_at": "2026-10-26T23:02:27.154800741Z",
+      "updated_at": "2026-10-27T00:21:00.238566256Z",
       "seal": {
         "by": "server",
-        "mac": "8e9bd78774e49cc0a87f3f7d467d3aab5a31093501202bf2fb49f5930f56c776"
+        "mac": "52c8a852f573d7a89b4422dbf466a7471831dc0fe950a63c8fafcafbe17be09c"
       }
     },
     {
@@ -3001,6 +3476,18 @@
             "by": "server",
             "mac": "4abb713502382ae9a235ae4e9e12edc3a969397f39b08e979be3f7195ba4773d"
           }
+        },
+        {
+          "id": "EVD-0123",
+          "kind": "demonstration",
+          "locator": "clm_0058 @ sandbawks, docs/verification/m1-live-results.md (sandbawks) + runs 20261026T225651Z-sandbawks-1078537, 20261026T233507Z-sandbawks-2244779",
+          "summary": "Fails on sandbawks (MakeDir of existing dir succeeds), passes on hosted: sandbawks defect, gfd/sandbawks#678.",
+          "stance": "neutral",
+          "recorded_at": "2026-10-27T00:20:12.303360070Z",
+          "seal": {
+            "by": "server",
+            "mac": "ed27803b4ead11338de31479ebd4c02cda375ebfd10783b35b9d47655ab3383c"
+          }
         }
       ],
       "verdicts": [
@@ -3016,13 +3503,26 @@
             "by": "server",
             "mac": "209d693639ccff8412b568ef008de1cef70fe2a85aacd82ee9c7c4b956814964"
           }
+        },
+        {
+          "verdict": "supported",
+          "rationale": "Re-affirmed after adding sandbawks evidence (EVD-0123, neutral): hosted passes; sandbawks failure is gfd/sandbawks#678.",
+          "auditor": "claude-code/claude-opus-5-5 (M1 coordinator)",
+          "evidence_ids": [
+            "EVD-0096"
+          ],
+          "recorded_at": "2026-10-27T00:21:01.751617469Z",
+          "seal": {
+            "by": "server",
+            "mac": "4e79705f6c36e7e46d259fa54f6c500e1115d7d7e9af17c2af29ebd79af687ae"
+          }
         }
       ],
       "created_at": "2026-10-26T22:09:38.695113733Z",
-      "updated_at": "2026-10-26T23:02:28.607930350Z",
+      "updated_at": "2026-10-27T00:21:01.751617469Z",
       "seal": {
         "by": "server",
-        "mac": "12193b9ccabbd7ec37905350ffe037b1582578be6dff39c0a288db97aafa1c9f"
+        "mac": "4e71ceda8a52183088a7549f5862588c44019a5b87941b220a2def6c1596c963"
       }
     },
     {
@@ -3113,6 +3613,18 @@
             "by": "server",
             "mac": "fd3cdfd585cf872011be21d8cbfc5540c370231f966542e28f50d99a4cc17102"
           }
+        },
+        {
+          "id": "EVD-0124",
+          "kind": "demonstration",
+          "locator": "clm_0060 @ sandbawks, docs/verification/m1-live-results.md (sandbawks) + runs 20261026T225651Z-sandbawks-1078537, 20261026T233507Z-sandbawks-2244779",
+          "summary": "Fails on sandbawks (write without existing parent gives 404), passes on hosted: sandbawks defect, gfd/sandbawks#678.",
+          "stance": "neutral",
+          "recorded_at": "2026-10-27T00:20:14.020581269Z",
+          "seal": {
+            "by": "server",
+            "mac": "bae55d676bf0da10229b609f728e28fe20f39dbb492d72dd34dd5011b0af3991"
+          }
         }
       ],
       "verdicts": [
@@ -3128,13 +3640,26 @@
             "by": "server",
             "mac": "ec3b4dd4722edc57001b258e5b995e33deef64d526fc85c3251695cb813c6d37"
           }
+        },
+        {
+          "verdict": "supported",
+          "rationale": "Re-affirmed after adding sandbawks evidence (EVD-0124, neutral): hosted passes; sandbawks failure is gfd/sandbawks#678.",
+          "auditor": "claude-code/claude-opus-5-5 (M1 coordinator)",
+          "evidence_ids": [
+            "EVD-0098"
+          ],
+          "recorded_at": "2026-10-27T00:21:03.276005925Z",
+          "seal": {
+            "by": "server",
+            "mac": "cfc15b2c55375f901281c43e048938214ba1fe98e6c43d2db8591eba87ffe8a3"
+          }
         }
       ],
       "created_at": "2026-10-26T22:09:38.695113733Z",
-      "updated_at": "2026-10-26T23:02:31.565777076Z",
+      "updated_at": "2026-10-27T00:21:03.276005925Z",
       "seal": {
         "by": "server",
-        "mac": "daf316783ec37d2d32a89700796257f59356f75f074cb06698ba56fa1a2e77e4"
+        "mac": "b8a5d7de7b6fbec34731bb6412c363a6612d9536595b3161ccfde8462a22c6e9"
       }
     },
     {
@@ -3169,6 +3694,18 @@
             "by": "server",
             "mac": "e6b16a37e4edf351b791057d9075727ebe5548c051ab7c4a96854e35e28b2308"
           }
+        },
+        {
+          "id": "EVD-0125",
+          "kind": "demonstration",
+          "locator": "clm_0061 @ sandbawks, docs/verification/m1-live-results.md (sandbawks) + runs 20261026T225651Z-sandbawks-1078537, 20261026T233507Z-sandbawks-2244779",
+          "summary": "Inconclusive on sandbawks: 503 \"still starting up\" (capacity, #674); would also fail on #682 (acting user ignored, no user account). Passes on hosted.",
+          "stance": "neutral",
+          "recorded_at": "2026-10-27T00:20:15.940189074Z",
+          "seal": {
+            "by": "server",
+            "mac": "58972a7392b150df97208949e9ed66cbf19d9b080f46e125e3f5b5f1ca1734f4"
+          }
         }
       ],
       "verdicts": [
@@ -3184,13 +3721,26 @@
             "by": "server",
             "mac": "ca319b2a253cf8a3f56fd24448240fdfbc666fbe607499172faa288c5d3f0d29"
           }
+        },
+        {
+          "verdict": "supported",
+          "rationale": "Re-affirmed after adding sandbawks evidence (EVD-0125, neutral, capacity-masked; also #682): hosted passes.",
+          "auditor": "claude-code/claude-opus-5-5 (M1 coordinator)",
+          "evidence_ids": [
+            "EVD-0099"
+          ],
+          "recorded_at": "2026-10-27T00:21:04.552513767Z",
+          "seal": {
+            "by": "server",
+            "mac": "65378bcb7ea17631e60352dc7721ab966ca063b950d87c3b0094ad363bb88c79"
+          }
         }
       ],
       "created_at": "2026-10-26T22:09:38.695113733Z",
-      "updated_at": "2026-10-26T23:02:32.899659028Z",
+      "updated_at": "2026-10-27T00:21:04.552513767Z",
       "seal": {
         "by": "server",
-        "mac": "34a46ba8cdaab59346b22a53bd4fc0a3b884f61ec32eb1850a7ca66bf643dd94"
+        "mac": "4bb3639d333ba95056624e0a8c7c01fb89933cd9ef14eebeacb60cd3ee988b4c"
       }
     },
     {
@@ -6290,13 +6840,40 @@
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0126",
+          "kind": "demonstration",
+          "locator": "docs/verification/m1-live-results.md (sandbawks); runs 20261026T225651Z-sandbawks-1078537, 20261026T230103Z-sandbawks-rerun-1207087, 20261026T233507Z-sandbawks-2244779; gfd/sandbawks#665, #674-#682",
+          "summary": "All 46 v0.1 S1-S3 tests were run live against sandbawks 0.1.28: 25 pass; each of the 21 failures passes on hosted E2B and is filed against gfd/sandbawks (16 defects across #674-#682 and #665; 5 capacity-masked under #674). No failure is a crate bug, so none needed a crate fix.",
+          "stance": "supports",
+          "recorded_at": "2026-10-27T00:20:18.477004831Z",
+          "seal": {
+            "by": "server",
+            "mac": "88fb914628cac185131bdbb42701f2a564f7bfdb5422e531c96d98e43952abe9"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "supported",
+          "rationale": "Every v0.1 S1-S3 claim ran live on sandbawks; every failure was traced and filed on gfd/sandbawks, and none was a crate bug.",
+          "auditor": "claude-code/claude-opus-5-5 (M1 coordinator)",
+          "evidence_ids": [
+            "EVD-0126"
+          ],
+          "recorded_at": "2026-10-27T00:20:23.979839054Z",
+          "seal": {
+            "by": "server",
+            "mac": "029e58fbcd15a48499d6e87841b54d590f0dd71f73524a04ae0905944ebda4d6"
+          }
+        }
+      ],
       "created_at": "2026-10-26T22:12:45.325766859Z",
-      "updated_at": "2026-10-26T22:12:45.325766859Z",
+      "updated_at": "2026-10-27T00:20:23.979839054Z",
       "seal": {
         "by": "server",
-        "mac": "22466ab8132d59592c87505e99f1aacdedb67c27147c27e85f5f46e6bdd6ce07"
+        "mac": "fc9587ebf6b676d278f20a1f3331b9128afe8d5d1d27c78653777d87af77da38"
       }
     },
     {
