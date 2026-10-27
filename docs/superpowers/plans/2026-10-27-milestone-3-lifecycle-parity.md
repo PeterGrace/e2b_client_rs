@@ -661,13 +661,15 @@ async fn clm_0029_get_metrics_reports_cpu_memory_and_disk() {
     let started_at = sandbox.get_info().await.expect("info").started_at;
 
     // Act: the API samples every few seconds, so wait for the first sample.
+    // Not found means the sandbox is gone, so fail at once; any other error
+    // may be transient and keeps polling.
     let sandbox_ref = &sandbox;
     let metrics = poll_until("a first metrics sample", Duration::from_secs(90), || async move {
-        let metrics = sandbox_ref
-            .get_metrics(&MetricsParams::default())
-            .await
-            .expect("metrics");
-        (!metrics.is_empty()).then_some(metrics)
+        match sandbox_ref.get_metrics(&MetricsParams::default()).await {
+            Ok(metrics) => (!metrics.is_empty()).then_some(metrics),
+            Err(error) if error.is_not_found() => panic!("sandbox vanished: {error:?}"),
+            Err(_) => None,
+        }
     })
     .await;
 
