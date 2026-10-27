@@ -189,25 +189,26 @@ last attempt.
 | clm_0053_read_missing_file_is_not_found | CLM-0053 | fail | R1 fail, R2 pass | pass | pass (earlier attempts: capacity) | |
 | clm_0054_list_depth_one_lists_direct_entries | CLM-0054 | fail | R1 fail, R2 fail | pass | sandbawks ([sandbawks#678](https://git.gfpd.us/gfd/sandbawks/issues/678)) | `write a: Envd { status: 404, message: "No such file or directory (os error 2)" }` |
 | clm_0055_list_depth_two_recurses | CLM-0055 | fail | R1 fail, R2 fail | pass | sandbawks ([sandbawks#678](https://git.gfpd.us/gfd/sandbawks/issues/678)) | `write a: Envd { status: 404, message: "No such file or directory (os error 2)" }` |
-| clm_0056_get_info_reports_metadata | CLM-0056 | fail | R1 fail, R2 fail, R3 fail | pass | sandbawks, new N4 | ``want `-rw...` permissions: EntryInfo { ... mode: 420, permissions: "rw-r--r--", owner: "", group: "", ... }`` |
+| clm_0056_get_info_reports_metadata | CLM-0056 | fail | R1 fail, R2 fail, R3 fail | pass | sandbawks N4 ([sandbawks#687](https://git.gfpd.us/gfd/sandbawks/issues/687)) | ``want `-rw...` permissions: EntryInfo { ... mode: 420, permissions: "rw-r--r--", owner: "", group: "", ... }`` |
 | clm_0057_exists_true_and_false | CLM-0057 | fail | R1 fail, R2 pass | pass | pass (earlier attempts: capacity) | |
 | clm_0058_make_dir_reports_creation | CLM-0058 | fail | R1 fail, R2 fail | pass | sandbawks ([sandbawks#678](https://git.gfpd.us/gfd/sandbawks/issues/678)) | `make_dir of an existing directory returned true` |
 | clm_0059_rename_moves_entry | CLM-0059 | fail | R1 fail, R2 pass | pass | pass (earlier attempts: capacity) | |
 | clm_0060_remove_deletes_file_and_directory | CLM-0060 | fail | R1 fail, R2 fail | pass | sandbawks ([sandbawks#678](https://git.gfpd.us/gfd/sandbawks/issues/678)) | `write file: Envd { status: 404, message: "No such file or directory (os error 2)" }` |
-| clm_0061_user_selects_file_owner | CLM-0061 | fail | R1 fail, R2 fail, R3 fail | pass | sandbawks, new N4 (also [sandbawks#682](https://git.gfpd.us/gfd/sandbawks/issues/682) and the missing `user` account) | `left: ""` `right: "root"` |
-| clm_0062_write_files_writes_every_file | CLM-0062 | fail | R1 fail | pass | sandbawks, new N1 (reached through [sandbawks#675](https://git.gfpd.us/gfd/sandbawks/issues/675)) | ``write_files: Envd { status: 400, message: "Failed to deserialize query string: missing field `path`" }`` |
+| clm_0061_user_selects_file_owner | CLM-0061 | fail | R1 fail, R2 fail, R3 fail | pass | sandbawks N4, [sandbawks#687](https://git.gfpd.us/gfd/sandbawks/issues/687) (also [sandbawks#682](https://git.gfpd.us/gfd/sandbawks/issues/682) and the missing `user` account) | `left: ""` `right: "root"` |
+| clm_0062_write_files_writes_every_file | CLM-0062 | fail | R1 fail | pass | sandbawks N1, [sandbawks#684](https://git.gfpd.us/gfd/sandbawks/issues/684) (reached through [sandbawks#675](https://git.gfpd.us/gfd/sandbawks/issues/675)) | ``write_files: Envd { status: 400, message: "Failed to deserialize query string: missing field `path`" }`` |
 | clm_0063_watch_dir_reports_a_created_file | CLM-0063 | fail | R1 fail, R2 fail | pass | sandbawks ([sandbawks#664](https://git.gfpd.us/gfd/sandbawks/issues/664)) | `watch_dir: Rpc { code: NotFound, message: "HTTP 404" }` |
 | clm_0064_upload_url_accepts_a_multipart_post | CLM-0064 | fail | R1 fail, R2 pass | pass | pass, but unsigned (see N5) | |
-| clm_0065_download_url_fetches_without_credentials | CLM-0065 | fail | R1 fail, R2 fail | pass | sandbawks, new N5 | `download url: InvalidArgument("a URL expiration needs a secured sandbox (one with an envd access token)")` |
-| clm_0066_write_stream_uploads_more_than_it_buffers | CLM-0066 | fail | R1 fail | pass | sandbawks, new N2 (multipart because of [sandbawks#675](https://git.gfpd.us/gfd/sandbawks/issues/675)) | `write_stream plain: Envd { status: 413, message: "<html>...<title>413 Request Entity Too Large</title>...<center>nginx</center>..." }` |
-| clm_0128_read_stream_downloads_in_chunks | CLM-0128 | fail | R1 fail, R2 fail, R3 fail | pass | sandbawks, new N3 | `read_stream: Envd { status: 500, message: "an internal error occurred" }` |
+| clm_0065_download_url_fetches_without_credentials | CLM-0065 | fail | R1 fail, R2 fail | pass | sandbawks N5 ([sandbawks#683](https://git.gfpd.us/gfd/sandbawks/issues/683)) | `download url: InvalidArgument("a URL expiration needs a secured sandbox (one with an envd access token)")` |
+| clm_0066_write_stream_uploads_more_than_it_buffers | CLM-0066 | fail | R1 fail | pass | sandbawks N2, [sandbawks#685](https://git.gfpd.us/gfd/sandbawks/issues/685) (multipart because of [sandbawks#675](https://git.gfpd.us/gfd/sandbawks/issues/675)) | `write_stream plain: Envd { status: 413, message: "<html>...<title>413 Request Entity Too Large</title>...<center>nginx</center>..." }` |
+| clm_0128_read_stream_downloads_in_chunks | CLM-0128 | fail | R1 fail, R2 fail, R3 fail | pass | sandbawks N3 ([sandbawks#686](https://git.gfpd.us/gfd/sandbawks/issues/686)) | `read_stream: Envd { status: 500, message: "an internal error occurred" }` |
 | clm_0129_write_metadata_round_trips | CLM-0129 | fail | R1 fail | pass | sandbawks ([sandbawks#675](https://git.gfpd.us/gfd/sandbawks/issues/675)) | `file metadata needs envd 0.6.2 or newer; this template runs envd 0.1.28` |
 
 **Totals.** 57 `clm_*` tests: lifecycle 21, commands 17, files 19. In the run
 of record, 14 passed and 43 failed (lifecycle 10/21, commands 4/17, files
 0/19). After the reruns, 29 pass and 28 fail (lifecycle 11/21, commands 11/17,
 files 7/19). All 28 failures are sandbawks defects: 22 match an issue already
-filed on gfd/sandbawks, and 6 are new (N1 to N5 below; N4 covers two tests).
+filed on gfd/sandbawks, and 6 are new (N1 to N5 below, since filed as
+gfd/sandbawks #683 to #687; N4 covers two tests).
 No failure is left at capacity: each of the 15 tests that failed only on
 readiness passed in a later round. None of the 28 fails on hosted E2B.
 
@@ -272,7 +273,7 @@ envd requests go to `https://49983-<id>.sb-ghlw.gfd.dev` with the
 `E2b-Sandbox-Id` and `E2b-Sandbox-Port` routing headers. sandbawks returned no
 `envdAccessToken`, so none was sent.
 
-**N1. A multi-file multipart upload without a `path` query is refused** (CLM-0062).
+**N1. A multi-file multipart upload without a `path` query is refused** (CLM-0062). Filed: [sandbawks#684](https://git.gfpd.us/gfd/sandbawks/issues/684).
 - Client call: `files().write_files(&[WriteEntry::new("/tmp/batch/a.txt", "alpha"), WriteEntry::new("/tmp/batch/sub/b.bin", <bytes 0..=255>)], &WriteOptions::default())`.
 - Request: one `POST /files` with no `path` query, `multipart/form-data` with
   two parts, both named `file`, with filenames `/tmp/batch/a.txt` and
@@ -288,7 +289,7 @@ envd requests go to `https://49983-<id>.sb-ghlw.gfd.dev` with the
   JSON array with one entry per file. Even once #675 is fixed, a client that
   asks for multipart batch uploads will send this request.
 
-**N2. Uploads are capped by an nginx body limit** (CLM-0066).
+**N2. Uploads are capped by an nginx body limit** (CLM-0066). Filed: [sandbawks#685](https://git.gfpd.us/gfd/sandbawks/issues/685).
 - Client call: `files().write_stream("/tmp/plain.bin", <64 MiB of 'z' from tokio::io::repeat>, &WriteOptions::default())`.
 - Request: `POST /files?path=/tmp/plain.bin`, `multipart/form-data` with one
   streamed `file` part (filename `/tmp/plain.bin`), sent chunked. It is
@@ -304,7 +305,7 @@ envd requests go to `https://49983-<id>.sb-ghlw.gfd.dev` with the
   (plain and gzip) in this suite. A deliberate cap should answer with an
   E2B-shaped error, not an HTML page.
 
-**N3. Downloading an 8 MiB file fails with 500** (CLM-0128).
+**N3. Downloading an 8 MiB file fails with 500** (CLM-0128). Filed: [sandbawks#686](https://git.gfpd.us/gfd/sandbawks/issues/686).
 - Client call: `commands().run("yes 0123456789abcde | head -c 8388608 > /tmp/big.txt")`
   (exit code 0), then `files().read_stream("/tmp/big.txt", None)`.
 - Request: `GET /files?path=/tmp/big.txt`.
@@ -314,7 +315,7 @@ envd requests go to `https://49983-<id>.sb-ghlw.gfd.dev` with the
 - Expected: `200` with the 8 MiB body, streamed. CLM-0050 and 0051 read small
   files over the same route and pass, so the failure looks size-related.
 
-**N4. `Stat` reports no owner or group, and permissions without the file-type character** (CLM-0056, CLM-0061).
+**N4. `Stat` reports no owner or group, and permissions without the file-type character** (CLM-0056, CLM-0061). Filed: [sandbawks#687](https://git.gfpd.us/gfd/sandbawks/issues/687).
 - Client call: `files().write("/tmp/sized.txt", "12345", None)`, then `files().get_info("/tmp/sized.txt", None)`.
 - Request: `POST /filesystem.Filesystem/Stat {"path":"/tmp/sized.txt"}`.
 - Response (as decoded by the crate): `EntryInfo { name: "sized.txt", file_type: File, path: "/tmp/sized.txt", size: 5, mode: 420, permissions: "rw-r--r--", owner: "", group: "", ... }`,
@@ -327,7 +328,7 @@ envd requests go to `https://49983-<id>.sb-ghlw.gfd.dev` with the
   [sandbawks#682](https://git.gfpd.us/gfd/sandbawks/issues/682) and the
   template's missing `user` account once owners are reported.
 
-**N5. Sandboxes are not secured: no `envdAccessToken`, and envd's file API answers without credentials** (CLM-0065; also explains the CLM-0064 pass).
+**N5. Sandboxes are not secured: no `envdAccessToken`, and envd's file API answers without credentials** (CLM-0065; also explains the CLM-0064 pass). Filed: [sandbawks#683](https://git.gfpd.us/gfd/sandbawks/issues/683).
 - Client call: `create_sandbox(...)`, then `download_url("/tmp/shared.txt", &FileUrlOptions::default().expires_in(60 s))`.
 - Response: the create answer has no `envdAccessToken`, so the crate has
   nothing to sign with and refuses an expiring URL, as the SDK does:
