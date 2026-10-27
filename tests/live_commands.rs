@@ -4,7 +4,7 @@ mod live_support;
 
 use std::time::Duration;
 
-use e2b_client::{CommandEvent, CommandOptions, ConnectCode, Error, Signal};
+use e2b_client::{CommandEvent, CommandOptions, ConnectCode, Error, Signal, StreamInputOptions};
 use live_support::LiveSandbox;
 
 #[tokio::test]
@@ -344,4 +344,32 @@ async fn clm_0045_kill_reports_whether_pid_existed() {
         handle.pid()
     );
     assert!(!missing, "kill of unknown pid 999999 returned true");
+}
+
+#[tokio::test]
+#[ignore = "live: run with `just test-live <target>`"]
+async fn clm_0046_stream_input_delivers_chunks_in_order() {
+    let sandbox = LiveSandbox::new().await;
+    let handle = sandbox
+        .commands()
+        .start("cat", &CommandOptions::default().stdin(true))
+        .await
+        .expect("start cat");
+    let mut input = sandbox
+        .commands()
+        .stream_input(handle.pid(), &StreamInputOptions::default());
+
+    for chunk in ["one ", "two ", "three\n"] {
+        input.send(chunk).await.expect("send");
+    }
+    input.close().await.expect("close input stream");
+    sandbox
+        .commands()
+        .close_stdin(handle.pid())
+        .await
+        .expect("close stdin");
+    let result = handle.wait().await.expect("wait");
+
+    assert_eq!(result.stdout, "one two three\n");
+    assert_eq!(result.exit_code, 0);
 }

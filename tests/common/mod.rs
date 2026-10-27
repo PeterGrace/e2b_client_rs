@@ -103,3 +103,17 @@ pub fn decode_request_envelope(body: &[u8]) -> Value {
     assert_eq!(body.len(), 5 + len, "request envelope length");
     serde_json::from_slice(&body[5..]).expect("request envelope json")
 }
+
+/// Decodes every envelope of a streaming request body, in order.
+pub fn decode_request_envelopes(mut body: &[u8]) -> Vec<Value> {
+    let mut messages = Vec::new();
+    while !body.is_empty() {
+        assert!(body.len() >= 5, "request body too short for an envelope");
+        assert_eq!(body[0], 0, "request envelope flags");
+        let len = u32::from_be_bytes([body[1], body[2], body[3], body[4]]) as usize;
+        assert!(body.len() >= 5 + len, "request envelope length");
+        messages.push(serde_json::from_slice(&body[5..5 + len]).expect("request envelope json"));
+        body = &body[5 + len..];
+    }
+    messages
+}

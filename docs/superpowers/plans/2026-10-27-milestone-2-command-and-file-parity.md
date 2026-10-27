@@ -235,6 +235,10 @@ futures-util = { version = "0.3.34", default-features = false }
 reqwest = { version = "0.13.5", default-features = false, features = ["json", "multipart", "http2", "rustls", "query", "stream"] }
 # Deadlines on streams; a background task drives client-streaming calls.
 tokio = { version = "1.54.1", features = ["time", "rt", "sync"] }
+
+[dev-dependencies]
+# `test-util` gives tests paused time (`start_paused`), so timer tests do not wait.
+tokio = { version = "1.54.1", features = ["rt-multi-thread", "macros", "net", "io-util", "test-util"] }
 ```
 
 - [ ] **Step 2: Write the failing mock tests**
@@ -354,7 +358,7 @@ async fn stream_input_error_is_reported_by_close() {
 }
 ```
 
-The keepalive is tested without a server, as a unit test in `src/stream_input.rs` (Step 4), with a 20 ms interval, so no test waits 50 s.
+The keepalive is tested without a server, as a unit test in `src/stream_input.rs` (Step 5), on Tokio's paused clock (`#[tokio::test(start_paused = true)]`), so it uses the real 50 s interval and still finishes at once.
 
 Run: `cargo test --test envd_stream_input`
 Expected: compile errors (`stream_input` does not exist).
@@ -475,16 +479,11 @@ In `src/envd/mod.rs`:
            let response = self.post_stream(service, method, body, extra_headers, timeout).await?;
            // Connect answers a client stream with one message and an
            // end-of-stream envelope; drain both so an error is surfaced.
-           let mut stream: ConnectStream<connect::Empty> = ConnectStream::new(response, None);
+           let mut stream: ConnectStream<Empty> = ConnectStream::new(response, None);
            while stream.next().await?.is_some() {}
            Ok(())
        };
-       match timeout {
-           Some(limit) => tokio::time::timeout(limit, call)
-               .await
-               .map_err(|_| Error::Timeout(limit))?,
-           None => call.await,
-       }
+       within(timeout, call).await
    }
    ```
 
@@ -503,14 +502,17 @@ In `src/envd/mod.rs`:
        &self,
        opening: impl Future<Output = Result<T>>,
    ) -> Result<T> {
-       match self.request_timeout {
-           Some(limit) => tokio::time::timeout(limit, opening)
-               .await
-               .map_err(|_| Error::Timeout(limit))?,
-           None => opening.await,
-       }
+       within(self.request_timeout, opening).await
    }
    ```
+
+   Both use one private free function in `src/envd/mod.rs`,
+   `async fn within<T>(limit: Option<Duration>, future: impl Future<Output = Result<T>>) -> Result<T>`,
+   which maps an elapsed deadline to `Error::Timeout(limit)`.
+
+   > **Corrected (issue #31, 2026-10-27).** With `Commands::open` on `within_request_timeout`, nothing called
+   `EnvdClient::request_timeout()` any more, so it was removed (no dead code).
+   Task 5 re-adds it where it needs it (see the note there).
 
 - [ ] **Step 5: `src/stream_input.rs`**
 
@@ -536,11 +538,11 @@ use crate::error::{Error, Result};
 /// `e2b/connection_config.py:33`).
 pub const DEFAULT_STREAM_INPUT_TIMEOUT: Duration = Duration::from_secs(60);
 
-/// Options for [`crate::Commands::stream_input`] and
-/// [`crate::Pty::stream_input`].
+/// Options for [`crate::Commands::stream_input`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct StreamInputOptions {
-    timeout: Option<Duration>,
+    // `pub(crate)`: `commands.rs` (and Task 3's `pty.rs`) read it.
+    pub(crate) timeout: Option<Duration>,
 }
 
 impl Default for StreamInputOptions {
@@ -585,13 +587,13 @@ pub(crate) enum InputKind {
     /// A command's stdin.
     Stdin,
     /// A PTY's input.
+    #[expect(dead_code, reason = "PTY sessions (M2 Task 3) open PTY input streams")]
     Pty,
 }
 
 /// An ordered, long-lived input stream to a running command or PTY.
 ///
-/// Get one from [`crate::Commands::stream_input`] or
-/// [`crate::Pty::stream_input`]. Chunks reach the process in the order they
+/// Get one from [`crate::Commands::stream_input`]. Chunks reach the process in the order they
 /// were sent. Call [`close`](Self::close) to end the stream and learn whether
 /// envd accepted it. Dropping the stream without `close` also ends it, but any
 /// error is then lost.
@@ -625,7 +627,7 @@ impl InputStream {
         timeout: Option<Duration>,
     ) -> Self {
         let (sender, receiver) = mpsc::channel(QUEUE_DEPTH);
-        let body = reqwest::Body::wrap_stream(request_messages(pid, kind, receiver, KEEPALIVE_INTERVAL));
+        let body = reqwest::Body::wrap_stream(request_messages(pid, kind, receiver));
         let task = tokio::spawn(async move {
             envd.client_stream(process_pb::SERVICE, "StreamInput", body, HeaderMap::new(), timeout)
                 .await
@@ -687,19 +689,18 @@ fn closed() -> Error {
 }
 
 /// The request body: a start message, then one data message per chunk, with a
-/// keepalive whenever `keepalive` passes without a chunk. It ends when every
-/// sender is dropped.
+/// keepalive whenever [`KEEPALIVE_INTERVAL`] passes without a chunk. It ends
+/// when every sender is dropped.
 fn request_messages(
     pid: u32,
     kind: InputKind,
     receiver: mpsc::Receiver<Bytes>,
-    keepalive: Duration,
 ) -> impl Stream<Item = Result<Bytes>> + Send + 'static {
     // `unfold` threads the state (receiver, whether start was sent) through
     // each step, like a Python async generator's local variables.
     stream::unfold((receiver, false), move |(mut receiver, started)| async move {
         let frame = if started {
-            match tokio::time::timeout(keepalive, receiver.recv()).await {
+            match tokio::time::timeout(KEEPALIVE_INTERVAL, receiver.recv()).await {
                 Ok(Some(chunk)) => {
                     let input = match kind {
                         InputKind::Stdin => ProcessInput::Stdin(&chunk),
@@ -731,23 +732,27 @@ fn decode(frame: &Bytes) -> serde_json::Value {
     serde_json::from_slice(&frame[5..]).expect("json")
 }
 
-#[tokio::test]
+// Paused time: the clock jumps to the next timer when every task waits, so
+// the real 50 s keepalive arrives at once.
+#[tokio::test(start_paused = true)]
 async fn messages_start_then_data_then_keepalive_when_idle() {
     let (sender, receiver) = mpsc::channel(4);
-    let messages = request_messages(9, InputKind::Stdin, receiver, Duration::from_millis(20));
-    // `pin_mut`-free: `Box::pin` gives the `Unpin` stream `next()` needs.
-    let mut messages = Box::pin(messages);
+    // `Box::pin` gives the `Unpin` stream `next()` needs.
+    let mut messages = Box::pin(request_messages(9, InputKind::Stdin, receiver));
 
     let start = messages.next().await.expect("start").expect("ok");
     sender.send(Bytes::from_static(b"hi")).await.expect("send");
     let data = messages.next().await.expect("data").expect("ok");
+    let idle_since = tokio::time::Instant::now();
     let keepalive = messages.next().await.expect("keepalive").expect("ok");
+    let idle_for = idle_since.elapsed();
     drop(sender);
     let end = messages.next().await;
 
     assert_eq!(decode(&start), serde_json::json!({"start": {"process": {"pid": 9}}}));
     assert_eq!(decode(&data), serde_json::json!({"data": {"input": {"stdin": "aGk="}}}));
     assert_eq!(decode(&keepalive), serde_json::json!({"keepalive": {}}));
+    assert_eq!(idle_for, KEEPALIVE_INTERVAL);
     assert!(end.is_none());
 }
 ```
@@ -795,7 +800,7 @@ async fn messages_start_then_data_then_keepalive_when_idle() {
     }
 ```
 
-`send_stdin` builds `ProcessInput::Stdin(data.as_ref())`. In `src/lib.rs`: `mod stream_input;` and `pub use stream_input::{DEFAULT_STREAM_INPUT_TIMEOUT, InputStream, StreamInputOptions};` (`InputStream::open` reads `options.timeout`, so the field stays private and `open` keeps taking an `Option<Duration>`); mention streamed stdin in the crate docs' process bullet.
+`send_stdin` builds `ProcessInput::Stdin(data.as_ref())`. In `src/lib.rs`: `mod stream_input;` and `pub use stream_input::{DEFAULT_STREAM_INPUT_TIMEOUT, InputStream, StreamInputOptions};` (the `timeout` field of `StreamInputOptions` is `pub(crate)`, so `Commands::stream_input` and Task 3's `Pty::stream_input` pass `options.timeout` to `open`, which keeps taking an `Option<Duration>`); mention streamed stdin in the crate docs' process bullet.
 
 - [ ] **Step 7: Live test**
 
@@ -1131,6 +1136,8 @@ Methods, all documented with Arguments/Returns/Errors:
 - `kill(&self, pid) -> Result<bool>`: `Commands::new(Arc::clone(&self.envd)).kill(pid)`.
 - `stream_input(&self, pid, options: &StreamInputOptions) -> InputStream`: `InputStream::open(.., InputKind::Pty, options.timeout)`.
 
+> **Corrected (issue #31, 2026-10-27).** Task 2 shipped `InputKind::Pty` with `#[expect(dead_code, reason = ...)]`, because nothing built it yet. Remove that attribute here (the `expect` fails the build once `Pty::stream_input` uses the variant). Task 2 also left `crate::Pty::stream_input` out of the rustdoc of `StreamInputOptions` and `InputStream` (the link would not resolve); add it back to both.
+
 ```rust
 /// A running PTY session. Read output with [`next_event`](Self::next_event).
 #[derive(Debug)]
@@ -1212,7 +1219,7 @@ async fn pty_transcript(mut handle: e2b_client::PtyHandle) -> (String, i32) {
 
 - [ ] **Step 6: Docs, gates, live check, changelog, commit**
 
-Add a "PTY" section to `docs/protocol-notes.md`; drop PTY and `Update` from "Not implemented". Evidence-map rows: CLM-0132 → `tests/envd_pty.rs::create_sends_bash_with_pty_size_and_terminal_env_defaults`; CLM-0133 → the same test's event assertions (say so in Notes); CLM-0134 → `send_stdin_uses_the_pty_input_member`, `resize_sends_update_with_the_new_size`. Add `pty_stream_input_uses_the_pty_member` to the CLM-0130 row. Run the gates and the three live tests on hosted. Write `changelog/<ts>-m2-task-03-pty.md`.
+Add a "PTY" section to `docs/protocol-notes.md`; drop PTY and `Update` from "Not implemented". Evidence-map rows: CLM-0132 → `tests/envd_pty.rs::create_sends_bash_with_pty_size_and_terminal_env_defaults`; CLM-0133 → the same test's event assertions (say so in Notes); CLM-0134 → `send_stdin_uses_the_pty_input_member`, `resize_sends_update_with_the_new_size`. Add `pty_stream_input_uses_the_pty_member` to the CLM-0130 row, and change that row's "Covers whole claim?" from `partial` to `yes` (Task 2 marked it partial because no stream sent `input.pty` yet). Run the gates and the three live tests on hosted. Write `changelog/<ts>-m2-task-03-pty.md`.
 
 ```bash
 git add src/ tests/ docs/ changelog/
@@ -1639,6 +1646,8 @@ Run: `cargo test --test envd_write` — Expected: compile errors.
 - [ ] **Step 3: Implementation**
 
 `src/envd/mod.rs`: `pub(crate) const OCTET_STREAM_UPLOAD: Self = Self::new(0, 5, 7);` (`e2b/envd/versions.py:8`).
+
+> **Corrected (issue #31, 2026-10-27).** Task 2 removed `EnvdClient::request_timeout()`, because its only caller moved to `within_request_timeout`. The upload code below calls `self.envd.request_timeout()`, so re-add the accessor to `EnvdClient` in `src/envd/mod.rs`: `pub(crate) fn request_timeout(&self) -> Option<Duration> { self.request_timeout }`, with a doc comment.
 
 `src/filesystem.rs`:
 

@@ -1,7 +1,7 @@
 # S4 evidence map
 
-Which tests prove each S4 wire claim (CLM-0067 to CLM-0116) and CLM-0122
-(Debug redaction). The coordinator records each test in a row as `test`
+Which tests prove each S4 wire claim (CLM-0067 to CLM-0116), CLM-0122
+(Debug redaction), and CLM-0130 to CLM-0142. The coordinator records each test in a row as `test`
 evidence in the claims ledger (Task 8): stance `supports`, or `refutes` for a
 test marked `#[ignore = "refutes CLM-NNNN: ..."]`.
 
@@ -27,6 +27,9 @@ ignored.
 | Covered by existing tests | Covered by new or tightened tests | Partial | Refuted |
 |---|---|---|---|
 | 29 | 21 | 1 (CLM-0085) | 0 |
+
+The summary counts the M1 rows. M2 rows (CLM-0130 onward) are appended as
+each M2 task lands, and are counted at the milestone close.
 
 ## Map
 
@@ -83,3 +86,5 @@ ignored.
 | CLM-0115 | tests/envd_api.rs::is_running_checks_envd_health | yes | existing | The plan expected a gap here. There is none: `GET /health` answered with 204 gives `true`, and answered with 502 gives `false`. |
 | CLM-0116 | tests/envd_api.rs::next_event_yields_chunks_in_order_and_skips_keepalives; src/envd/process_pb.rs::tests::end_event_parses_exit_code_and_error; src/envd/process_pb.rs::tests::end_event_defaults_apply_when_fields_are_omitted | yes | new | No test parsed an end event's `error` field. The new test parses `exitCode` and `error` together. |
 | CLM-0122 | src/sandbox.rs::tests::debug_output_omits_the_api_key_and_access_tokens; src/config.rs::tests::debug_output_redacts_api_key | yes | new | Before, only the `Debug` output of `ConnectionConfig` was tested. The new test renders `Client`, `ConnectionConfig` and `Sandbox`, built with a real API key, envd access token and traffic access token. It asserts that none of the three appears. |
+| CLM-0130 | tests/envd_stream_input.rs::stream_input_sends_start_then_one_data_envelope_per_chunk; src/envd/process_pb.rs::tests::stream_input_messages_match_proto_json | partial | new | The mock test asserts the route, `application/connect+json`, and the envelopes in order: `start` with the pid, then one `data` with `input.stdin` per chunk. The unit test asserts the JSON of `start`, `data` with `stdin`, `data` with `pty`, and `keepalive`. No stream sends `input.pty` until PTY sessions land: issue #32 (M2 Task 3) adds `tests/envd_pty.rs::pty_stream_input_uses_the_pty_member` to this row. |
+| CLM-0131 | src/stream_input.rs::tests::messages_start_then_data_then_keepalive_when_idle; tests/envd_stream_input.rs::stream_input_deadline_defaults_to_60_s; tests/envd_stream_input.rs::stream_input_sends_start_then_one_data_envelope_per_chunk | yes | new | The unit test runs on Tokio's paused clock and asserts that the keepalive comes exactly 50 s after the last chunk, and that the body ends when the sender is dropped. The deadline test matches `Connect-Timeout-Ms: 60000` with no timeout given. The envelope test checks the body only after `close` returns, and the mock answers only once the whole body arrived, so `close` ended the request stream and waited for envd's answer. |

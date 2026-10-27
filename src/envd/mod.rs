@@ -20,7 +20,7 @@ use serde::de::DeserializeOwned;
 use crate::config::{ConnectionConfig, ENVD_PORT};
 use crate::error::{Error, Result};
 use connect::{
-    CONTENT_TYPE_STREAM_JSON, CONTENT_TYPE_UNARY_JSON, ConnectStream, decode_unary,
+    CONTENT_TYPE_STREAM_JSON, CONTENT_TYPE_UNARY_JSON, ConnectStream, Empty, decode_unary,
     encode_envelope, error_from_response, protocol_headers,
 };
 
@@ -33,6 +33,27 @@ const HEADER_ACCESS_TOKEN: &str = "x-access-token";
 
 /// The user envd used before it had a configurable default user (< 0.4.0).
 const LEGACY_DEFAULT_USER: &str = "user";
+
+/// Asks envd to send keepalive events on long streams so idle proxies do
+/// not drop them (`e2b/connection_config.py:48-49`).
+pub(crate) const KEEPALIVE_PING_HEADER: &str = "keepalive-ping-interval";
+/// The keepalive interval the SDKs use, in seconds
+/// (`KEEPALIVE_PING_INTERVAL_SEC`, `e2b/connection_config.py:48`).
+pub(crate) const KEEPALIVE_PING_INTERVAL_SECS: u16 = 50;
+
+/// The `Keepalive-Ping-Interval: 50` header envd honours on long streams.
+///
+/// # Returns
+///
+/// A header map holding just that header.
+pub(crate) fn keepalive_headers() -> HeaderMap {
+    let mut headers = HeaderMap::with_capacity(1);
+    headers.insert(
+        KEEPALIVE_PING_HEADER,
+        HeaderValue::from(KEEPALIVE_PING_INTERVAL_SECS),
+    );
+    headers
+}
 
 /// The version of the envd daemon running in a sandbox, as reported by the
 /// API (`envdVersion`).
@@ -197,11 +218,6 @@ impl EnvdClient {
         self.version
     }
 
-    /// The configured per-request timeout.
-    pub(crate) fn request_timeout(&self) -> Option<Duration> {
-        self.request_timeout
-    }
-
     /// The user to act as: the caller's choice, or `"user"` on envd older than
     /// 0.4.0, which has no default user (`e2b/envd/utils.py:44-57`).
     pub(crate) fn effective_user<'a>(&self, user: Option<&'a str>) -> Option<&'a str> {
@@ -319,6 +335,83 @@ impl EnvdClient {
     ) -> Result<ConnectStream<Res>> {
         let body = encode_envelope(&serde_json::to_vec(request)?)?;
         let response = self
+            .post_stream(service, method, body.into(), extra_headers, timeout)
+            .await?;
+        Ok(ConnectStream::new(response, timeout))
+    }
+
+    /// Makes a client-streaming Connect call: `body` yields the request
+    /// envelopes, and the call finishes when envd answers after the body ends.
+    ///
+    /// # Arguments
+    ///
+    /// * `service`, `method` - the RPC to call.
+    /// * `body` - the enveloped request messages, streamed.
+    /// * `extra_headers` - per-call headers.
+    /// * `timeout` - the call deadline (sent as `Connect-Timeout-Ms` and
+    ///   enforced client-side), or `None` for no limit.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::Rpc`] when envd rejects the call or ends it with an error,
+    /// [`Error::Timeout`] when the deadline passes, [`Error::Protocol`] for a
+    /// malformed response, [`Error::Transport`] for connection failures.
+    pub(crate) async fn client_stream(
+        &self,
+        service: &str,
+        method: &str,
+        body: reqwest::Body,
+        extra_headers: HeaderMap,
+        timeout: Option<Duration>,
+    ) -> Result<()> {
+        let call = async {
+            let response = self
+                .post_stream(service, method, body, extra_headers, timeout)
+                .await?;
+            // Connect answers a client stream with one message and an
+            // end-of-stream envelope; drain both so an error is surfaced.
+            let mut stream: ConnectStream<Empty> = ConnectStream::new(response, None);
+            while stream.next().await?.is_some() {}
+            Ok(())
+        };
+        within(timeout, call).await
+    }
+
+    /// Runs `opening` (open a stream and read its first event) within the
+    /// request timeout, as the SDKs' `first_event` does
+    /// (`e2b/envd/client_async/__init__.py:113-149`). After that only the
+    /// stream's own deadline applies.
+    ///
+    /// # Arguments
+    ///
+    /// * `opening` - the future that opens the stream and reads its first
+    ///   event.
+    ///
+    /// # Returns
+    ///
+    /// What `opening` returns.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::Timeout`] when the request timeout passes first, else the
+    /// error of `opening`.
+    pub(crate) async fn within_request_timeout<T>(
+        &self,
+        opening: impl Future<Output = Result<T>>,
+    ) -> Result<T> {
+        within(self.request_timeout, opening).await
+    }
+
+    /// POSTs a streaming Connect call and returns the response once it is 200.
+    async fn post_stream(
+        &self,
+        service: &str,
+        method: &str,
+        body: reqwest::Body,
+        extra_headers: HeaderMap,
+        timeout: Option<Duration>,
+    ) -> Result<reqwest::Response> {
+        let response = self
             .http
             .post(self.rpc_url(service, method))
             .headers(self.headers.clone())
@@ -337,7 +430,7 @@ impl EnvdClient {
                 &bytes,
             ));
         }
-        Ok(ConnectStream::new(response, timeout))
+        Ok(response)
     }
 
     /// Starts a request to envd's plain HTTP API at `path`, with the sandbox
@@ -366,6 +459,22 @@ impl EnvdClient {
     /// The base URL of the plain HTTP API (`/files`, `/health`).
     pub(crate) fn direct_base(&self) -> &str {
         &self.direct_base
+    }
+}
+
+/// Runs `future` with an optional deadline.
+///
+/// # Errors
+///
+/// [`Error::Timeout`] when `limit` passes first, else the error of `future`.
+async fn within<T>(limit: Option<Duration>, future: impl Future<Output = Result<T>>) -> Result<T> {
+    match limit {
+        // `timeout` returns `Err(Elapsed)` when the deadline wins; the inner
+        // `Result` is the future's own outcome, returned as is.
+        Some(limit) => tokio::time::timeout(limit, future)
+            .await
+            .map_err(|_elapsed| Error::Timeout(limit))?,
+        None => future.await,
     }
 }
 

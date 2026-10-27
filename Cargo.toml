@@ -23,22 +23,27 @@ bytes = "1.12.1"
 chrono = { version = "0.4.45", default-features = false, features = ["serde", "std"] }
 # encodeURIComponent-compatible encoding for the list metadata filter.
 percent-encoding = "2.3.2"
-# HTTP/1.1 and HTTP/2 client over rustls; multipart for file uploads.
-reqwest = { version = "0.13.5", default-features = false, features = ["json", "multipart", "http2", "rustls", "query"] }
+# Stream combinators for request bodies (`stream::unfold`).
+futures-util = { version = "0.3.34", default-features = false }
+# HTTP/1.1 and HTTP/2 client over rustls; multipart for file uploads; `stream`
+# for streamed request bodies (client-streaming Connect calls).
+reqwest = { version = "0.13.5", default-features = false, features = ["json", "multipart", "http2", "rustls", "query", "stream"] }
 # Keeps the API key and envd access token out of Debug output.
 secrecy = "0.10.3"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.154"
 # Error enum derive.
 thiserror = "2.0.21"
-# Deadlines on streams and stream opening.
-tokio = { version = "1.54.1", features = ["time"] }
+# Deadlines on streams and stream opening; a background task (`rt`) and a
+# bounded channel (`sync`) drive client-streaming calls.
+tokio = { version = "1.54.1", features = ["time", "rt", "sync"] }
 # URL building and form encoding.
 url = "2.5.8"
 
 [dev-dependencies]
 # Reads the live-test keys from the nearest .env without touching the process environment.
 dotenvy = "0.15.7"
-tokio = { version = "1.54.1", features = ["rt-multi-thread", "macros", "net", "io-util"] }
+# `test-util` gives tests paused time (`start_paused`), so timer tests do not wait.
+tokio = { version = "1.54.1", features = ["rt-multi-thread", "macros", "net", "io-util", "test-util"] }
 # Mock HTTP server for the REST and envd tests.
 wiremock = "0.6.5"

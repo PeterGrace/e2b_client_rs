@@ -5,7 +5,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use bytes::{Bytes, BytesMut};
-use reqwest::header::{HeaderMap, HeaderValue};
+use reqwest::header::HeaderMap;
 
 use crate::envd::connect::{ConnectStream, Empty};
 use crate::envd::process_pb::{
@@ -13,17 +13,13 @@ use crate::envd::process_pb::{
     ProcessConfig, ProcessInput, ProcessSelector, SendInputRequest, SendSignalRequest,
     StartRequest,
 };
-use crate::envd::{EnvdClient, EnvdVersion};
+use crate::envd::{EnvdClient, EnvdVersion, keepalive_headers};
 use crate::error::{ConnectCode, Error, Result};
+use crate::stream_input::{InputKind, InputStream, StreamInputOptions};
 
 /// The default bound on a command stream (`timeout=60` in the SDKs'
 /// `commands.run`, `e2b/sandbox_async/commands/command.py:218`).
 pub const DEFAULT_COMMAND_TIMEOUT: Duration = Duration::from_secs(60);
-
-/// Asks envd to send keepalive events on long streams so idle proxies do
-/// not drop them (`e2b/connection_config.py:48-49`).
-const KEEPALIVE_PING_HEADER: &str = "keepalive-ping-interval";
-const KEEPALIVE_PING_INTERVAL_SECS: u16 = 50;
 
 /// The shell the SDKs run commands with: `/bin/bash -l -c <cmd>`
 /// (`e2b/sandbox_async/commands/command.py:323-327`).
@@ -288,10 +284,7 @@ impl Commands {
             stdin: options.stdin,
         };
         let mut headers = self.envd.user_headers(options.user.as_deref())?;
-        headers.insert(
-            KEEPALIVE_PING_HEADER,
-            HeaderValue::from(KEEPALIVE_PING_INTERVAL_SECS),
-        );
+        headers.extend(keepalive_headers());
         self.open("Start", &request, headers, options.timeout).await
     }
 
@@ -335,12 +328,8 @@ impl Commands {
         let request = ConnectRequest {
             process: ProcessSelector::Pid(pid),
         };
-        let mut headers = HeaderMap::with_capacity(1);
-        headers.insert(
-            KEEPALIVE_PING_HEADER,
-            HeaderValue::from(KEEPALIVE_PING_INTERVAL_SECS),
-        );
-        self.open("Connect", &request, headers, timeout).await
+        self.open("Connect", &request, keepalive_headers(), timeout)
+            .await
     }
 
     /// Opens a `Start`/`Connect` stream and waits, within the request
@@ -368,12 +357,7 @@ impl Commands {
                 })?;
             Ok::<_, Error>((pid, stream))
         };
-        let (pid, stream) = match self.envd.request_timeout() {
-            Some(limit) => tokio::time::timeout(limit, opening)
-                .await
-                .map_err(|_| Error::Timeout(limit))??,
-            None => opening.await?,
-        };
+        let (pid, stream) = self.envd.within_request_timeout(opening).await?;
         Ok(CommandHandle {
             pid,
             stream,
@@ -431,15 +415,65 @@ impl Commands {
     pub async fn send_stdin(&self, pid: u32, data: impl AsRef<[u8]>) -> Result<()> {
         let request = SendInputRequest {
             process: ProcessSelector::Pid(pid),
-            input: ProcessInput {
-                stdin: data.as_ref(),
-            },
+            input: ProcessInput::Stdin(data.as_ref()),
         };
         let _: Empty = self
             .envd
             .unary(process_pb::SERVICE, "SendInput", &request, HeaderMap::new())
             .await?;
         Ok(())
+    }
+
+    /// Opens an ordered input stream to a running command's stdin over envd's
+    /// client-streaming `StreamInput` RPC. The command must have been started
+    /// with [`CommandOptions::stdin`] set.
+    ///
+    /// Unlike [`send_stdin`](Self::send_stdin), which makes one request per
+    /// write, the stream keeps one request open and delivers its chunks in
+    /// order. No request is made until a Tokio task picks the call up, so
+    /// this returns at once.
+    ///
+    /// # Arguments
+    ///
+    /// * `pid` - the process ID.
+    /// * `options` - the stream deadline (60 s by default; keepalives do not
+    ///   extend it).
+    ///
+    /// # Returns
+    ///
+    /// An [`InputStream`]. Errors such as a missing process surface from its
+    /// [`send`](InputStream::send) and [`close`](InputStream::close).
+    ///
+    /// # Panics
+    ///
+    /// Outside a Tokio runtime, because the call runs on a spawned task.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use e2b_client::{CommandOptions, Sandbox, StreamInputOptions};
+    ///
+    /// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
+    /// let commands = sandbox.commands();
+    /// let handle = commands.start("cat", &CommandOptions::default().stdin(true)).await?;
+    /// let mut input = commands.stream_input(handle.pid(), &StreamInputOptions::default());
+    /// input.send("line 1\n").await?;
+    /// input.send("line 2\n").await?;
+    /// input.close().await?;
+    /// commands.close_stdin(handle.pid()).await?;
+    /// let result = handle.wait().await?;
+    /// assert_eq!(result.stdout, "line 1\nline 2\n");
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[must_use]
+    pub fn stream_input(&self, pid: u32, options: &StreamInputOptions) -> InputStream {
+        InputStream::open(
+            Arc::clone(&self.envd),
+            pid,
+            InputKind::Stdin,
+            options.timeout,
+        )
     }
 
     /// Closes a process's stdin, signalling end of input.

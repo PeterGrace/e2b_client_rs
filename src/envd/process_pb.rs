@@ -143,11 +143,31 @@ pub(crate) struct SendInputRequest<'a> {
     pub(crate) input: ProcessInput<'a>,
 }
 
-/// `process.ProcessInput`: the `stdin` member of the oneof.
+/// `process.ProcessInput`: a oneof of `stdin` or `pty` bytes.
+///
+/// Serde's externally tagged enum gives the proto3 JSON shape of a oneof:
+/// `{"stdin": "<base64>"}` or `{"pty": "<base64>"}`. The `'a` lifetime lets
+/// the message borrow the caller's bytes instead of copying them.
 #[derive(Debug, Clone, Serialize)]
-pub(crate) struct ProcessInput<'a> {
-    #[serde(serialize_with = "serialize_base64")]
-    pub(crate) stdin: &'a [u8],
+#[serde(rename_all = "lowercase")]
+pub(crate) enum ProcessInput<'a> {
+    /// Bytes for the process's stdin.
+    Stdin(#[serde(serialize_with = "serialize_base64")] &'a [u8]),
+    /// Bytes for the process's PTY (used by PTY sessions).
+    Pty(#[serde(serialize_with = "serialize_base64")] &'a [u8]),
+}
+
+/// `process.StreamInputRequest`: a oneof of `start`, `data` and `keepalive`
+/// (`e2b/envd/process/process_pb.py:597-716`).
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub(crate) enum StreamInputRequest<'a> {
+    /// Opens the stream for one process; always the first message.
+    Start { process: ProcessSelector },
+    /// One chunk of input.
+    Data { input: ProcessInput<'a> },
+    /// Keeps an idle stream alive; serializes as `{"keepalive": {}}`.
+    Keepalive {},
 }
 
 /// `process.SendSignalRequest`.
@@ -165,7 +185,39 @@ pub(crate) struct CloseStdinRequest {
 
 #[cfg(test)]
 mod tests {
+    use serde_json::json;
+
     use super::*;
+
+    #[test]
+    fn stream_input_messages_match_proto_json() {
+        let start = StreamInputRequest::Start {
+            process: ProcessSelector::Pid(3),
+        };
+        let stdin = StreamInputRequest::Data {
+            input: ProcessInput::Stdin(b"hi"),
+        };
+        let pty = StreamInputRequest::Data {
+            input: ProcessInput::Pty(b"ls\r"),
+        };
+
+        assert_eq!(
+            serde_json::to_value(start).expect("serialize start"),
+            json!({"start": {"process": {"pid": 3}}})
+        );
+        assert_eq!(
+            serde_json::to_value(stdin).expect("serialize stdin data"),
+            json!({"data": {"input": {"stdin": "aGk="}}})
+        );
+        assert_eq!(
+            serde_json::to_value(pty).expect("serialize pty data"),
+            json!({"data": {"input": {"pty": "bHMN"}}})
+        );
+        assert_eq!(
+            serde_json::to_value(StreamInputRequest::Keepalive {}).expect("serialize keepalive"),
+            json!({"keepalive": {}})
+        );
+    }
 
     #[test]
     fn start_request_matches_proto_json() {
@@ -208,7 +260,7 @@ mod tests {
     fn send_input_base64_encodes_stdin() {
         let json = serde_json::to_value(SendInputRequest {
             process: ProcessSelector::Pid(1),
-            input: ProcessInput { stdin: b"hi\n" },
+            input: ProcessInput::Stdin(b"hi\n"),
         })
         .expect("serialize");
         assert_eq!(
