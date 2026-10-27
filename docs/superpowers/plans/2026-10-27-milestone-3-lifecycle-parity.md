@@ -105,7 +105,7 @@ SDK sources are e2b 2.61.0, the same packages as `docs/protocol-notes.md` (`py:`
 | Fork: `POST /sandboxes/{id}/fork` body `{timeout?, count?}`; `count` an integer 1 to 20 (`MAX_FORK_COUNT`), checked before the request; 201 → `[{sandbox?, error?: {code, message}}]`, one per fork; a whole-request 404 → not found | `py: api/client/api/sandboxes/post_sandboxes_sandbox_id_fork.py:22-66`; `py: api/client/models/sandbox_fork_request.py:22-46`; `py: api/client/models/sandbox_fork_result.py:27-63`; `py: sandbox/sandbox_api.py:81-118`; `py: sandbox_async/sandbox_api.py:435-495`; `js: 5137-5141, 5579-5604` |
 | Volumes: `POST /volumes {name}` 201 → `{volumeID, name, token, domain?}`; `GET /volumes` 200 → `[{volumeID, name}]`; `GET /volumes/{id}` 200 → `{volumeID, name, token, domain?}`, 404 → not found; `DELETE /volumes/{id}` 204 → true, 404 → false | `py: api/client/api/volumes/post_volumes.py:21-52`; `py: api/client/api/volumes/get_volumes.py:15-42`; `py: api/client/api/volumes/get_volumes_volume_id.py:17-43`; `py: api/client/api/volumes/delete_volumes_volume_id.py:16-41`; `py: api/client/models/volume_and_token.py:50-63`; `py: volume/volume_async.py:133-285` |
 | Volume mounts: `volumeMounts: [{name, path}]` in the create body, omitted when empty; returned in detail and list entries | `py: sandbox_async/main.py:213-222`; `py: sandbox_async/sandbox_api.py:252`; `py: api/client/models/sandbox_volume_mount.py:18-43`; `py: api/client/models/sandbox_detail.py:242`; `py: api/client/models/listed_sandbox.py:140` |
-| Detail extras: `allowInternetAccess` (bool or null), `network` (the create network shape), `lifecycle {onTimeout: pause\|kill, autoResume: bool}`, `pauseMode` (`full`\|`filesystem`), `volumeMounts` | `py: api/client/models/sandbox_detail.py:51-69, 174-250`; `py: api/client/models/sandbox_lifecycle.py:44-46`; `py: api/client/models/sandbox_pause_mode.py:5-6` |
+| Detail extras: `allowInternetAccess` (bool or null), `network` (the create network shape), `lifecycle {onTimeout: pause\|kill, autoResume: bool}`, `pauseMode` (`full`\|`filesystem`, only once a pause has finished; corrected, issue #65), `volumeMounts` | `py: api/client/models/sandbox_detail.py:51-69, 174-250`; `py: api/client/models/sandbox_lifecycle.py:44-46`; `py: api/client/models/sandbox_pause_mode.py:5-6` |
 | `secure` is accepted and ignored (every sandbox is secured) | `py: sandbox_async/main.py:177, 197` |
 | reqwest: `RequestBuilder::header(name, value)` and `query(&T: Serialize)` (feature `query`, already enabled) | `reqwest-0.13.5/src/async_impl/request.rs:197, 366`; `Cargo.toml` features |
 | `url::Url::path_segments_mut().extend(..)` percent-encodes `/`, `%`, space and `?` in a segment but not `:`; servers decode both (the crate's `Client::request` already relies on it; `tests/rest_api.rs` has no `:` case) | `url-2.5.8/src/parser.rs:20-38, 1210-1212`; `url-2.5.8/src/path_segments.rs:236-256`; `src/client.rs:401-413` |
@@ -114,7 +114,7 @@ SDK sources are e2b 2.61.0, the same packages as `docs/protocol-notes.md` (`py:`
 | uuid 1.29.0: `Uuid::new_v4()` behind feature `v4`; `Display` is the lowercase hyphenated form; needs rustc 1.89 (here 1.97.1) | `uuid-1.29.0/src/v4.rs:33`; `uuid-1.29.0/src/fmt.rs:31-35`; `uuid-1.29.0/Cargo.toml:14, 113, 134` |
 | secrecy 0.10.3: `SecretString: From<String>`, `Debug` prints `[REDACTED]` (already used for the envd token) | `secrecy-0.10.3/src/lib.rs:141-145, 214`; `src/sandbox.rs:212-224` |
 | The crate today: `Client::{request, send_json}` (private), `parse_success`, `parse_sandbox_response`, `ensure_found_and_success`, `HEADER_NEXT_TOKEN`; `CreateSandboxParams::body()` is infallible and `auto_pause` is an `Option<bool>`; `SandboxInfo` derives `Eq` and is `#[non_exhaustive]`; `Sandbox` is not `Clone`; `Error` is `#[non_exhaustive]` with `is_not_found()`; `CommandResult { stdout, stderr, exit_code, error }`; `CommandOptions::{env, user}` | `src/client.rs:14-27, 400-470`; `src/models.rs:31-200, 255-290`; `src/sandbox.rs:187-230`; `src/error.rs:25-127`; `src/commands.rs:40-120, 185-194` |
-| Mock helpers: `client_for`, `sandbox_json`, `sandbox_from_json`, `stream_response`, `message`, `end_stream`, `decode_request_envelope`, `API_KEY`, `SANDBOX_ID`; live helpers `LiveSandbox::{create, new, client}`, `params`, `template`, `run_id`, `poll_until`, `RUN_METADATA_KEY` | `tests/common/mod.rs:15-125`; `tests/live_support/mod.rs:30-225` |
+| Mock helpers: `client_for`, `sandbox_json`, `detail_json` (added by issue #65), `sandbox_from_json`, `stream_response`, `message`, `end_stream`, `decode_request_envelope`, `API_KEY`, `SANDBOX_ID`; live helpers `LiveSandbox::{create, new, client}`, `params`, `template`, `run_id`, `poll_until`, `RUN_METADATA_KEY` | `tests/common/mod.rs:15-125`; `tests/live_support/mod.rs:30-225` |
 | sandbawks 0.1.28 serves none of network update, metrics, snapshots, fork or volumes (tracked in gfd/sandbawks #664 to #672 under #673) | catalog `projects/sandbawks.md`, 2026-10-26 |
 
 ## Conventions for every task
@@ -1822,6 +1822,14 @@ git commit -m "feat: update_network on a running sandbox"
 - Create: `tests/rest_lifecycle.rs`
 - Modify: `tests/live_lifecycle.rs`, `docs/protocol-notes.md` ("REST endpoints": "Create body", "Create lifecycle", "Idempotency key", "Detail fields"), `docs/verification/s4-evidence-map.md`
 
+> **Corrected (issue #65, 2026-10-27).** What shipped differs from the steps below in four ways; the code blocks are fixed inline where they are copied from.
+> - `create_sandbox` checks the idempotency key **before** the lifecycle, as the SDK does (`py: sandbox_async/sandbox_api.py:228, 232`), so a request with both wrong reports the key.
+> - `checked_idempotency_key` counts the length in characters (`chars().count()`, as Python's `len`) and checks it before the character set, with one message for each, as `py: retry.py:37-44` does.
+> - Hosted E2B leaves `pauseMode` out of the detail while the sandbox runs and adds it only once the pause has finished, which can be a poll after `state` turns `paused` (live, 2026-10-27; `py: api/client/models/sandbox_detail.py:44-47` says the same). `clm_0145` therefore polls until the state is paused **and** `pause_mode` is set; the first version, polling on the state alone, failed with `pause_mode: None`.
+> - The `SandboxDetail` helper is `common::detail_json(extra)` (moved from `tests/rest_network.rs` into `tests/common/mod.rs`), and `tests/rest_lifecycle.rs` uses it instead of the inline `detail` closure. Later tasks that need a detail should use it too.
+>
+> Extra tests beyond the plan: `pause_with_a_full_snapshot_sends_auto_pause_memory_true`, `the_idempotency_key_is_checked_before_the_lifecycle`, `get_info_without_lifecycle_fields_reads_none`, and in `src/models.rs` `auto_pause_is_shorthand_for_the_lifecycle_on_timeout` and the two `idempotency_key_*` unit tests. Read `src/lifecycle.rs`, `src/models.rs` and `tests/rest_lifecycle.rs` for the shipped code.
+
 - [ ] **Step 1: Write the failing mock tests**
 
 `tests/rest_lifecycle.rs`:
@@ -2338,19 +2346,20 @@ In `src/models.rs`, replace the field `auto_pause: Option<bool>` with `lifecycle
         let Some(key) = self.idempotency_key.as_deref() else {
             return Ok(None);
         };
-        let valid = (1..=255).contains(&key.len())
-            && key
-                .bytes()
-                .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'-');
-        if valid {
-            Ok(Some(key))
-        } else {
-            Err(Error::InvalidArgument(format!(
-                "idempotency key must be 1-255 lowercase ASCII letters, digits or hyphens \
-                 (got {} characters)",
-                key.len()
-            )))
+        // Length first, in characters, as the SDK's `len(key)` counts them.
+        let characters = key.chars().count();
+        if !(1..=255).contains(&characters) {
+            return Err(Error::InvalidArgument(format!(
+                "idempotency key must be 1-255 characters (got {characters})"
+            )));
         }
+        let allowed = |byte: u8| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'-';
+        if !key.bytes().all(allowed) {
+            return Err(Error::InvalidArgument(
+                "idempotency key may only hold lowercase ASCII letters, digits and hyphens".into(),
+            ));
+        }
+        Ok(Some(key))
     }
 ```
 
@@ -2404,9 +2413,10 @@ In `src/client.rs`, a constant next to the others, `const HEADER_IDEMPOTENCY_KEY
 
 ```rust
     pub async fn create_sandbox(&self, params: &CreateSandboxParams) -> Result<Sandbox> {
-        // Every check runs before any request, as in the SDK.
-        let body = params.body()?;
+        // Every check runs before any request, in the SDK's order: the key
+        // (`sandbox_async/sandbox_api.py:228`), then the lifecycle (`:232`).
         let idempotency_key = params.checked_idempotency_key()?;
+        let body = params.body()?;
         let mut request = self.request(Method::POST, &["v2", "sandboxes"])?.json(&body);
         if let Some(key) = idempotency_key {
             request = request.header(HEADER_IDEMPOTENCY_KEY, key);
@@ -2438,11 +2448,13 @@ async fn clm_0145_lifecycle_pause_with_full_snapshot_pauses_at_timeout() {
     )
     .await;
 
-    // Act: as clm_0011, but with the lifecycle form.
+    // Act: as clm_0011, but with the lifecycle form. `pauseMode` appears only
+    // once the pause has finished, so wait for it too (corrected, issue #65).
     let sandbox_ref = &sandbox;
     let info = poll_until("auto-pause at timeout", Duration::from_secs(120), || async move {
         match sandbox_ref.get_info().await {
-            Ok(info) => (info.state == SandboxState::Paused).then_some(info),
+            Ok(info) => (info.state == SandboxState::Paused && info.pause_mode.is_some())
+                .then_some(info),
             Err(error) if error.is_not_found() => {
                 panic!("sandbox was killed, not paused, at its timeout: {error:?}")
             }

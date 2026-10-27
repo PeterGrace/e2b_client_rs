@@ -6,8 +6,9 @@ use std::collections::HashSet;
 use std::time::{Duration, Instant};
 
 use e2b_client::{
-    ALL_TRAFFIC, CommandOptions, EnvdVersion, Error, ListSandboxesParams, MetricsParams,
-    NetworkConfig, NetworkRule, NetworkUpdate, SandboxInfo, SandboxState, SortOrder,
+    ALL_TRAFFIC, CommandOptions, EnvdVersion, Error, Lifecycle, ListSandboxesParams, MetricsParams,
+    NetworkConfig, NetworkRule, NetworkUpdate, OnTimeout, SandboxInfo, SandboxState, SnapshotMode,
+    SortOrder, TimeoutAction,
 };
 use live_support::{
     LiveSandbox, RUN_METADATA_KEY, client, http_reply, no_http_reply_twice, params, poll_until,
@@ -793,4 +794,66 @@ async fn clm_0144_update_network_replaces_egress_without_restart() {
         .await
         .expect("read marker");
     assert_eq!(marker.stdout, "kept\n");
+}
+
+#[tokio::test]
+#[ignore = "live: run with `just test-live <target>`"]
+async fn clm_0145_lifecycle_pause_with_full_snapshot_pauses_at_timeout() {
+    // Arrange
+    let lifecycle = Lifecycle::new()
+        .on_timeout(OnTimeout::pause_with(SnapshotMode::Full))
+        .auto_resume(false);
+    let sandbox = LiveSandbox::create(
+        &params()
+            .timeout(Duration::from_secs(15))
+            .lifecycle(lifecycle),
+    )
+    .await;
+
+    // Act: as clm_0011, but with the lifecycle form. Hosted E2B leaves
+    // `pauseMode` out while the sandbox runs and adds it once the pause has
+    // been taken, which can be a poll after `state` turns `paused` (live,
+    // 2026-10-27), so wait for both. Not found means the sandbox was killed,
+    // which this claim rules out; other errors may be transient and keep
+    // polling.
+    let sandbox_ref = &sandbox;
+    let info = poll_until(
+        "lifecycle pause at timeout, with its pause mode",
+        Duration::from_secs(120),
+        || async move {
+            match sandbox_ref.get_info().await {
+                Ok(info) => (info.state == SandboxState::Paused && info.pause_mode.is_some())
+                    .then_some(info),
+                Err(error) if error.is_not_found() => {
+                    panic!("sandbox was killed, not paused, at its timeout: {error:?}")
+                }
+                Err(_) => None,
+            }
+        },
+    )
+    .await;
+
+    // Assert
+    let reported = info.lifecycle.expect("lifecycle in the detail");
+    assert_eq!(reported.on_timeout, TimeoutAction::Pause, "{info:?}");
+    assert!(!reported.auto_resume, "{info:?}");
+    assert_eq!(info.pause_mode, Some(SnapshotMode::Full), "{info:?}");
+}
+
+#[tokio::test]
+#[ignore = "live: run with `just test-live <target>`"]
+async fn clm_0153_get_info_reports_lifecycle() {
+    // Arrange
+    let lifecycle = Lifecycle::new()
+        .on_timeout(OnTimeout::Kill)
+        .auto_resume(false);
+    let sandbox = LiveSandbox::create(&params().lifecycle(lifecycle)).await;
+
+    // Act
+    let info = sandbox.get_info().await.expect("info");
+
+    // Assert
+    let reported = info.lifecycle.expect("lifecycle in the detail");
+    assert_eq!(reported.on_timeout, TimeoutAction::Kill, "{info:?}");
+    assert!(!reported.auto_resume, "{info:?}");
 }

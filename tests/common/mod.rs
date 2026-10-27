@@ -47,6 +47,21 @@ pub fn sandbox_json(envd_version: &str) -> Value {
     })
 }
 
+/// A running sandbox's `SandboxDetail` (`GET /sandboxes/{id}`) with the
+/// fields of `extra` merged in, replacing any of the same name.
+pub fn detail_json(extra: Value) -> Value {
+    let mut detail = json!({
+        "templateID": "base", "sandboxID": SANDBOX_ID, "clientID": "c",
+        "startedAt": "2026-10-27T12:00:00Z", "endAt": "2026-10-27T12:05:00Z",
+        "envdVersion": "0.5.7", "cpuCount": 2, "memoryMB": 512, "diskSizeMB": 2048,
+        "state": "running"
+    });
+    if let (Some(detail), Value::Object(extra)) = (detail.as_object_mut(), extra) {
+        detail.extend(extra);
+    }
+    detail
+}
+
 /// Mounts a create endpoint answering `created` and creates a sandbox from it.
 pub async fn sandbox_from_json(server: &MockServer, created: Value) -> Sandbox {
     sandbox_from_json_with_client(server, &client_for(server), created).await
