@@ -150,7 +150,7 @@ last attempt.
 | clm_0009_create_env_vars_reach_commands | CLM-0009 | fail | R1 fail, R2 fail | pass | sandbawks ([sandbawks#681](https://git.gfpd.us/gfd/sandbawks/issues/681)) | `left: "\n"` `right: "hi from create\n"` |
 | clm_0010_create_timeout_sets_end_at | CLM-0010 | pass | | pass | pass | |
 | clm_0011_auto_pause_pauses_at_timeout | CLM-0011 | fail | R1 fail | pass | sandbawks ([sandbawks#679](https://git.gfpd.us/gfd/sandbawks/issues/679), [sandbawks#665](https://git.gfpd.us/gfd/sandbawks/issues/665)) | `timed out after 120s waiting for auto-pause at timeout` |
-| clm_0012_internet_access_false_blocks_outbound | CLM-0012 | fail | R1 fail, R2 fail, R3 fail | pass | sandbawks ([sandbawks#667](https://git.gfpd.us/gfd/sandbawks/issues/667)); passed in M1 | `sandbox without internet access got an HTTP reply from 1.1.1.1:80: CommandResult { stdout: "", stderr: "", exit_code: 0, ... }` |
+| clm_0012_internet_access_false_blocks_outbound | CLM-0012 | fail | R1 fail, R2 fail, R3 fail | pass | sandbawks ([sandbawks#667](https://git.gfpd.us/gfd/sandbawks/issues/667)); passed in M1; run of record and R1: capacity | `sandbox without internet access got an HTTP reply from 1.1.1.1:80: CommandResult { stdout: "", stderr: "", exit_code: 0, ... }` |
 | clm_0013_connect_running_sandbox_runs_commands | CLM-0013 | fail | R1 fail, R2 pass | pass | pass (earlier attempts: capacity) | |
 | clm_0014_connect_resumes_paused_sandbox_with_files | CLM-0014 | fail | R1 fail, R2 fail | pass | sandbawks ([sandbawks#679](https://git.gfpd.us/gfd/sandbawks/issues/679)) | `left: Running` `right: Paused` |
 | clm_0015_connect_unknown_sandbox_is_not_found | CLM-0015 | pass | | pass | pass | |
@@ -243,8 +243,10 @@ that the issue describes and that M1 recorded (see `m1-live-results.md`,
 section "sandbawks", S1 to S12), with three notes:
 
 - **CLM-0012 passed on sandbawks in M1** (its single-test rerun, 2026-10-26)
-  and now fails three times out of three on a ready sandbox. The control
-  sandbox reaches `1.1.1.1:80`, and so does the sandbox created with
+  and now fails in both attempts that got a ready sandbox (R2 and R3). The
+  run of record and R1 never reached the check: the control sandbox exited 75
+  (`sandbox is still starting up`) and then 69 (`action_failure`). In R2 and
+  R3 the control sandbox reaches `1.1.1.1:80`, and so does the sandbox created with
   `"allowInternetAccess": false`. [sandbawks#667](https://git.gfpd.us/gfd/sandbawks/issues/667)
   says create ignores `allowInternetAccess` and that the default is deny; the
   default now looks like allow. That may be worth a comment on #667.
