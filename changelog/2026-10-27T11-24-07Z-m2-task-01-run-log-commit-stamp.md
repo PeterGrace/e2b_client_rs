@@ -33,6 +33,6 @@ follow-up.
 - `just test-live hosted`, run `20261027T112435Z-hosted-554735` on commit
   `cc85e67` with the tree committed: the log starts with
   `commit: cc85e67fec62703ae8ef4f45218ddb65ac5d9621` and `dirty: no`. All 46
-  claim tests passed (13 commands, 12 lifecycle, 21 files), and the sweep
+  claim tests passed (13 commands, 12 files, 21 lifecycle), and the sweep
   reported `killed 0 leftover sandbox(es)`. Neither key appears in the log.
   The log stays in `target/live-logs/`; Task 9 does the recorded run.
