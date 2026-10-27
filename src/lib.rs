@@ -4,7 +4,8 @@
 //! SDKs use, so it works against hosted E2B and any E2B-compatible server:
 //!
 //! - **REST control plane** ([`Client`]): create, connect/resume, inspect,
-//!   list, pause, kill and extend sandboxes.
+//!   list, pause, kill and extend sandboxes, and read their CPU, memory and
+//!   disk metrics ([`MetricsParams`]).
 //! - **envd process service** ([`Commands`]): start commands, stream their
 //!   stdout and stderr to an exit code, send stdin (one write at a time or
 //!   as an ordered [`InputStream`]), signal, list processes.
@@ -55,6 +56,7 @@ mod config;
 mod envd;
 mod error;
 mod filesystem;
+mod metrics;
 mod models;
 mod pty;
 mod sandbox;
@@ -82,6 +84,7 @@ pub use filesystem::{
     DEFAULT_WATCH_TIMEOUT, EntryInfo, FileStream, FileType, Filesystem, FilesystemEvent,
     FilesystemEventType, WatchHandle, WatchOptions, WriteEntry, WriteInfo, WriteOptions,
 };
+pub use metrics::{MetricsParams, SandboxMetrics};
 pub use models::{
     CreateSandboxParams, DEFAULT_TEMPLATE, ListSandboxesParams, SandboxInfo, SandboxPage,
     SandboxState,

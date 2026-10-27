@@ -11,6 +11,7 @@ use serde::Serialize;
 use crate::config::ConnectionConfig;
 use crate::envd::json_message_or_text;
 use crate::error::{Error, Result};
+use crate::metrics::{MetricsParams, SandboxMetrics};
 use crate::models::{
     CreateSandboxParams, EmptyBody, ListSandboxesParams, RefreshBody, SandboxCreated, SandboxInfo,
     SandboxPage, TimeoutBody,
@@ -237,6 +238,57 @@ impl Client {
             .send()
             .await?;
         parse_sandbox_response(response, sandbox_id).await
+    }
+
+    /// Reads a sandbox's CPU, memory and disk samples
+    /// (`GET /sandboxes/{id}/metrics`).
+    ///
+    /// # Arguments
+    ///
+    /// * `sandbox_id` - the sandbox.
+    /// * `params` - the optional time range.
+    ///
+    /// # Returns
+    ///
+    /// The samples, in the order the API returns them; empty if there are
+    /// none yet.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::SandboxNotFound`] for HTTP 404, [`Error::Api`] for other
+    /// non-2xx answers, [`Error::Decode`] for an unexpected body,
+    /// [`Error::Transport`] for connection failures.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use e2b_client::{Client, MetricsParams};
+    ///
+    /// # async fn demo(client: Client) -> e2b_client::Result<()> {
+    /// let samples = client
+    ///     .get_sandbox_metrics("sandbox-id", &MetricsParams::new())
+    ///     .await?;
+    /// if let Some(latest) = samples.last() {
+    ///     println!("{:.1}% CPU, {} bytes used", latest.cpu_used_pct, latest.mem_used);
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn get_sandbox_metrics(
+        &self,
+        sandbox_id: &str,
+        params: &MetricsParams,
+    ) -> Result<Vec<SandboxMetrics>> {
+        let response = self
+            .request(Method::GET, &["sandboxes", sandbox_id, "metrics"])?
+            .query(&params.query())
+            .send()
+            .await?;
+        // The API may answer `null` for "no samples"; `Option` accepts it,
+        // like `list_sandboxes` does.
+        let metrics: Option<Vec<SandboxMetrics>> =
+            parse_sandbox_response(response, sandbox_id).await?;
+        Ok(metrics.unwrap_or_default())
     }
 
     /// Lists sandboxes, one page at a time (`GET /v2/sandboxes`).

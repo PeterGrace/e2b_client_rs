@@ -482,6 +482,19 @@ Expected: compile error, `MetricsParams` and `get_sandbox_metrics` not found.
 
 - [ ] **Step 3: Implement**
 
+> **Corrected (issue #61, 2026-10-27).** The `MetricsParams` doctest called
+> `Utc::now()`, which needs chrono's `clock` feature; the crate builds chrono
+> with `serde` and `std` only, so the doctest failed to compile (E0599). It now
+> parses a fixed time, as below. Any later task that wants the current time in
+> library code or a doctest must not use `Utc::now()` either (use
+> `std::time::SystemTime`, or add `clock` deliberately). Additions beyond this
+> step: unit tests `query_without_a_range_is_empty` and
+> `query_sends_each_set_bound_as_unix_seconds` in `src/metrics.rs`, and a
+> `no_run` example on `Client::get_sandbox_metrics`, and a fourth mock test,
+> `get_metrics_with_a_null_body_is_empty` (a 200 with `null` is an empty
+> list); the CLM-0155 row names them with the mock tests. "Oldest first" became "in the order the API
+> returns them": neither SDK documents an order.
+
 `src/metrics.rs`:
 
 ```rust
@@ -523,10 +536,13 @@ pub struct SandboxMetrics {
 /// # Examples
 ///
 /// ```
-/// use chrono::{Duration, Utc};
+/// use chrono::{DateTime, Duration, Utc};
 /// use e2b_client::MetricsParams;
 ///
-/// let params = MetricsParams::new().start(Utc::now() - Duration::minutes(5));
+/// // The crate builds chrono without its `clock` feature, so this example
+/// // parses a fixed time rather than calling `Utc::now()`.
+/// let end: DateTime<Utc> = "2026-10-27T12:05:00Z".parse().expect("a valid time");
+/// let params = MetricsParams::new().start(end - Duration::minutes(5)).end(end);
 /// # let _ = params;
 /// ```
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -600,7 +616,7 @@ In `src/client.rs`, after `get_sandbox_info`:
     ///
     /// # Returns
     ///
-    /// The samples, oldest first, as the API returns them; empty if there are
+    /// The samples, in the order the API returns them; empty if there are
     /// none yet.
     ///
     /// # Errors
