@@ -140,7 +140,8 @@ something other than readiness.
 **Classes:** **pass**; **sandbawks** (a sandbawks defect, filed issue or new
 N-number below); **capacity** (the sandbox never became ready; says nothing
 about the feature). There are no **crate** or **test** classes: every failure
-passes on hosted, and no test was found wrong. "Final" is the last attempt.
+passes on hosted, and no test was found wrong. The last column quotes the
+last attempt.
 
 | Test | Claim | Run of record | Reruns | Hosted | Class | Failure (first line, last attempt) |
 |---|---|---|---|---|---|---|
