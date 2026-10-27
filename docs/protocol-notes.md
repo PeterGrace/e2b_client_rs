@@ -331,8 +331,8 @@ the download URL with its `signature` pair removed with a 4xx.
 - **`wait()` does not replay consumed output.** The SDK handle buffers all
   output; here `next_event()` hands chunks to the caller and `wait()` only
   collects what is left, so output is held once.
-- **Not implemented yet.** Milestone 3: `get_host`, metrics, snapshots and
-  fork, network updates, and the remaining SDK 2.61 create fields. Milestone 4:
+- **Not implemented yet.** Milestone 3: metrics, snapshots and fork, network
+  updates, and the remaining SDK 2.61 create fields. Milestone 4:
   the `is_symlink` file type (#30) and dropping the v1 connect fallback.
   Unscheduled: sandbox health probing on transport errors. Out of scope by
   design: template builds and a sync API.
