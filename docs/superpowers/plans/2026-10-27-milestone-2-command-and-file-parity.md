@@ -981,6 +981,8 @@ async fn pty_stream_input_uses_the_pty_member() {
 }
 ```
 
+> **Corrected (issue #32, 2026-10-27).** The shipped `tests/envd_pty.rs` is a superset of the code above; read that file. The create test also sets `.user("root")` (matched as `Authorization: Basic cm9vdDo=`), asserts `Connect-Timeout-Ms: 60000` and that the stream returns `None` after `Exit`. `pty_stream_input_uses_the_pty_member` compares the whole envelope list (`start`, then `data` with `input.pty`) instead of index `[1]`. Three tests were added: `pty_handle_skips_stdout_and_command_handle_skips_pty_data` (CLM-0133's "separately from stdout and stderr"), `connect_attaches_by_pid_with_the_keepalive_header` and `kill_sends_sigkill_and_reports_a_missing_pid_as_false`. `src/envd/process_pb.rs` gained unit tests `pty_start_request_has_pty_size_and_no_stdin`, `update_request_matches_proto_json` and `data_event_parses_pty_bytes`; `src/pty.rs` has `terminal_defaults_fill_only_unset_keys`. The existing `run_streams_output_to_exit_code_with_sdk_headers` in `tests/envd_api.rs` already asserts `"stdin": false`, so no test was added for it.
+
 Add one test to `tests/envd_api.rs`'s command tests, or to `tests/envd_pty.rs`, that `Commands::start` still sends `"stdin": false` (the existing `run_streams_output_to_exit_code_with_sdk_headers` may already assert the body; if so, leave it).
 
 Run: `cargo test --test envd_pty` — Expected: compile errors.
@@ -1057,6 +1059,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use bytes::Bytes;
+use reqwest::header::HeaderMap;
 
 use crate::commands::{CommandExit, Commands, open_process_stream};
 use crate::envd::connect::{ConnectStream, Empty};
@@ -1066,7 +1069,7 @@ use crate::envd::process_pb::{
 };
 use crate::envd::{EnvdClient, keepalive_headers};
 use crate::error::{Error, Result};
-use crate::stream_input::{InputKind, InputStream};
+use crate::stream_input::{InputKind, InputStream, StreamInputOptions};
 
 /// The SDKs' default bound on a PTY stream (`timeout=60`).
 pub const DEFAULT_PTY_TIMEOUT: Duration = Duration::from_secs(60);
@@ -1218,6 +1221,8 @@ async fn pty_transcript(mut handle: e2b_client::PtyHandle) -> (String, i32) {
 - `clm_0049_pty_input_reaches_the_shell`: create; open `stream_input`, send `"echo in-"` then `"$((6*7))\n"` then `"exit\n"`, close it; transcript contains `in-42`. This covers both `send_stdin` (CLM-0047) and streamed PTY input.
 
 - [ ] **Step 6: Docs, gates, live check, changelog, commit**
+
+> **Corrected (issue #32, 2026-10-27).** The evidence rows also name the unit tests listed in the Step 1 note: CLM-0132 adds `src/envd/process_pb.rs::tests::pty_start_request_has_pty_size_and_no_stdin` and `src/pty.rs::tests::terminal_defaults_fill_only_unset_keys`; CLM-0133 adds `tests/envd_pty.rs::pty_handle_skips_stdout_and_command_handle_skips_pty_data` and `src/envd/process_pb.rs::tests::data_event_parses_pty_bytes`; CLM-0134 adds `src/envd/process_pb.rs::tests::update_request_matches_proto_json`.
 
 Add a "PTY" section to `docs/protocol-notes.md`; drop PTY and `Update` from "Not implemented". Evidence-map rows: CLM-0132 → `tests/envd_pty.rs::create_sends_bash_with_pty_size_and_terminal_env_defaults`; CLM-0133 → the same test's event assertions (say so in Notes); CLM-0134 → `send_stdin_uses_the_pty_input_member`, `resize_sends_update_with_the_new_size`. Add `pty_stream_input_uses_the_pty_member` to the CLM-0130 row, and change that row's "Covers whole claim?" from `partial` to `yes` (Task 2 marked it partial because no stream sent `input.pty` yet). Run the gates and the three live tests on hosted. Write `changelog/<ts>-m2-task-03-pty.md`.
 

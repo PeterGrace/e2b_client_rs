@@ -117,7 +117,7 @@ Messages from `process/process.proto` as embedded in
 | Message | Fields used | Lines |
 |---|---|---|
 | `ProcessConfig` | `cmd`, `args`, `envs`, `cwd?` | 85-103 |
-| `StartRequest` | `process`, `tag?`, `stdin?` | 217-238 |
+| `StartRequest` | `process`, `pty?`, `tag?`, `stdin?` | 217-260 |
 | `ProcessEvent` oneof `start`/`data`/`end`/`keepalive` | | 318-340 |
 | `StartEvent` | `pid` | 346-352 |
 | `DataEvent` oneof `stdout`/`stderr`/`pty` (bytes) | | 374-394 |
@@ -166,6 +166,30 @@ The SDK's queue is unbounded; `InputStream::send` waits once 64 chunks are
 queued. An error that ends the call early is returned by the next `send` or
 by `close`.
 
+## PTY
+
+`Sandbox::pty()` returns a `Pty` (`src/pty.rs`). A session's output is read
+from a `PtyHandle`, whose events are `PtyEvent::{Data, Exit}`, kept apart from
+a command's `CommandEvent::{Stdout, Stderr}`. Both handles open their streams
+through the same `open_process_stream` (`src/commands.rs`).
+
+| Fact | Citation |
+|---|---|
+| `PTY {size: PTY.Size {cols: uint32 = 1, rows: uint32 = 2}}`; `StartRequest.pty` is optional field 2, `stdin` optional field 4 | `py: envd/process/process_pb.py:18-80, 212-260` |
+| `create` sends `Start` with `cmd "/bin/bash"`, `args ["-i", "-l"]`, `envs`, `cwd`, `pty.size {cols, rows}` and no `stdin` field | `py: sandbox_async/commands/pty.py:166-185`; `js: 4682-4712` |
+| `TERM=xterm-256color`, `LANG=C.UTF-8` and `LC_ALL=C.UTF-8` are added to `envs` only when the caller did not set them | `py: sandbox_async/commands/pty.py:162-165` |
+| `create` sends the user header and `Keepalive-Ping-Interval: 50`; `connect` sends `Connect {process: {pid}}` with the keepalive header only; both default to a 60 s stream deadline | `py: sandbox_async/commands/pty.py:139-185, 207-234` |
+| Both wait for the opening `start` event within the request timeout, as commands do | `py: sandbox_async/commands/pty.py:187-199, 236-248` |
+| Output arrives as `DataEvent.pty` bytes, next to `stdout`/`stderr` in the same oneof | `py: envd/process/process_pb.py:369-394`; `py: sandbox_async/commands/command_handle.py:169, 221-231` |
+| `send_stdin` is `SendInput` with `input.pty` bytes | `py: sandbox_async/commands/pty.py:85-111` |
+| `stream_input` is the `StreamInput` handle with the `pty` member | `py: sandbox_async/commands/pty.py:113-137` |
+| `resize` is unary `/process.Process/Update {process: {pid}, pty: {size: {cols, rows}}}`, answered by an empty `UpdateResponse` | `py: sandbox_async/commands/pty.py:256-283`; `py: envd/process/process_connect.py:110-115`; `py: envd/process/process_pb.py:261-296` |
+| `kill` is the shared `SendSignal(SIGKILL)` with `not_found` → `false` | `py: sandbox_async/commands/pty.py:65-83`; `py: envd/rpc.py:208-248` |
+
+`PtySize` holds `u16` cells (as terminals report them), widened to the
+proto's `uint32` on the wire. The SDK's `on_data` callback is replaced by the
+handle's `next_event` loop, as for commands.
+
 ## Filesystem service and file API
 
 Messages from `filesystem/filesystem.proto` as embedded in
@@ -209,9 +233,8 @@ Behaviour:
 - **`wait()` does not replay consumed output.** The SDK handle buffers all
   output; here `next_event()` hands chunks to the caller and `wait()` only
   collects what is left, so output is held once.
-- **Not implemented in v0.1:** PTY, `Update`, directory
-  watching, signed file URLs, octet-stream and gzip uploads, sandbox health
-  probing on transport errors, metrics, snapshots, fork, network updates,
+- **Not implemented in v0.1:** directory watching, signed file URLs,
+  octet-stream and gzip uploads, sandbox health probing on transport errors, metrics, snapshots, fork, network updates,
   template builds, and the sync API.
 
 ## Verification against a live server

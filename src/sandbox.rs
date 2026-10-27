@@ -13,6 +13,7 @@ use crate::envd::{EnvdClient, EnvdTarget, EnvdVersion, envd_http_error};
 use crate::error::Result;
 use crate::filesystem::Filesystem;
 use crate::models::{SandboxCreated, SandboxInfo};
+use crate::pty::Pty;
 
 /// envd's health route (`e2b/envd/api.py:22`).
 const ENVD_HEALTH_ROUTE: &str = "/health";
@@ -20,7 +21,8 @@ const ENVD_HEALTH_ROUTE: &str = "/health";
 /// A sandbox you created or connected to.
 ///
 /// It bundles the REST lifecycle calls for this sandbox with access to the
-/// sandbox's envd daemon through [`Sandbox::commands`] and [`Sandbox::files`].
+/// sandbox's envd daemon through [`Sandbox::commands`], [`Sandbox::pty`] and
+/// [`Sandbox::files`].
 /// Cloning is cheap and clones share connections.
 ///
 /// # Examples
@@ -139,6 +141,16 @@ impl Sandbox {
     #[must_use]
     pub fn commands(&self) -> Commands {
         Commands::new(Arc::clone(&self.envd))
+    }
+
+    /// The PTY service: interactive terminal sessions.
+    ///
+    /// # Returns
+    ///
+    /// A [`Pty`] handle for this sandbox.
+    #[must_use]
+    pub fn pty(&self) -> Pty {
+        Pty::new(Arc::clone(&self.envd))
     }
 
     /// The filesystem service: read, write and manage files.

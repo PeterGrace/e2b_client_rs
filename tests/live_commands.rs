@@ -4,7 +4,10 @@ mod live_support;
 
 use std::time::Duration;
 
-use e2b_client::{CommandEvent, CommandOptions, ConnectCode, Error, Signal, StreamInputOptions};
+use e2b_client::{
+    CommandEvent, CommandOptions, ConnectCode, Error, PtyEvent, PtyHandle, PtyOptions, PtySize,
+    Signal, StreamInputOptions,
+};
 use live_support::LiveSandbox;
 
 #[tokio::test]
@@ -372,4 +375,104 @@ async fn clm_0046_stream_input_delivers_chunks_in_order() {
 
     assert_eq!(result.stdout, "one two three\n");
     assert_eq!(result.exit_code, 0);
+}
+
+/// Reads PTY events until the shell exits.
+///
+/// Returns the terminal output (lossy UTF-8, escape sequences and the login
+/// banner included) and the exit code. Tests match markers the shell prints,
+/// never the exact transcript.
+async fn pty_transcript(mut handle: PtyHandle) -> (String, i32) {
+    let mut output = Vec::new();
+    while let Some(event) = handle.next_event().await.expect("pty event") {
+        match event {
+            PtyEvent::Data(chunk) => output.extend_from_slice(&chunk),
+            PtyEvent::Exit(exit) => {
+                return (
+                    String::from_utf8_lossy(&output).into_owned(),
+                    exit.exit_code,
+                );
+            }
+            // `PtyEvent` is `#[non_exhaustive]`, so a catch-all arm is required.
+            other => panic!("unexpected PTY event {other:?}"),
+        }
+    }
+    panic!("PTY stream ended without Exit");
+}
+
+#[tokio::test]
+#[ignore = "live: run with `just test-live <target>`"]
+async fn clm_0047_pty_create_streams_terminal_output() {
+    let sandbox = LiveSandbox::new().await;
+    let handle = sandbox
+        .pty()
+        .create(PtySize::new(80, 24), &PtyOptions::default())
+        .await
+        .expect("create pty");
+
+    // All input in one write, so both checks run before `exit`. The terminal
+    // echoes the input back, so the markers are ones only the shell can
+    // produce: the echo reads `pty-$((40+2))`, the output `pty-42`.
+    handle
+        .send_stdin("echo pty-$((40+2))\necho term-$TERM\nexit 3\n")
+        .await
+        .expect("send_stdin");
+    let (transcript, exit_code) = pty_transcript(handle).await;
+
+    assert!(transcript.contains("pty-42"), "no pty-42 in {transcript:?}");
+    assert!(
+        transcript.contains("term-xterm-256color"),
+        "TERM default did not reach the shell: {transcript:?}"
+    );
+    assert_eq!(exit_code, 3);
+}
+
+#[tokio::test]
+#[ignore = "live: run with `just test-live <target>`"]
+async fn clm_0048_pty_resize_changes_terminal_size() {
+    let sandbox = LiveSandbox::new().await;
+    let handle = sandbox
+        .pty()
+        .create(PtySize::new(80, 24), &PtyOptions::default())
+        .await
+        .expect("create pty");
+
+    handle.resize(PtySize::new(132, 43)).await.expect("resize");
+    // `stty size` prints "<rows> <cols>". The echoed input has no "43 132".
+    handle
+        .send_stdin("stty size; exit\n")
+        .await
+        .expect("send_stdin");
+    let (transcript, exit_code) = pty_transcript(handle).await;
+
+    assert!(
+        transcript.contains("43 132"),
+        "stty did not report the new size: {transcript:?}"
+    );
+    assert_eq!(exit_code, 0);
+}
+
+#[tokio::test]
+#[ignore = "live: run with `just test-live <target>`"]
+async fn clm_0049_pty_input_reaches_the_shell() {
+    let sandbox = LiveSandbox::new().await;
+    let handle = sandbox
+        .pty()
+        .create(PtySize::new(80, 24), &PtyOptions::default())
+        .await
+        .expect("create pty");
+    let mut input = sandbox
+        .pty()
+        .stream_input(handle.pid(), &StreamInputOptions::default());
+
+    // One command split across two chunks: `in-42` only appears if both
+    // arrive, in order, and the shell evaluates them as one line.
+    for chunk in ["echo in-", "$((6*7))\n", "exit\n"] {
+        input.send(chunk).await.expect("send");
+    }
+    input.close().await.expect("close input stream");
+    let (transcript, exit_code) = pty_transcript(handle).await;
+
+    assert!(transcript.contains("in-42"), "no in-42 in {transcript:?}");
+    assert_eq!(exit_code, 0);
 }

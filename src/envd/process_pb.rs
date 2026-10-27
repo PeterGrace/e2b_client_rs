@@ -32,9 +32,35 @@ pub(crate) struct ProcessConfig<'a> {
 #[derive(Debug, Clone, Serialize)]
 pub(crate) struct StartRequest<'a> {
     pub(crate) process: ProcessConfig<'a>,
+    /// Set for a PTY session, absent for a plain command.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) pty: Option<PtyConfig>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) tag: Option<&'a str>,
-    pub(crate) stdin: bool,
+    /// `Some` for a command; `None` for a PTY, whose start request the SDKs
+    /// send without a `stdin` field (`e2b/sandbox_async/commands/pty.py:166-185`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) stdin: Option<bool>,
+}
+
+/// `process.PTY`.
+#[derive(Debug, Clone, Copy, Serialize)]
+pub(crate) struct PtyConfig {
+    pub(crate) size: PtySizeWire,
+}
+
+/// `process.PTY.Size` (both fields are `uint32` in the proto).
+#[derive(Debug, Clone, Copy, Serialize)]
+pub(crate) struct PtySizeWire {
+    pub(crate) cols: u32,
+    pub(crate) rows: u32,
+}
+
+/// `process.UpdateRequest`: resizes a PTY.
+#[derive(Debug, Clone, Serialize)]
+pub(crate) struct UpdateRequest {
+    pub(crate) process: ProcessSelector,
+    pub(crate) pty: PtyConfig,
 }
 
 /// `process.ProcessSelector`: a oneof of `pid` or `tag`.
@@ -88,6 +114,8 @@ pub(crate) struct DataEvent {
     pub(crate) stdout: Option<Bytes>,
     #[serde(default, deserialize_with = "deserialize_base64_opt")]
     pub(crate) stderr: Option<Bytes>,
+    #[serde(default, deserialize_with = "deserialize_base64_opt")]
+    pub(crate) pty: Option<Bytes>,
 }
 
 /// `process.ProcessEvent.EndEvent` (the `exited` and `status` fields are not
@@ -229,8 +257,9 @@ mod tests {
                 envs: &envs,
                 cwd: Some("/tmp"),
             },
+            pty: None,
             tag: None,
-            stdin: false,
+            stdin: Some(false),
         };
         let json = serde_json::to_value(&request).expect("serialize");
         assert_eq!(
@@ -245,6 +274,68 @@ mod tests {
                 "stdin": false
             })
         );
+    }
+
+    #[test]
+    fn pty_start_request_has_pty_size_and_no_stdin() {
+        let envs = HashMap::new();
+        let request = StartRequest {
+            process: ProcessConfig {
+                cmd: "/bin/bash",
+                args: vec!["-i", "-l"],
+                envs: &envs,
+                cwd: None,
+            },
+            pty: Some(PtyConfig {
+                size: PtySizeWire { cols: 80, rows: 24 },
+            }),
+            tag: None,
+            stdin: None,
+        };
+
+        let json = serde_json::to_value(&request).expect("serialize");
+
+        assert_eq!(
+            json,
+            json!({
+                "process": {"cmd": "/bin/bash", "args": ["-i", "-l"]},
+                "pty": {"size": {"cols": 80, "rows": 24}}
+            })
+        );
+    }
+
+    #[test]
+    fn update_request_matches_proto_json() {
+        let request = UpdateRequest {
+            process: ProcessSelector::Pid(5),
+            pty: PtyConfig {
+                size: PtySizeWire {
+                    cols: 120,
+                    rows: 40,
+                },
+            },
+        };
+
+        let json = serde_json::to_value(&request).expect("serialize");
+
+        assert_eq!(
+            json,
+            json!({"process": {"pid": 5}, "pty": {"size": {"cols": 120, "rows": 40}}})
+        );
+    }
+
+    #[test]
+    fn data_event_parses_pty_bytes() {
+        let response: EventResponse =
+            serde_json::from_str(r#"{"event":{"data":{"pty":"JCA="}}}"#).expect("deserialize");
+
+        let data = response
+            .event
+            .and_then(|event| event.data)
+            .expect("data event");
+
+        assert_eq!(data.pty.as_deref(), Some(&b"$ "[..]));
+        assert!(data.stdout.is_none() && data.stderr.is_none());
     }
 
     #[test]
