@@ -433,14 +433,14 @@ async fn metadata_is_sent_as_x_metadata_headers_on_every_upload() {
         .and(path("/files"))
         .and(has_metadata_headers)
         .respond_with(written(&["/w/a.txt"]))
-        .expect(4)
+        .expect(5)
         .mount(&server)
         .await;
     let files = sandbox.files();
     let options = metadata_options();
 
-    // Act: one multipart request, two octet-stream requests and one
-    // streamed upload.
+    // Act: one multipart request, two octet-stream requests, one gzip
+    // request and one streamed upload.
     files
         .write_files(&two_entries(), &options)
         .await
@@ -449,6 +449,13 @@ async fn metadata_is_sent_as_x_metadata_headers_on_every_upload() {
         .write_files(&two_entries(), &options.clone().octet_stream(true))
         .await
         .expect("octet-stream write_files");
+    files
+        .write_files(
+            &[WriteEntry::new("/w/a.txt", "alpha")],
+            &options.clone().gzip(true),
+        )
+        .await
+        .expect("gzip write_files");
     let data: &'static [u8] = b"streamed";
     files
         .write_stream("/w/s.bin", data, &options)
@@ -456,7 +463,7 @@ async fn metadata_is_sent_as_x_metadata_headers_on_every_upload() {
         .expect("write_stream");
 
     // Assert: the expected mix of encodings, all with the headers (checked by
-    // the mock's `expect(4)` when the server drops).
+    // the mock's `expect(5)` when the server drops).
     let requests = file_requests(&server).await;
     assert_eq!(
         requests
@@ -465,6 +472,8 @@ async fn metadata_is_sent_as_x_metadata_headers_on_every_upload() {
             .count(),
         1
     );
+    let gzipped = |request: &&Request| request.headers.contains_key("content-encoding");
+    assert_eq!(requests.iter().filter(gzipped).count(), 1);
     assert!(requests.iter().all(has_metadata_headers));
 }
 

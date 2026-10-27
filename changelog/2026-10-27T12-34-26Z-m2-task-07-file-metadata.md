@@ -6,7 +6,9 @@ Claims CLM-0129 (S3) and CLM-0139 (S4).
 ## What changed
 
 - `WriteOptions::metadata(key, value)` adds one pair to a sorted
-  `BTreeMap`, so the headers always go out in the same order. Every upload
+  `BTreeMap`, so the headers always go out in the same order. It
+  ASCII-lowercases the key first, as envd stores it, so `team` and `Team`
+  are one key and the last call wins (from the review of PR #47). Every upload
   request sends one `X-Metadata-<key>: <value>` header per pair: the
   multipart request, each octet-stream request, and the streamed
   `write_stream` request. The headers are added only in `post_multipart` and
@@ -26,7 +28,8 @@ Claims CLM-0129 (S3) and CLM-0139 (S4).
 - `src/wire.rs`: `deserialize_null_as_default`, so an explicit JSON `null`
   reads as an empty map, like an absent field.
 - Tests:
-  - four mock tests in `tests/envd_write.rs`;
+  - four mock tests in `tests/envd_write.rs` (the header test covers
+    multipart, octet-stream, gzip and streamed uploads);
   - three unit tests on `metadata_headers`;
   - a null/absent unit test in `src/envd/filesystem_pb.rs`;
   - metadata pinned in `entry_info_parses_proto_json`,
@@ -52,6 +55,8 @@ The plan is corrected in this same PR, with a dated note in Task 7 Step 2:
 - The empty batch returns before the check, as in the SDK.
 - The headers are passed to `post_*` once they are validated, so they are
   not re-derived for each request.
+- `metadata` lowercases the key, so a repeated key in another case replaces
+  the earlier value. The plan's `metadata` inserted keys as given.
 - The `null` tolerance is new. The SDK has it too, through `map_metadata`.
 
 Task 8 and Task 11 name none of the changed symbols.
