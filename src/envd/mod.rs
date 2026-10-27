@@ -36,10 +36,10 @@ const LEGACY_DEFAULT_USER: &str = "user";
 
 /// Asks envd to send keepalive events on long streams so idle proxies do
 /// not drop them (`e2b/connection_config.py:48-49`).
-pub(crate) const KEEPALIVE_PING_HEADER: &str = "keepalive-ping-interval";
+const KEEPALIVE_PING_HEADER: &str = "keepalive-ping-interval";
 /// The keepalive interval the SDKs use, in seconds
 /// (`KEEPALIVE_PING_INTERVAL_SEC`, `e2b/connection_config.py:48`).
-pub(crate) const KEEPALIVE_PING_INTERVAL_SECS: u16 = 50;
+const KEEPALIVE_PING_INTERVAL_SECS: u16 = 50;
 
 /// The `Keepalive-Ping-Interval: 50` header envd honours on long streams.
 ///

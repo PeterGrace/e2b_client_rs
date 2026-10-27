@@ -408,7 +408,7 @@ fn stream_input_messages_match_proto_json() {
 
 In `src/envd/mod.rs`:
 
-1. Move `KEEPALIVE_PING_HEADER` and `KEEPALIVE_PING_INTERVAL_SECS` from `src/commands.rs` here as `pub(crate)`, and add:
+1. Move `KEEPALIVE_PING_HEADER` and `KEEPALIVE_PING_INTERVAL_SECS` from `src/commands.rs` here, private (callers go through `keepalive_headers()`), and add:
 
    ```rust
    /// The keepalive header envd honours on long streams.
