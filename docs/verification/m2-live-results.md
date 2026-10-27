@@ -98,8 +98,9 @@ None.
 
 Run with `just test-live sandbawks` on `0b9494b` (main with every M2 feature
 task and #38), template `compound-sandbox` (`E2B_TEMPLATE_SANDBAWKS` in `.env`),
-against sandbawks at `sb-ghlw.gfd.dev`. Every sandbox reported
-`"envdVersion":"0.1.28"`. The log starts `commit:
+against sandbawks at `sb-ghlw.gfd.dev`. The sandboxes report envd 0.1.28
+(CLM-0129's message in the run of record and R1; the create responses are not
+logged). The log starts `commit:
 0b9494ba6f5c190554826e683d3c13f489e82910` and `dirty: no`. Hosted E2B is the
 canonical server: every test that fails here passed on hosted in run
 `20261027T125515Z-hosted-1922536` (above), so no failure is a crate bug.
