@@ -3949,7 +3949,7 @@ git commit -m "feat: fork a sandbox"
 mod common;
 
 use common::{API_KEY, SANDBOX_ID, client_for, sandbox_json};
-use e2b_client::{CreateSandboxParams, Error};
+use e2b_client::{CreateSandboxParams, Error, ListSandboxesParams};
 use secrecy::ExposeSecret;
 use serde_json::json;
 use wiremock::matchers::{body_json, header, method, path};
@@ -4081,6 +4081,30 @@ async fn create_sends_volume_mounts_and_info_reads_them() {
     assert_eq!(info.volume_mounts.len(), 1);
     assert_eq!(info.volume_mounts[0].name, "data");
     assert_eq!(info.volume_mounts[0].path, "/mnt/data");
+}
+
+#[tokio::test]
+async fn list_entries_read_volume_mounts() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/v2/sandboxes"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!([{
+            "templateID": "base", "sandboxID": SANDBOX_ID, "clientID": "c",
+            "startedAt": "2026-10-27T12:00:00Z", "endAt": "2026-10-27T12:05:00Z",
+            "envdVersion": "0.5.7", "cpuCount": 2, "memoryMB": 512, "diskSizeMB": 2048,
+            "state": "running", "volumeMounts": [{"name": "data", "path": "/mnt/data"}]
+        }])))
+        .mount(&server)
+        .await;
+
+    let page = client_for(&server)
+        .list_sandboxes(&ListSandboxesParams::new())
+        .await
+        .expect("list");
+
+    let mounts = &page.sandboxes[0].volume_mounts;
+    assert_eq!(mounts.len(), 1);
+    assert_eq!((mounts[0].name.as_str(), mounts[0].path.as_str()), ("data", "/mnt/data"));
 }
 ```
 
@@ -4499,7 +4523,7 @@ A volume may refuse to be destroyed while a sandbox still mounts it, hence the e
 
 - [ ] **Step 6: Docs, gates, changelog, commit**
 
-`docs/protocol-notes.md`: a new section "Volumes" with the four routes and the mount body; the "Create body" and "Detail fields" rows gain `volumeMounts`. Evidence map: CLM-0163 → the first four `tests/rest_volumes.rs` tests; CLM-0164 → `create_sends_volume_mounts_and_info_reads_them` and the omit unit test; CLM-0167 (mounts part) → the same mock test. `changelog/<ts>-m3-task-10-volumes.md`.
+`docs/protocol-notes.md`: a new section "Volumes" with the four routes and the mount body; the "Create body" and "Detail fields" rows gain `volumeMounts`. Evidence map: CLM-0163 → the first four `tests/rest_volumes.rs` tests; CLM-0164 → `create_sends_volume_mounts_and_info_reads_them` (create body and detail), `list_entries_read_volume_mounts` (list entries) and the omit unit test; CLM-0167 (mounts part) → the same mock test. `changelog/<ts>-m3-task-10-volumes.md`.
 
 ```bash
 git add src/volumes.rs src/error.rs src/client.rs src/models.rs src/lib.rs tests/rest_volumes.rs tests/live_sweep.rs tests/live_lifecycle.rs docs/ changelog/
