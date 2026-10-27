@@ -194,17 +194,30 @@ Behaviour:
 
 ## Verification against a live server
 
-`https://sb-ghlw.gfd.dev` (a self-hosted E2B-compatible server) was probed
-without credentials only, on 2026-10-26:
+Every v0.1 behaviour was verified live on 2026-10-26 by the M1 suite
+(`tests/live_*.rs`, `just test-live <target>`). Each test is named after the
+claim it backs in `claims.json`. The wire details in this file are covered by
+mock and unit tests instead; `docs/verification/s4-evidence-map.md` maps each
+one to its tests.
 
-- `GET /health` without a sandbox ID answers 400 `missing_sandbox_id`, asking
-  for `E2b-Sandbox-Id` or a `{port}-{sandbox_id}.{domain}` host: the same two
-  addressing modes the SDKs use.
-- `GET https://49983-x.sb-ghlw.gfd.dev/health` answers 404 "x not found", so the
-  per-sandbox host form routes.
-- `POST /v2/sandboxes`, `GET /v2/sandboxes`, `POST /sandboxes/x/connect`,
-  `POST /sandboxes/x/refreshes` answer 401 (route exists, needs a key);
-  `POST /v2/sandboxes/x/connect` answers 404 with an empty body (no v2
-  connect route), which is what motivated the v1 fallback above.
+- **Hosted E2B (canonical):** all 46 live tests passed in run
+  `20261026T225333Z-hosted-980838` at `8cd5040`
+  (`docs/verification/runs/`).
+- **sandbawks (`sb-ghlw.gfd.dev`, 0.1.28):** 25 of 46 passed. Every failure
+  either passed on hosted E2B and is filed as a sandbawks defect
+  (gfd/sandbawks #674-#682, plus #665), or was caused by cluster capacity.
+  None is a crate bug. Details and request/response evidence are in
+  `docs/verification/m1-live-results.md`.
 
-No authenticated call was made; the integration tests have not been run.
+Findings that affect how the crate talks to servers:
+
+- **Hosted E2B and `allow_internet_access(false)`.** Outbound TCP handshakes
+  still complete, but no data flows. A probe for this setting must send a
+  request and check for a response, not just open a connection.
+- **sandbawks and v2 connect.** The v2 connect route has been served since
+  sandbawks 0.1.28. The v1 connect fallback (above) is therefore no longer
+  needed by any known server, and M4 removes it.
+- **sandbawks and envd version gates.** sandbawks reports its release number
+  as `envdVersion` (gfd/sandbawks#675), so envd version gates such as
+  `close_stdin` and the default user take their old-envd paths there.
+

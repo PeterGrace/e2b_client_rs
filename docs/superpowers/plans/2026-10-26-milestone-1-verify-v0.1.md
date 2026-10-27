@@ -1538,6 +1538,12 @@ Same steps as Task 6, with `just test-live sandbawks` and the section heading `#
 
 **Executor:** the coordinator session, because it owns `claims.json`. This isn't a subagent task.
 
+> **Corrected (issue #12, 2026-10-27).** Four changes to how the steps were run:
+> - **Steps 1 and 2:** evidence is recorded once per claim, not once per test. The locator lists every test the claim maps to, at a named commit; for live tests it also names the run log.
+> - **Refuted claims:** CLM-0071 and CLM-0109 each keep two verdicts: `refuted` (evidence at 5b134d0) followed by `supported` (evidence at 8cd5040, after the fix).
+> - **Step 3:** CLM-0085 was retired and replaced by CLM-0127, because the crate deliberately ignores `clientID` (pgrace's decision, 2026-10-26).
+> - **sandbawks defects:** filed as gfd/sandbawks #674-#682, with evidence added to #665.
+
 **Files:**
 - Modify: `claims.json`
 - Modify: `README.md` (add a "Verification status" section)

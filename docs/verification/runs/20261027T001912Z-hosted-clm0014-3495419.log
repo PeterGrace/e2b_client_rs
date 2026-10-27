@@ -1,0 +1,33 @@
+commit 51340c2
+   Compiling e2b-client v0.1.0 (/home/pgrace/repos/e2b_client_rs/.worktrees/e2b-client-rs-e2b_client_rs)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.83s
+     Running tests/live_lifecycle.rs (target/debug/deps/live_lifecycle-6bf873d27d564c2e)
+
+running 1 test
+test clm_0014_connect_resumes_paused_sandbox_with_files ... ok
+
+successes:
+
+successes:
+    clm_0014_connect_resumes_paused_sandbox_with_files
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 20 filtered out; finished in 3.41s
+
+   Compiling e2b-client v0.1.0 (/home/pgrace/repos/e2b_client_rs/.worktrees/e2b-client-rs-e2b_client_rs)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.09s
+     Running tests/live_sweep.rs (target/debug/deps/live_sweep-c405ef8afc139365)
+
+running 1 test
+test sweep_leftover_sandboxes_of_this_run ... ok
+
+successes:
+
+---- sweep_leftover_sandboxes_of_this_run stdout ----
+sweep: killed 0 leftover sandbox(es) of run 20261027T001912Z-hosted-clm0014-3495419
+
+
+successes:
+    sweep_leftover_sandboxes_of_this_run
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.36s
+
