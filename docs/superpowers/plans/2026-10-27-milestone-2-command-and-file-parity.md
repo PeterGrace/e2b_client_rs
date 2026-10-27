@@ -71,6 +71,8 @@ SDK sources are e2b 2.61.0, the same packages as `docs/protocol-notes.md` (`py:`
 | `StreamInput` is a client-streaming RPC at `/process.Process/StreamInput`; `Update` is unary at `/process.Process/Update` | `py: envd/process/process_connect.py:110-128` |
 | `StreamInputRequest` is a oneof `start {process: ProcessSelector}` / `data {input: ProcessInput}` / `keepalive {}`; the response is empty | `py: envd/process/process_pb.py:597-716` |
 | The input handle sends `start` first, then one `data` per queued chunk, a `keepalive` after 50 s without input, and ends the request stream on `close()`, which then waits for the call to finish | `py: sandbox_async/commands/command_input_handle.py:71-83, 91-131`; `py: sandbox/commands/stream_input.py:10-37`; `js: 2781-2870` |
+| Keepalive interval 50 s (`KEEPALIVE_PING_INTERVAL_SEC`), header `Keepalive-Ping-Interval` | `py: connection_config.py:48-49` |
+| A stream's opening event is awaited within the request timeout, then only the stream's own deadline applies (the basis of `within_request_timeout`) | `py: envd/client_async/__init__.py:113-149` |
 | Input stream timeout defaults to 60 s (`STREAM_INPUT_TIMEOUT`); `0`/`None` disables it | `py: connection_config.py:33`; `py: sandbox_async/commands/command.py:150-174` |
 | SDKs gate `StreamInput` on no envd version | `py: sandbox_async/commands/command.py:150-174`; `py: envd/versions.py:1-11` (no constant for it) |
 | `ProcessInput` is a oneof `stdin` / `pty` (bytes) | `py: envd/process/process_pb.py:569-596` |
@@ -97,6 +99,8 @@ SDK sources are e2b 2.61.0, the same packages as `docs/protocol-notes.md` (`py:`
 | `futures_util::stream::unfold` is available with `default-features = false`; `future::try_join_all` needs the `alloc` feature | `futures-util-0.3.34/src/stream/mod.rs:105-106`; `Cargo.toml:38-43` |
 | `tokio_util::io::ReaderStream::new(R: AsyncRead)` yields `io::Result<Bytes>`; feature `io` | `tokio-util-0.7.20/src/io/reader_stream.rs:45-82`; `Cargo.toml:65` |
 | `async_compression::tokio::bufread::GzipEncoder::new(R: AsyncBufRead)` and `GzipDecoder`; features `tokio`, `gzip` | `async-compression-0.4.42/src/macros.rs:1-30, 120-133`; `Cargo.toml:43-68` |
+| `secrecy::SecretString` is `SecretBox<str>`, whose `Debug` prints `SecretBox<str>([REDACTED])`, so a derived `Debug` on `EnvdClient` holding one does not leak the token | `secrecy-0.10.3/src/lib.rs:141-145, 214` |
+| `url::Url::query_pairs_mut` returns a `form_urlencoded::Serializer`: bytes other than `*-._` and ASCII alphanumerics are percent-encoded (so `/` becomes `%2F`) and a space becomes `+` | `url-2.5.8/src/lib.rs:1701`; `form_urlencoded-1.2.2/src/lib.rs:121-145` |
 | `sha2::Sha256::digest(data) -> Output` through `sha2::Digest` (re-exported from digest 0.11) | `sha2-0.11.1/src/lib.rs:19`; `digest-0.11.3/src/digest.rs:56` |
 | tokio `AsyncRead` is always available; `BufReader`, `AsyncReadExt` and `io::repeat` need `io-util`; `tokio::spawn` needs `rt`; `tokio::sync::mpsc` needs `sync` | `tokio-1.54.1/src/io/mod.rs:209-210, 280`; `Cargo.toml:94, 119` |
 | rustc here is 1.97.1; sha2 0.11.1 needs 1.88, tokio-util 0.7.20 needs 1.85, async-compression 0.4.42 needs 1.83 | `rustc --version`; each crate's `Cargo.toml` `rust-version` |
