@@ -164,8 +164,16 @@ impl PtyOptions {
         self
     }
 
-    /// Bounds how long the session's output stream may stay open; `None` for
-    /// no limit. Defaults to [`DEFAULT_PTY_TIMEOUT`].
+    /// Bounds the whole session; `None` for no limit. Defaults to
+    /// [`DEFAULT_PTY_TIMEOUT`] (60 s), as in the SDKs.
+    ///
+    /// The deadline counts from when the session opens, not from the last
+    /// activity: with the default, the output stream ends 60 s after
+    /// [`Pty::create`] even while the shell is in use, and
+    /// [`PtyHandle::next_event`] returns the deadline error. envd then ends
+    /// the shell too, so it cannot be reattached with [`Pty::connect`]
+    /// (observed on hosted E2B, 2026-10-27). For a long-lived interactive
+    /// session pass `None`, or a bound as long as the session should live.
     ///
     /// # Arguments
     ///
@@ -284,7 +292,11 @@ impl Pty {
     /// # Arguments
     ///
     /// * `pid` - the shell's process ID.
-    /// * `timeout` - the stream deadline, or `None` for no limit.
+    /// * `timeout` - the stream deadline, or `None` for no limit. Unlike
+    ///   [`Pty::create`], there is no default here: pass
+    ///   `Some(DEFAULT_PTY_TIMEOUT)` for the SDKs' 60 s, as their
+    ///   `pty.connect` uses. Like [`crate::Commands::connect`], it takes the
+    ///   deadline directly rather than an options struct.
     ///
     /// # Returns
     ///
