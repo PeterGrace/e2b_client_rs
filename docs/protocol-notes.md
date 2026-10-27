@@ -62,7 +62,7 @@ All JSON. Request/response models are the generated OpenAPI models under
 | Call | Route and status handling | Citation |
 |---|---|---|
 | Create | `POST /v2/sandboxes`, 201 → `Sandbox` | `py: api/client/api/sandboxes/post_v2_sandboxes.py:24-25, 39-42`; `py: sandbox_async/sandbox_api.py:256-277`; `js: 5566` |
-| Create body | `templateID`, `timeout`, `autoPause`, `metadata`, `envVars`, `allow_internet_access` (snake_case in the spec) | `py: api/client/models/new_sandbox_v2.py:112-132, 145-171` |
+| Create body | `templateID`, `timeout`, `autoPause`, `metadata`, `envVars`, `allow_internet_access` (snake_case in the spec), `network` (see "Network") | `py: api/client/models/new_sandbox_v2.py:112-132, 145-171`; `py: sandbox_async/sandbox_api.py:237-251` |
 | Created sandbox | `templateID`, `sandboxID`, `clientID`, `envdVersion`, `envdAccessToken?`, `trafficAccessToken?`, `domain?` | `py: api/client/models/sandbox.py:85-115` |
 | Connect / resume | `POST /v2/sandboxes/{id}/connect` body `{timeout?}`, 200 or 201 → `Sandbox` | `py: api/client/api/sandboxes/post_v_2_sandboxes_sandbox_id_connect.py:22-23, 37-44`; `py: api/client/models/connect_sandbox_v2.py:25`; `py: sandbox_async/sandbox_api.py:511-520`; `js: 5617` |
 | Connect v1 (fallback) | `POST /sandboxes/{id}/connect`, body `{timeout}` required | `py: api/client/api/sandboxes/post_sandboxes_sandbox_id_connect.py:22-23`; `py: api/client/models/connect_sandbox.py:24, 48` |
@@ -81,6 +81,23 @@ All JSON. Request/response models are the generated OpenAPI models under
 | Set timeout | `POST /sandboxes/{id}/timeout` body `{timeout}` (seconds); 404 → not found | `py: api/client/models/sandbox_timeout_request.py:17`; `py: sandbox_async/sandbox_api.py:164-187`; `js: 5396-5398` |
 | Refresh | `POST /sandboxes/{id}/refreshes` body `{duration?}` (seconds), 204 | `py: api/client/api/sandboxes/post_sandboxes_sandbox_id_refreshes.py:21-38`; `py: api/client/models/sandbox_refresh_request.py:19` |
 | Error body | `{code: int, message: string}`; the SDK surfaces `message` | `py: api/client/models/error.py:26-28`; `py: api/__init__.py:191-213` |
+
+## Network
+
+The create body's `network` object (`SandboxNetworkConfig`) and what the
+sandbox detail reports back. The crate builds it with `NetworkConfig` and
+`NetworkRule` (`src/network.rs`).
+
+| Fact | Citation |
+|---|---|
+| Fields, camelCase: `allowOut`, `denyOut`, `dnsServers`, `egressProxy`, `allowPublicTraffic`, `maskRequestHost`, `httpsPorts`, `rules`; each is sent only when the caller set it. The crate does not send `egressProxy` (deferred) | `py: api/client/models/sandbox_network_config.py:51-120`; `py: sandbox/sandbox_api.py:928-996` |
+| `dnsServers: []` is sent, and means "no DNS server"; unset, `8.8.8.8` is allowed when `allowOut` names a domain | `py: sandbox/sandbox_api.py:955-958`; `py: api/client/models/sandbox_network_config.py:30-32` |
+| A `network` with nothing set is left out of the create body (`network_body if network_body else UNSET`) | `py: sandbox_async/sandbox_api.py:237, 250` |
+| `rules` maps a host to a list of rules, each `{"transform": {"headers": {...}}}`; a rule without a transform, or with no headers, is sent as `{}` or `{"transform": {}}`. Registering a host doesn't allow egress to it | `py: sandbox/sandbox_api.py:149-224, 826-869`; `py: api/client/models/sandbox_network_rule.py:30-46`; `py: api/client/models/sandbox_network_transform.py:30-41` |
+| Hosted E2B accepts at most one rule per host: two give 400 `Domain "<host>" can have at most 1 transform rule.` | live, hosted E2B, 2026-10-27 |
+| `ALL_TRAFFIC` is `0.0.0.0/0`; `allow_internet_access: false` works like `denyOut: ["0.0.0.0/0"]`, and both may be sent | `py: sandbox/network.py:1-8`; `py: sandbox_async/main.py:197` |
+| Detail: `allowInternetAccess` (bool or `null`) and `network` (the create shape, or `null`); list entries carry neither | `py: api/client/models/sandbox_detail.py:51-69, 174-250`; `py: api/client/models/listed_sandbox.py` |
+| Hosted E2B reports `allowInternetAccess: false` as given, not as a `denyOut` entry; it echoes `allowOut`, `dnsServers` and `rules` (header values included) and adds `allowPublicTraffic: true` when unset. A sandbox created without either reports both as `null` | live, hosted E2B, 2026-10-27 |
 
 ## Connect-RPC framing
 

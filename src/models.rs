@@ -10,6 +10,8 @@ use std::time::Duration;
 use chrono::{DateTime, SecondsFormat, Utc};
 use serde::{Deserialize, Serialize};
 
+use crate::network::{NetworkConfig, NetworkInfo};
+
 /// The template the SDKs use when none is given (`e2b/sandbox/main.py:32`).
 pub const DEFAULT_TEMPLATE: &str = "base";
 
@@ -35,6 +37,7 @@ pub struct CreateSandboxParams {
     envs: HashMap<String, String>,
     auto_pause: Option<bool>,
     allow_internet_access: Option<bool>,
+    network: Option<NetworkConfig>,
 }
 
 impl Default for CreateSandboxParams {
@@ -63,6 +66,7 @@ impl CreateSandboxParams {
             envs: HashMap::new(),
             auto_pause: None,
             allow_internet_access: None,
+            network: None,
         }
     }
 
@@ -152,6 +156,34 @@ impl CreateSandboxParams {
         self
     }
 
+    /// Sets the sandbox's network settings: allow and deny lists, DNS
+    /// servers, public traffic and per-host rules. Settings with nothing set
+    /// are not sent. `allow_internet_access(false)` is the same as
+    /// `deny_out([ALL_TRAFFIC])` ([`crate::ALL_TRAFFIC`]); both can be given.
+    ///
+    /// # Arguments
+    ///
+    /// * `network` - the settings.
+    ///
+    /// # Returns
+    ///
+    /// The parameters, for chaining.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use e2b_client::{CreateSandboxParams, NetworkConfig};
+    ///
+    /// let params = CreateSandboxParams::new("base")
+    ///     .network(NetworkConfig::new().allow_public_traffic(false));
+    /// # let _ = params;
+    /// ```
+    #[must_use]
+    pub fn network(mut self, network: NetworkConfig) -> Self {
+        self.network = Some(network);
+        self
+    }
+
     /// The request body (`NewSandboxV2`, `e2b/api/client/models/new_sandbox_v2.py`).
     pub(crate) fn body(&self) -> NewSandboxBody<'_> {
         NewSandboxBody {
@@ -161,6 +193,9 @@ impl CreateSandboxParams {
             env_vars: &self.envs,
             auto_pause: self.auto_pause,
             allow_internet_access: self.allow_internet_access,
+            // `Option::filter` keeps the settings only when something is set,
+            // so an empty `NetworkConfig` leaves `network` out of the body.
+            network: self.network.as_ref().filter(|network| !network.is_empty()),
         }
     }
 }
@@ -181,6 +216,8 @@ pub(crate) struct NewSandboxBody<'a> {
     // (`new_sandbox_v2.py:160`).
     #[serde(skip_serializing_if = "Option::is_none")]
     allow_internet_access: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    network: Option<&'a NetworkConfig>,
 }
 
 /// `ConnectSandbox` / `ConnectSandboxV2` request body: the timeout in seconds.
@@ -286,6 +323,13 @@ pub struct SandboxInfo {
     /// The domain the sandbox is reached on, when reported.
     #[serde(default)]
     pub domain: Option<String>,
+    /// Whether the sandbox may reach the internet, when reported (detail
+    /// only; list entries leave it `None`).
+    #[serde(default)]
+    pub allow_internet_access: Option<bool>,
+    /// The sandbox's network settings, when reported (detail only).
+    #[serde(default)]
+    pub network: Option<NetworkInfo>,
 }
 
 /// Sort order for [`ListSandboxesParams::order`]: by start time, across the

@@ -26,7 +26,7 @@ use std::ops::Deref;
 use std::sync::OnceLock;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use e2b_client::{Client, ConnectionConfig, CreateSandboxParams, Sandbox};
+use e2b_client::{Client, CommandOptions, ConnectionConfig, CreateSandboxParams, Sandbox};
 
 /// Metadata key carrying the run id on every sandbox a live test creates.
 pub const RUN_METADATA_KEY: &str = "e2b-client-test";
@@ -216,4 +216,27 @@ where
         );
         tokio::time::sleep(Duration::from_secs(2)).await;
     }
+}
+
+/// Whether `sandbox` gets an HTTP reply from port 80 of `ip`, within 10 s.
+///
+/// It needs a reply, not just a connection: hosted E2B completes the TCP
+/// handshake on the host even when egress is denied (M1, CLM-0012). The
+/// targets are Cloudflare's resolvers (1.1.1.1, 1.0.0.1), which answer HTTP.
+pub async fn http_reply(sandbox: &Sandbox, ip: &str) -> bool {
+    // `format!` treats `{` and `}` as placeholders; the probe has none
+    // besides `{ip}`.
+    let probe = format!(
+        r#"timeout 10 bash -c 'exec 3<>/dev/tcp/{ip}/80
+printf "GET / HTTP/1.0\r\nHost: one.one.one.one\r\n\r\n" >&3
+read -r status <&3
+[[ $status == HTTP/* ]]'"#
+    );
+    sandbox
+        .commands()
+        .run(&probe, &CommandOptions::default())
+        .await
+        .expect("probe")
+        .exit_code
+        == 0
 }

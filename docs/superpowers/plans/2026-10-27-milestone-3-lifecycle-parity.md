@@ -88,7 +88,7 @@ SDK sources are e2b 2.61.0, the same packages as `docs/protocol-notes.md` (`py:`
 | `get_mcp_token`: returns the cached token, else reads `/etc/mcp-gateway/.token` as root | `py: sandbox_async/main.py:1063-1073`; `js: 6211` |
 | Metrics: `GET /sandboxes/{id}/metrics?start&end`, both Unix seconds, each omitted when unset; 200 → array; 404 → not found; fields `timestamp` (RFC 3339), `timestampUnix`, `cpuCount`, `cpuUsedPct` (float), `memUsed`, `memTotal`, `memCache`, `diskUsed`, `diskTotal` (bytes) | `py: api/client/api/sandboxes/get_sandboxes_sandbox_id_metrics.py:21-29, 39-60`; `py: api/client/models/sandbox_metric.py:28-36, 79-95`; `py: sandbox_async/sandbox_api.py:280-336`; `js: 5346-5378` |
 | List filters: `order` (`asc`/`desc`), `startedAfter` (`datetime.isoformat()` of an aware time, e.g. `2026-10-27T12:00:00+00:00`), `template` (ID or name); each omitted when unset | `py: api/client/api/sandboxes/get_v2_sandboxes.py:14-58`; `py: sandbox/sandbox_api.py:1320-1340`; `py: sandbox_async/paginator.py:55-90` |
-| Create network object: `allowOut`, `denyOut`, `dnsServers`, `egressProxy`, `allowPublicTraffic`, `maskRequestHost`, `httpsPorts`, `rules` (camelCase); `dnsServers: []` is sent (it means "no DNS server"); a field is sent only when the caller set it | `py: api/client/models/sandbox_network_config.py:51-120`; `py: sandbox/sandbox_api.py:928-996` |
+| Create network object: `allowOut`, `denyOut`, `dnsServers`, `egressProxy`, `allowPublicTraffic`, `maskRequestHost`, `httpsPorts`, `rules` (camelCase); `dnsServers: []` is sent (it means "no DNS server"); a field is sent only when the caller set it; a `network` with nothing set is left out of the body (corrected, issue #63) | `py: api/client/models/sandbox_network_config.py:51-120`; `py: sandbox/sandbox_api.py:928-996`; `py: sandbox_async/sandbox_api.py:250` |
 | A rule list per host: `rules: {"<host>": [{"transform": {"headers": {...}}}]}`; registering a host doesn't allow egress to it | `py: sandbox/sandbox_api.py:149-224`; `py: api/client/models/sandbox_network_rule.py:46`; `py: api/client/models/sandbox_network_transform.py:51` |
 | `ALL_TRAFFIC` is `0.0.0.0/0`; `allow_internet_access: false` is the same as `deny_out: ["0.0.0.0/0"]` | `py: sandbox/network.py:1-8`; `py: sandbox_async/main.py:197` |
 | Network update: `PUT /sandboxes/{id}/network`, 204; 404 → not found; body `allowOut`, `denyOut`, `dnsServers`, `egressProxy`, `rules`, `allow_internet_access` (snake_case); the update replaces the whole egress configuration, so omitted fields are cleared | `py: api/client/api/sandboxes/put_sandboxes_sandbox_id_network.py:21-55`; `py: api/client/models/sandbox_network_update_config.py:50-103`; `py: sandbox/sandbox_api.py:515-561, 1128-1152`; `py: sandbox_async/sandbox_api.py:190-209`; `js: 5420` |
@@ -159,7 +159,7 @@ SDK sources are e2b 2.61.0, the same packages as `docs/protocol-notes.md` (`py:`
 | `tests/rest_volumes.rs` (new) | 10 |
 | `tests/rest_mcp.rs` (new) | 11 |
 | `tests/rest_api.rs` (existing assertions touched by refactors only) | 6, 7 |
-| `tests/live_support/mod.rs` | 4 (`http_reply_probe`), 8 (`resource_name`, `params_from`), 9 (`LiveSandbox::adopt`) |
+| `tests/live_support/mod.rs` | 4 (`http_reply`), 8 (`resource_name`, `params_from`), 9 (`LiveSandbox::adopt`) |
 | `tests/live_lifecycle.rs` | 1 to 11 |
 | `tests/live_sweep.rs` | 8 (snapshots), 10 (volumes) |
 | `docs/protocol-notes.md`, `docs/verification/s4-evidence-map.md` | 1 to 11, 14 |
@@ -962,6 +962,16 @@ git commit -m "feat: list filters order, started_after and template"
 - Modify: `tests/live_support/mod.rs` (`http_reply`), `tests/live_lifecycle.rs` (new tests; `clm_0012` uses `http_reply`)
 - Modify: `docs/protocol-notes.md` (new section "Network"), `docs/verification/s4-evidence-map.md`
 
+> **Corrected (issue #63, 2026-10-27).** What shipped differs from the code below in these points; read `src/network.rs` and `tests/rest_network.rs`:
+> - **An empty `NetworkConfig` is not sent.** The SDK leaves `network` out when nothing is set (`network_body if network_body else UNSET`, `py: sandbox_async/sandbox_api.py:250`), so `NetworkConfig` has a private `is_empty()` and `body()` sends `network: self.network.as_ref().filter(|network| !network.is_empty())`. The mock test `create_leaves_out_a_network_with_nothing_set` pins it. Task 6's `body()` below is updated to match.
+> - **The module doc doesn't link `NetworkUpdate` or `Client::update_sandbox_network`**, which don't exist yet (`just doc` fails on a broken intra-doc link). Task 5 adds both links when it adds the items.
+> - **`null` reads as empty in rules too:** `NetworkRule::transform` and `NetworkTransform::headers` use `deserialize_null_as_default` (alongside `default`), as `NetworkInfo`'s lists do.
+> - **Hosted E2B accepts at most one rule per host:** two give 400 `Domain "<host>" can have at most 1 transform rule.` (live, 2026-10-27). The `rule()` doc says so; the crate still sends what the caller built, as the SDK does.
+> - **Hosted E2B reports `allowInternetAccess: false` as given**, not as a `deny_out` entry, so `clm_0153` asserts as written. A sandbox created without network settings reports `allowInternetAccess: null` and `network: null`.
+> - **Extra tests:** mock tests `create_sends_network_next_to_allow_internet_access`, `create_leaves_out_a_network_with_nothing_set`, `get_info_reads_null_network_fields_as_none` and `get_info_without_network_fields_reads_none`; unit tests `config_debug_hides_rule_header_values`, `rules_for_one_host_keep_their_order_and_an_empty_rule_is_an_empty_object`, `only_a_config_with_nothing_set_is_empty`, `rule_reads_null_transform_and_null_headers_as_empty` and `info_reads_null_fields_as_empty_or_none`.
+> - **`clm_0012`'s failure messages** no longer print the `CommandResult`, since `http_reply` returns a `bool`.
+> - **`clm_0153` also sends a rule** (`one.one.one.one` with header `X-Probe: v`) and asserts that hosted E2B reports it back (review of PR #77).
+
 - [ ] **Step 1: Write the failing mock tests**
 
 `tests/rest_network.rs`:
@@ -1066,9 +1076,9 @@ Expected: compile error, `NetworkConfig` not found.
 
 ```rust
 //! Sandbox network settings: outbound allow and deny lists, DNS servers,
-//! public traffic, and per-host header rules. Used by
-//! [`crate::CreateSandboxParams::network`] and, through
-//! [`NetworkUpdate`], by [`crate::Client::update_sandbox_network`].
+//! public traffic, and per-host header rules, set at create through
+//! [`crate::CreateSandboxParams::network`] and read back in
+//! [`crate::SandboxInfo::network`].
 //!
 //! The JSON shapes are `SandboxNetworkConfig` and
 //! `SandboxNetworkUpdateConfig` (`e2b/api/client/models/`); the SDK builds
@@ -1540,6 +1550,8 @@ git commit -m "feat: network settings at sandbox create"
 - Modify: `src/network.rs` (`NetworkUpdate`)
 - Modify: `src/client.rs` (`update_sandbox_network`), `src/sandbox.rs` (`update_network`), `src/lib.rs`
 - Modify: `tests/rest_network.rs`, `tests/live_lifecycle.rs`, `docs/protocol-notes.md` ("Network"), `docs/verification/s4-evidence-map.md`
+
+> **Corrected (issue #63, 2026-10-27).** Task 4 shipped `src/network.rs` without links to `NetworkUpdate` and `Client::update_sandbox_network` in its module doc, because they didn't exist yet. When adding them, extend the module doc's first sentence with "and, through [`NetworkUpdate`], by [`crate::Client::update_sandbox_network`]". `NetworkConfig::is_empty` is private to create; don't use it for updates, which send `{}` when empty.
 
 - [ ] **Step 1: Write the failing mock tests**
 
@@ -2355,7 +2367,7 @@ In `src/models.rs`, replace the field `auto_pause: Option<bool>` with `lifecycle
             auto_pause_memory: lifecycle.auto_pause_memory,
             auto_resume: lifecycle.auto_resume,
             allow_internet_access: self.allow_internet_access,
-            network: self.network.as_ref(),
+            network: self.network.as_ref().filter(|network| !network.is_empty()),
         })
     }
 ```
@@ -2461,7 +2473,7 @@ Run both, and `clm_0011` (which uses `auto_pause`), on hosted. Expected: PASS. I
 
 - [ ] **Step 8: Docs, gates, changelog, commit**
 
-`docs/protocol-notes.md`: the "Create body" row gains `autoPauseMemory`, `autoResume`, `network` and the header; new rows "Create lifecycle", "Lifecycle checks", "Idempotency key", and the detail fields `lifecycle` and `pauseMode`. Evidence map: CLM-0158 → the first four `tests/rest_lifecycle.rs` tests and the `lifecycle.rs` unit tests; CLM-0152 → the three idempotency tests; CLM-0167 (lifecycle part) → `get_info_reads_lifecycle_and_pause_mode`. `changelog/<ts>-m3-task-06-lifecycle-and-idempotency.md`.
+`docs/protocol-notes.md`: the "Create body" row gains `autoPauseMemory`, `autoResume` and the header (Task 4 added `network`); new rows "Create lifecycle", "Lifecycle checks", "Idempotency key", and the detail fields `lifecycle` and `pauseMode`. Evidence map: CLM-0158 → the first four `tests/rest_lifecycle.rs` tests and the `lifecycle.rs` unit tests; CLM-0152 → the three idempotency tests; CLM-0167 (lifecycle part) → `get_info_reads_lifecycle_and_pause_mode`. `changelog/<ts>-m3-task-06-lifecycle-and-idempotency.md`.
 
 ```bash
 git add src/lifecycle.rs src/models.rs src/client.rs src/lib.rs tests/rest_lifecycle.rs tests/live_lifecycle.rs docs/ changelog/
