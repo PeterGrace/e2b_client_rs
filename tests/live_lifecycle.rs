@@ -7,7 +7,7 @@ use std::time::{Duration, Instant};
 
 use e2b_client::{
     CommandOptions, EnvdVersion, Error, ListSandboxesParams, MetricsParams, SandboxInfo,
-    SandboxState,
+    SandboxState, SortOrder,
 };
 use live_support::{LiveSandbox, RUN_METADATA_KEY, client, params, poll_until, run_id};
 
@@ -649,5 +649,52 @@ async fn clm_0029_get_metrics_reports_cpu_memory_and_disk() {
     assert!(
         sample.timestamp >= started_at - chrono::Duration::seconds(5),
         "{sample:?}"
+    );
+}
+
+#[tokio::test]
+#[ignore = "live: run with `just test-live <target>`"]
+async fn clm_0151_list_filters_by_template_and_start_time_and_orders() {
+    // Arrange: two sandboxes started at least 2 s apart.
+    let first = LiveSandbox::new().await;
+    tokio::time::sleep(Duration::from_secs(2)).await;
+    let second = LiveSandbox::new().await;
+    let second_info = second.get_info().await.expect("second info");
+    let first_info = first.get_info().await.expect("first info");
+    let ours = ListSandboxesParams::new()
+        .metadata(RUN_METADATA_KEY, run_id())
+        .template(first_info.template_id.clone());
+
+    // Act
+    let newest_first = ids_of(&list_all(&ours.clone().order(SortOrder::Descending)).await);
+    let oldest_first = ids_of(&list_all(&ours.clone().order(SortOrder::Ascending)).await);
+    let since_second = ids_of(&list_all(&ours.clone().started_after(second_info.started_at)).await);
+
+    // Assert: other tests of this run may also be listed; compare our two.
+    let position = |ids: &[String], id: &str| ids.iter().position(|each| each == id);
+    let (first_id, second_id) = (first.sandbox_id(), second.sandbox_id());
+    for (ids, label) in [(&newest_first, "desc"), (&oldest_first, "asc")] {
+        assert!(
+            position(ids, first_id).is_some() && position(ids, second_id).is_some(),
+            "{label} list is missing one of ours: {ids:?}"
+        );
+    }
+    // `Option<usize>` compares with `None` first, which is why the loop above
+    // checks that both ids are present before these comparisons.
+    assert!(
+        position(&newest_first, second_id) < position(&newest_first, first_id),
+        "{newest_first:?}"
+    );
+    assert!(
+        position(&oldest_first, first_id) < position(&oldest_first, second_id),
+        "{oldest_first:?}"
+    );
+    assert!(
+        since_second.iter().any(|id| id == second_id),
+        "{since_second:?}"
+    );
+    assert!(
+        !since_second.iter().any(|id| id == first_id),
+        "{since_second:?}"
     );
 }

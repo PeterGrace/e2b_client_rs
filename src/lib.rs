@@ -87,7 +87,7 @@ pub use filesystem::{
 pub use metrics::{MetricsParams, SandboxMetrics};
 pub use models::{
     CreateSandboxParams, DEFAULT_TEMPLATE, ListSandboxesParams, SandboxInfo, SandboxPage,
-    SandboxState,
+    SandboxState, SortOrder,
 };
 pub use pty::{DEFAULT_PTY_TIMEOUT, Pty, PtyEvent, PtyHandle, PtyOptions, PtySize};
 pub use sandbox::{FileUrlOptions, Sandbox};
