@@ -1332,6 +1332,8 @@ async fn watch_dir_must_open_with_a_start_event() {
 
 Run: `cargo test --test envd_watch` — Expected: compile errors.
 
+> **Corrected (issue #33, 2026-10-27).** The shipped `tests/envd_watch.rs` is a superset of the code above. The first test also sets `.user("root")`, mounts the mock with `expect(1)`, checks the write's `entry.path`, and asserts the `application/connect+json` content type, `Authorization: Basic cm9vdDo=`, `Keepalive-Ping-Interval: 50` and `Connect-Timeout-Ms: 60000`. A fourth test, `watch_dir_open_is_bounded_by_the_request_timeout`, delays the answer 5 s under a 200 ms request timeout and expects `Error::Timeout(200 ms)`. Unit tests were added too: `src/envd/filesystem_pb.rs::tests::{watch_dir_request_serializes_camel_case, watch_dir_response_members_parse}` and `src/filesystem.rs::tests::{event_type_mapping_drops_unspecified_and_unknown, watch_options_default_and_version_gates}`. Read the file rather than this snippet.
+
 - [ ] **Step 2: Wire types and version gates**
 
 `src/envd/mod.rs`, next to `CLOSE_STDIN`:
@@ -1361,10 +1363,11 @@ pub(crate) struct WatchDirRequest<'a> {
 /// `filesystem.WatchDirResponse`: a oneof of `start`, `filesystem`, `keepalive`.
 #[derive(Debug, Clone, Default, Deserialize)]
 pub(crate) struct WatchDirResponse {
-    /// Present (as an empty object) on the opening event. A `Value` rather
-    /// than `serde::de::IgnoredAny`, which is not `Clone`.
+    /// Present (as an empty object) on the opening event. The crate's
+    /// `connect::Empty` (`use crate::envd::connect::Empty;`), which is
+    /// `Clone` and skips unknown fields.
     #[serde(default)]
-    pub(crate) start: Option<serde_json::Value>,
+    pub(crate) start: Option<Empty>,
     #[serde(default)]
     pub(crate) filesystem: Option<FilesystemEventWire>,
 }
@@ -1466,18 +1469,11 @@ pub struct FilesystemEvent {
     /// event, [`Error::Rpc`] (`not_found` for a missing directory) or
     /// [`Error::Transport`].
     pub async fn watch_dir(&self, path: &str, options: &WatchOptions) -> Result<WatchHandle> {
-        let version = self.envd.version();
-        for (wanted, needs, what) in [
-            (options.recursive, EnvdVersion::RECURSIVE_WATCH, "recursive watching"),
-            (options.include_entry, EnvdVersion::FS_EVENT_ENTRY_INFO, "entry info on watch events"),
-            (options.allow_network_mounts, EnvdVersion::WATCH_NETWORK_MOUNTS, "watching network mounts"),
-        ] {
-            if wanted && version < needs {
-                return Err(Error::InvalidArgument(format!(
-                    "{what} needs envd {needs} or newer; this sandbox runs envd {version}"
-                )));
-            }
-        }
+        // Private `WatchOptions::check_supported(&self, version) -> Result<()>`:
+        // the three (wanted, needed version, what) gates, and the first one
+        // that fails gives `Error::InvalidArgument("{what} needs envd {needs}
+        // or newer; this sandbox runs envd {version}")`.
+        options.check_supported(self.envd.version())?;
         let request = WatchDirRequest {
             path,
             recursive: options.recursive,
@@ -1558,24 +1554,34 @@ async fn clm_0063_watch_dir_reports_a_created_file() {
         .expect("watch_dir");
 
     files.write("/tmp/watched/new.txt", "x", None).await.expect("write");
-    let event = tokio::time::timeout(Duration::from_secs(20), async {
-        loop {
-            let event = watch.next_event().await.expect("next_event").expect("watch ended");
-            if event.event_type == FilesystemEventType::Create {
-                return event;
+    // Events can arrive in a burst (create, write, chmod...), so look for
+    // the create of this file rather than taking the first event.
+    let mut seen = Vec::new();
+    let found = tokio::time::timeout(Duration::from_secs(20), async {
+        while let Some(event) = watch.next_event().await.expect("next_event") {
+            if event.event_type == FilesystemEventType::Create && event.name == "new.txt" {
+                return true;
             }
+            seen.push(event);
         }
+        false
     })
-    .await
-    .expect("no create event within 20 s");
+    .await;
 
-    assert_eq!(event.name, "new.txt");
+    assert!(
+        matches!(found, Ok(true)),
+        "no create event for new.txt within 20 s (envd {}, watch ended: {}); other events: {seen:?}",
+        sandbox.envd_version(),
+        matches!(found, Ok(false)),
+    );
 }
 ```
 
 - [ ] **Step 5: Docs, gates, live check, changelog, commit**
 
-Add a "Directory watching" section to protocol-notes; remove watching from "Not implemented". Evidence-map rows: CLM-0135 → `watch_dir_sends_options_and_maps_events`, `watch_dir_must_open_with_a_start_event`; CLM-0136 → `watch_dir_options_are_refused_on_old_envd_without_a_request`. Gates, the live test on hosted, `changelog/<ts>-m2-task-04-watch-dir.md`.
+Add a "Directory watching" section to protocol-notes; remove watching from "Not implemented". Evidence-map rows: CLM-0135 → `watch_dir_sends_options_and_maps_events`, `watch_dir_must_open_with_a_start_event`; CLM-0136 → `watch_dir_options_are_refused_on_old_envd_without_a_request`.
+
+> **Corrected (issue #33, 2026-10-27).** The rows also name the unit tests from the Step 1 note: CLM-0135 the two `filesystem_pb` tests and `event_type_mapping_drops_unspecified_and_unknown`, CLM-0136 `watch_options_default_and_version_gates`. Gates, the live test on hosted, `changelog/<ts>-m2-task-04-watch-dir.md`.
 
 ```bash
 git add src/ tests/ docs/ changelog/
@@ -1975,7 +1981,7 @@ git commit -m "feat: streamed and gzip uploads from AsyncRead, streamed download
 - [ ] **Step 2: Implementation**
 
 - `EnvdVersion::FILE_METADATA = 0.6.2` (`e2b/envd/versions.py:9`).
-- `EntryInfoWire` and `UploadedEntry` gain `#[serde(default)] metadata: HashMap<String, String>`; `EntryInfo` and `WriteInfo` gain `pub metadata: HashMap<String, String>` ("user metadata stored as `user.e2b.*` extended attributes; empty when none is set").
+- `EntryInfoWire` and `UploadedEntry` gain `#[serde(default)] metadata: HashMap<String, String>`. (Note from issue #33: `FilesystemEventWire.entry` is an `EntryInfoWire` mapped through `EntryInfo::from`, so `include_entry` watch events carry the metadata with no further change; extend `src/envd/filesystem_pb.rs::tests::watch_dir_response_members_parse` if you want that pinned.) `EntryInfo` and `WriteInfo` gain `pub metadata: HashMap<String, String>` ("user metadata stored as `user.e2b.*` extended attributes; empty when none is set").
 - `WriteOptions` gains `metadata: BTreeMap<String, String>` (sorted, so the headers come out in a stable order for tests), set with `pub fn metadata(mut self, key: impl Into<String>, value: impl Into<String>) -> Self`.
 - `fn metadata_headers(&self, options: &WriteOptions) -> Result<HeaderMap>`: empty map gives empty headers; else check the version, then validate each pair (a key is non-empty and every byte is in `b"!#$%&'*+-.^_`|~"` or ASCII alphanumeric; a value has every byte in `0x20..=0x7e`), and build `x-metadata-<key>` headers with `HeaderName::from_bytes` / `HeaderValue::from_str`, mapping failures to `InvalidArgument`. It is called once at the top of `write_files` and `write_stream`, before any request, and the headers are added in `post_multipart` and `post_octet_stream`.
 

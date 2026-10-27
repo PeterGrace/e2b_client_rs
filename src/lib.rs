@@ -11,7 +11,8 @@
 //! - **envd PTY sessions** ([`Pty`]): interactive terminals with their own
 //!   output stream ([`PtyHandle`]), input, resize and kill.
 //! - **envd filesystem service** ([`Filesystem`]): read and write files, list
-//!   directories, stat, make directories, move and remove.
+//!   directories, stat, make directories, move and remove, and watch a
+//!   directory for changes ([`WatchHandle`]).
 //!
 //! # Quick start
 //!
@@ -65,7 +66,10 @@ pub use config::{
 };
 pub use envd::EnvdVersion;
 pub use error::{ConnectCode, Error, Result};
-pub use filesystem::{EntryInfo, FileType, Filesystem, WriteInfo};
+pub use filesystem::{
+    DEFAULT_WATCH_TIMEOUT, EntryInfo, FileType, Filesystem, FilesystemEvent, FilesystemEventType,
+    WatchHandle, WatchOptions, WriteInfo,
+};
 pub use models::{
     CreateSandboxParams, DEFAULT_TEMPLATE, ListSandboxesParams, SandboxInfo, SandboxPage,
     SandboxState,

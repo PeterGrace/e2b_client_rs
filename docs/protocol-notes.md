@@ -221,6 +221,29 @@ Behaviour:
 | Filesystem RPCs send the user via the `Authorization` header | `py: sandbox_async/filesystem/filesystem.py:517, 551, 583, 609, 640, 668` |
 | `is_running`: `GET /health`, 502 → not running | `py: sandbox_async/main.py:134-168` |
 
+## Directory watching
+
+`Filesystem::watch_dir` returns a `WatchHandle` over the server-streaming
+`WatchDir` RPC (`src/filesystem.rs`). Events are pulled with
+`WatchHandle::next_event`, and dropping the handle closes the stream, which
+is the SDK's `stop()`.
+
+| Fact | Citation |
+|---|---|
+| `WatchDir` is server-streaming at `/filesystem.Filesystem/WatchDir` | `py: envd/filesystem/filesystem_connect.py:129-137` |
+| `WatchDirRequest {path = 1, recursive = 2, include_entry = 3, allow_network_mounts = 4}`; proto JSON names `includeEntry`, `allowNetworkMounts` | `py: envd/filesystem/filesystem_pb.py:404-455, 816` |
+| `WatchDirResponse` is a oneof `start {}` / `filesystem FilesystemEvent` / `keepalive {}` | `py: envd/filesystem/filesystem_pb.py:499-560` |
+| `FilesystemEvent {name = 1, type = 2, entry = 3?}`; `name` is relative to the watched directory; `entry` only with `include_entry`, and may be absent for removals and renames away | `py: envd/filesystem/filesystem_pb.py:457-497`; `py: sandbox/filesystem/watch_handle.py:49-70` |
+| `EventType`: `UNSPECIFIED = 0`, `CREATE = 1`, `WRITE = 2`, `REMOVE = 3`, `RENAME = 4`, `CHMOD = 5`; unspecified and unknown types are dropped, as are keepalives | `py: envd/filesystem/filesystem_pb.py:774-810`; `py: sandbox/filesystem/watch_handle.py:36-46`; `py: sandbox_async/filesystem/watch_handle.py:47-64` |
+| Version gates, checked before any request: `recursive` needs envd 0.1.4, `include_entry` 0.6.3, `allow_network_mounts` 0.6.4 (the SDKs raise `TemplateException`; here `Error::InvalidArgument`) | `py: sandbox_async/filesystem/filesystem.py:705-721`; `py: envd/versions.py:3, 10, 11` |
+| Headers: the user header and `Keepalive-Ping-Interval: 50`; the watch timeout (default 60 s, `0`/`None` for none) is sent as `Connect-Timeout-Ms` and bounds the whole stream | `py: sandbox_async/filesystem/filesystem.py:685, 723-740` |
+| The stream must open with `start`, awaited within the request timeout; anything else is an error | `py: sandbox_async/filesystem/filesystem.py:742-766` |
+
+The SDK's `on_event`/`on_exit` callbacks are replaced by the handle's
+`next_event` loop, as for commands and PTY sessions. A clean end of the
+stream is `Ok(None)`; the error that ends a watch is returned by
+`next_event`, where the SDK hands it to `on_exit`.
+
 ## Deliberate differences from the SDKs
 
 - **Connect v1 fallback.** If `POST /v2/sandboxes/{id}/connect` answers 404,
@@ -234,7 +257,7 @@ Behaviour:
 - **`wait()` does not replay consumed output.** The SDK handle buffers all
   output; here `next_event()` hands chunks to the caller and `wait()` only
   collects what is left, so output is held once.
-- **Not implemented in v0.1:** directory watching, signed file URLs,
+- **Not implemented in v0.1:** signed file URLs,
   octet-stream and gzip uploads, sandbox health probing on transport errors, metrics, snapshots, fork, network updates,
   template builds, and the sync API.
 
