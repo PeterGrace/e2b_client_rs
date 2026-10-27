@@ -330,13 +330,16 @@ the download URL with its `signature` pair removed with a 4xx.
 - **`wait()` does not replay consumed output.** The SDK handle buffers all
   output; here `next_event()` hands chunks to the caller and `wait()` only
   collects what is left, so output is held once.
-- **Not implemented in v0.1:** sandbox health probing on transport errors, metrics, snapshots, fork,
-  network updates, template builds, and the sync API.
+- **Not implemented yet.** Milestone 3: `get_host`, metrics, snapshots and
+  fork, network updates, and the remaining SDK 2.61 create fields. Milestone 4:
+  the `is_symlink` file type (#30) and dropping the v1 connect fallback.
+  Unscheduled: sandbox health probing on transport errors. Out of scope by
+  design: template builds and a sync API.
 
 ## Verification against a live server
 
-Every v0.1 behaviour was verified live on 2026-10-26 by the M1 suite
-(`tests/live_*.rs`, `just test-live <target>`). Each test is named after the
+Every v0.1 behaviour was verified live on 2026-10-26 by the M1 suite, and the
+M2 behaviours on 2026-10-27 (`tests/live_*.rs`, `just test-live <target>`). Each test is named after the
 claim it backs in `claims.json`. The wire details in this file are covered by
 mock and unit tests instead; `docs/verification/s4-evidence-map.md` maps each
 one to its tests.
@@ -349,6 +352,17 @@ one to its tests.
   (gfd/sandbawks #674-#682, plus #665), or was caused by cluster capacity.
   None is a crate bug. Details and request/response evidence are in
   `docs/verification/m1-live-results.md`.
+- **Hosted E2B, M2:** all 57 live tests (M1's 46 plus 11 for M2) passed in
+  run `20261027T125515Z-hosted-1922536` at `9910325`.
+- **sandbawks, M2:** 14 of 57 passed in run
+  `20261027T130108Z-sandbawks-2101151` at `0b9494b`, and 29 after single-test
+  reruns. Every remaining failure passed on hosted E2B and is a sandbawks
+  defect: StreamInput and the watcher RPCs are not routed (#664), batch
+  multipart uploads are refused (#684), large uploads hit an nginx body limit
+  (#685), large downloads fail (#686), `Stat` omits owner and group (#687),
+  and sandboxes have no envd access token, so their file API takes
+  unauthenticated requests (#683). Details are in
+  `docs/verification/m2-live-results.md`.
 
 Findings that affect how the crate talks to servers:
 
@@ -360,5 +374,10 @@ Findings that affect how the crate talks to servers:
   needed by any known server, and M4 removes it.
 - **sandbawks and envd version gates.** sandbawks reports its release number
   as `envdVersion` (gfd/sandbawks#675), so envd version gates such as
-  `close_stdin` and the default user take their old-envd paths there.
+  `close_stdin`, the default user, octet-stream and gzip uploads, and file
+  metadata take their old-envd paths there.
+- **Unsecured sandboxes.** Without an `envdAccessToken`, `upload_url` and
+  `download_url` return unsigned URLs and refuse an expiration, as the SDK
+  does. A server that hands out no token must then guard `/files` some other
+  way; sandbawks currently does not (gfd/sandbawks#683).
 
