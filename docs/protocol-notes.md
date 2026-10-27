@@ -70,6 +70,8 @@ All JSON. Request/response models are the generated OpenAPI models under
 | Get | `GET /sandboxes/{id}` → `SandboxDetail`; 404 → not found | `py: api/client/api/sandboxes/get_sandboxes_sandbox_id.py:17-18`; `py: sandbox_async/sandbox_api.py:118-135`; `js: 5289` |
 | Detail fields | `startedAt`, `endAt`, `cpuCount`, `memoryMB`, `diskSizeMB`, `state`, `metadata`, `domain`, ... | `py: api/client/models/sandbox_detail.py:174-218` |
 | State values | `running`, `paused` | `py: api/client/models/sandbox_state.py:5-6` |
+| Metrics | `GET /sandboxes/{id}/metrics?start&end`, both Unix seconds, each omitted when unset; 200 → `SandboxMetric[]`; 404 → not found | `py: api/client/api/sandboxes/get_sandboxes_sandbox_id_metrics.py:21-29, 39-60`; `py: sandbox_async/sandbox_api.py:280-336`; `js: 5346-5378` |
+| Metric fields | `timestamp` (RFC 3339), `timestampUnix`, `cpuCount`, `cpuUsedPct` (float), `memUsed`, `memTotal`, `memCache`, `diskUsed`, `diskTotal` (bytes) | `py: api/client/models/sandbox_metric.py:28-36, 79-95` |
 | List | `GET /v2/sandboxes?metadata&state&limit&nextToken` → `ListedSandbox[]` | `py: api/client/api/sandboxes/get_v2_sandboxes.py:28-61`; `py: api/client/models/listed_sandbox.py:115-137`; `js: 5662` |
 | List paging | next page token in response header `x-next-token` | `py: paginator.py:48-50` |
 | List `state` | comma-joined | `py: api/client/api/sandboxes/get_v2_sandboxes.py:31-38`; `js: 1529-1532` (`explode: false`) |
@@ -331,7 +333,7 @@ the download URL with its `signature` pair removed with a 4xx.
 - **`wait()` does not replay consumed output.** The SDK handle buffers all
   output; here `next_event()` hands chunks to the caller and `wait()` only
   collects what is left, so output is held once.
-- **Not implemented yet.** Milestone 3: metrics, snapshots and fork, network
+- **Not implemented yet.** Milestone 3: snapshots and fork, network
   updates, and the remaining SDK 2.61 create fields. Milestone 4:
   the `is_symlink` file type (#30) and dropping the v1 connect fallback.
   Unscheduled: sandbox health probing on transport errors. Out of scope by

@@ -6,7 +6,8 @@ use std::collections::HashSet;
 use std::time::{Duration, Instant};
 
 use e2b_client::{
-    CommandOptions, EnvdVersion, Error, ListSandboxesParams, SandboxInfo, SandboxState,
+    CommandOptions, EnvdVersion, Error, ListSandboxesParams, MetricsParams, SandboxInfo,
+    SandboxState,
 };
 use live_support::{LiveSandbox, RUN_METADATA_KEY, client, params, poll_until, run_id};
 
@@ -608,4 +609,45 @@ async fn clm_0028_get_host_reaches_a_port_in_the_sandbox() {
 
     // Assert
     assert_eq!(body, "hello from 8000");
+}
+
+#[tokio::test]
+#[ignore = "live: run with `just test-live <target>`"]
+async fn clm_0029_get_metrics_reports_cpu_memory_and_disk() {
+    // Arrange
+    let sandbox = LiveSandbox::new().await;
+    let started_at = sandbox.get_info().await.expect("info").started_at;
+
+    // Act: the API samples every few seconds, so wait for the first sample.
+    // Not found means the sandbox is gone, so fail at once; any other error
+    // may be transient and keeps polling.
+    let sandbox_ref = &sandbox;
+    let metrics = poll_until(
+        "a first metrics sample",
+        Duration::from_secs(90),
+        || async move {
+            match sandbox_ref.get_metrics(&MetricsParams::default()).await {
+                Ok(metrics) => (!metrics.is_empty()).then_some(metrics),
+                Err(error) if error.is_not_found() => panic!("sandbox vanished: {error:?}"),
+                Err(_) => None,
+            }
+        },
+    )
+    .await;
+
+    // Assert
+    let sample = metrics.last().expect("a sample");
+    assert!(sample.cpu_count >= 1, "{sample:?}");
+    assert!(
+        sample.mem_total > 0 && sample.mem_used <= sample.mem_total,
+        "{sample:?}"
+    );
+    assert!(
+        sample.disk_total > 0 && sample.disk_used <= sample.disk_total,
+        "{sample:?}"
+    );
+    assert!(
+        sample.timestamp >= started_at - chrono::Duration::seconds(5),
+        "{sample:?}"
+    );
 }

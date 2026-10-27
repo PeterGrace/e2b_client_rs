@@ -16,6 +16,7 @@ use crate::commands::Commands;
 use crate::envd::{EnvdClient, EnvdTarget, EnvdVersion, envd_http_error};
 use crate::error::{Error, Result};
 use crate::filesystem::{FILES_ROUTE, Filesystem};
+use crate::metrics::{MetricsParams, SandboxMetrics};
 use crate::models::{SandboxCreated, SandboxInfo};
 use crate::pty::Pty;
 
@@ -545,6 +546,26 @@ impl Sandbox {
     /// As [`Client::get_sandbox_info`].
     pub async fn get_info(&self) -> Result<SandboxInfo> {
         self.client.get_sandbox_info(&self.sandbox_id).await
+    }
+
+    /// Reads this sandbox's CPU, memory and disk samples. See
+    /// [`Client::get_sandbox_metrics`].
+    ///
+    /// # Arguments
+    ///
+    /// * `params` - the optional time range.
+    ///
+    /// # Returns
+    ///
+    /// The samples; empty if there are none yet.
+    ///
+    /// # Errors
+    ///
+    /// As [`Client::get_sandbox_metrics`].
+    pub async fn get_metrics(&self, params: &MetricsParams) -> Result<Vec<SandboxMetrics>> {
+        self.client
+            .get_sandbox_metrics(&self.sandbox_id, params)
+            .await
     }
 }
 
