@@ -45,3 +45,14 @@ Issue #11, Task 7 of `docs/superpowers/plans/2026-10-26-milestone-1-verify-v0.1.
 hosted E2B, and 5 are inconclusive because the sandbox never became ready. No
 crate bugs and no test bugs were found. CLM-0014 passes vacuously on
 sandbawks, because pause is a no-op there. The results file notes this.
+
+## Update: merge with the hosted results, and a second full run
+
+- Merged `origin/main` after #22. The results file now has the intro once,
+  then "Hosted E2B", then "sandbawks".
+- Added the coordinator's second full run, `20261026T233507Z-sandbawks-2244779`,
+  made with `E2B_TEMPLATE_SANDBAWKS=compound-sandbox` in `.env`: 22 passed,
+  24 failed (12 capacity-masked), and the sweep killed 0. Its log was
+  key-checked (0 and 0) before it was copied.
+- Linked every failure, and the S1-S12 defects, to the gfd/sandbawks issues
+  filed for them (#665 and #674-#682).
