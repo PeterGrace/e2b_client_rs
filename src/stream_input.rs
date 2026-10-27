@@ -27,7 +27,8 @@ const KEEPALIVE_INTERVAL: Duration = Duration::from_secs(50);
 /// How many chunks may wait to be sent before [`InputStream::send`] waits.
 const QUEUE_DEPTH: usize = 64;
 
-/// Options for [`crate::Commands::stream_input`].
+/// Options for [`crate::Commands::stream_input`] and
+/// [`crate::Pty::stream_input`].
 ///
 /// # Examples
 ///
@@ -86,13 +87,13 @@ pub(crate) enum InputKind {
     /// A command's stdin.
     Stdin,
     /// A PTY's input.
-    #[expect(dead_code, reason = "PTY sessions (M2 Task 3) open PTY input streams")]
     Pty,
 }
 
-/// An ordered, long-lived input stream to a running command.
+/// An ordered, long-lived input stream to a running command or PTY session.
 ///
-/// Get one from [`crate::Commands::stream_input`]. Chunks reach the process in
+/// Get one from [`crate::Commands::stream_input`] (the command's stdin) or
+/// [`crate::Pty::stream_input`] (the terminal's input). Chunks reach the process in
 /// the order they were sent. Call [`close`](Self::close) to end the stream and
 /// learn whether envd accepted it. Dropping the stream without `close` also
 /// ends it, but any error is then lost, and the call keeps running on its own

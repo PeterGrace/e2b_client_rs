@@ -280,8 +280,9 @@ impl Commands {
                 envs: &options.envs,
                 cwd: options.cwd.as_deref(),
             },
+            pty: None,
             tag: None,
-            stdin: options.stdin,
+            stdin: Some(options.stdin),
         };
         let mut headers = self.envd.user_headers(options.user.as_deref())?;
         headers.extend(keepalive_headers());
@@ -332,9 +333,7 @@ impl Commands {
             .await
     }
 
-    /// Opens a `Start`/`Connect` stream and waits, within the request
-    /// timeout, for the start event that carries the PID
-    /// (`e2b/sandbox_async/commands/command.py:382-411`).
+    /// Opens a `Start`/`Connect` stream and wraps it in a [`CommandHandle`].
     async fn open<Req: serde::Serialize>(
         &self,
         method: &'static str,
@@ -342,22 +341,8 @@ impl Commands {
         headers: HeaderMap,
         timeout: Option<Duration>,
     ) -> Result<CommandHandle> {
-        let opening = async {
-            let mut stream: ConnectStream<EventResponse> = self
-                .envd
-                .server_stream(process_pb::SERVICE, method, request, headers, timeout)
-                .await?;
-            let first = stream.next().await?;
-            let pid = first
-                .and_then(|response| response.event)
-                .and_then(|event| event.start)
-                .map(|start| start.pid)
-                .ok_or_else(|| {
-                    Error::Protocol(format!("{method} stream did not open with a start event"))
-                })?;
-            Ok::<_, Error>((pid, stream))
-        };
-        let (pid, stream) = self.envd.within_request_timeout(opening).await?;
+        let (pid, stream) =
+            open_process_stream(&self.envd, method, request, headers, timeout).await?;
         Ok(CommandHandle {
             pid,
             stream,
@@ -564,6 +549,55 @@ impl Commands {
     }
 }
 
+/// Opens a `Start`/`Connect` stream and waits, within the request timeout,
+/// for the start event that carries the PID
+/// (`e2b/sandbox_async/commands/command.py:382-411`). Commands and PTY
+/// sessions both open their streams here.
+///
+/// # Arguments
+///
+/// * `envd` - the sandbox's envd transport.
+/// * `method` - `"Start"` or `"Connect"`.
+/// * `request` - the request message.
+/// * `headers` - extra headers (user, keepalive).
+/// * `timeout` - the stream deadline, or `None` for no limit.
+///
+/// # Returns
+///
+/// The PID and the open stream, positioned after the start event.
+///
+/// # Errors
+///
+/// [`Error::Timeout`] if the start event does not arrive within the request
+/// timeout, [`Error::Protocol`] if the stream opens with another event, plus
+/// the errors of the stream call itself.
+pub(crate) async fn open_process_stream<Req: serde::Serialize>(
+    envd: &EnvdClient,
+    method: &'static str,
+    request: &Req,
+    headers: HeaderMap,
+    timeout: Option<Duration>,
+) -> Result<(u32, ConnectStream<EventResponse>)> {
+    // The async block's error type is inferred from `within_request_timeout`,
+    // whose argument must yield the crate's `Result`.
+    envd.within_request_timeout(async {
+        let mut stream: ConnectStream<EventResponse> = envd
+            .server_stream(process_pb::SERVICE, method, request, headers, timeout)
+            .await?;
+        let pid = stream
+            .next()
+            .await?
+            .and_then(|response| response.event)
+            .and_then(|event| event.start)
+            .map(|start| start.pid)
+            .ok_or_else(|| {
+                Error::Protocol(format!("{method} stream did not open with a start event"))
+            })?;
+        Ok((pid, stream))
+    })
+    .await
+}
+
 /// A started command. Read its output with [`next_event`](Self::next_event)
 /// or collect everything with [`wait`](Self::wait).
 #[derive(Debug)]
@@ -585,7 +619,7 @@ impl CommandHandle {
     }
 
     /// Waits for the next stdout/stderr chunk or the exit event. Keepalive
-    /// events are skipped.
+    /// events, and PTY output (which [`crate::PtyHandle`] reads), are skipped.
     ///
     /// # Returns
     ///

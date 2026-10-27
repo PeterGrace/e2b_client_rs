@@ -8,6 +8,8 @@
 //! - **envd process service** ([`Commands`]): start commands, stream their
 //!   stdout and stderr to an exit code, send stdin (one write at a time or
 //!   as an ordered [`InputStream`]), signal, list processes.
+//! - **envd PTY sessions** ([`Pty`]): interactive terminals with their own
+//!   output stream ([`PtyHandle`]), input, resize and kill.
 //! - **envd filesystem service** ([`Filesystem`]): read and write files, list
 //!   directories, stat, make directories, move and remove.
 //!
@@ -48,6 +50,7 @@ mod envd;
 mod error;
 mod filesystem;
 mod models;
+mod pty;
 mod sandbox;
 mod stream_input;
 mod wire;
@@ -67,5 +70,6 @@ pub use models::{
     CreateSandboxParams, DEFAULT_TEMPLATE, ListSandboxesParams, SandboxInfo, SandboxPage,
     SandboxState,
 };
+pub use pty::{DEFAULT_PTY_TIMEOUT, Pty, PtyEvent, PtyHandle, PtyOptions, PtySize};
 pub use sandbox::Sandbox;
 pub use stream_input::{DEFAULT_STREAM_INPUT_TIMEOUT, InputStream, StreamInputOptions};
