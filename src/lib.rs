@@ -61,6 +61,13 @@ mod sandbox;
 mod stream_input;
 mod wire;
 
+// Compiles the README's examples as doctests under `cargo test`, so they
+// can't drift from the API. `cfg(doctest)` keeps this type out of normal
+// builds and out of the docs.
+#[cfg(doctest)]
+#[doc = include_str!("../README.md")]
+struct ReadmeDoctests;
+
 pub use client::Client;
 pub use commands::{
     CommandEvent, CommandExit, CommandHandle, CommandOptions, CommandResult, Commands,
