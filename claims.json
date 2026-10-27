@@ -7432,37 +7432,9 @@
         "CLM-0005"
       ],
       "artifacts": [
-        "src/commands.rs",
-        "src/envd/mod.rs"
-      ],
-      "tags": [
-        "s4",
-        "gap",
-        "m2"
-      ],
-      "status": {
-        "state": "active"
-      },
-      "evidence": [],
-      "verdicts": [],
-      "created_at": "2026-10-27T01:35:47.983077574Z",
-      "updated_at": "2026-10-27T01:35:47.983077574Z",
-      "seal": {
-        "by": "server",
-        "mac": "7eddab77263ab2ac985996700629acc100451c8a611a6655e6f1e804b0c2fb41"
-      }
-    },
-    {
-      "id": "CLM-0131",
-      "statement": "An open StreamInput stream sends a keepalive message after 50 s without input, closing the input handle ends the request stream and waits for envd's response, and the stream deadline defaults to 60 s.",
-      "kind": "interface",
-      "level": "unit",
-      "verification_method": "test",
-      "source": "py: sandbox_async/commands/command_input_handle.py:71-83, 114-131; py: connection_config.py:33, 48",
-      "derived_from": [
-        "CLM-0005"
-      ],
-      "artifacts": [
+        "src/stream_input.rs",
+        "src/envd/mod.rs",
+        "src/envd/process_pb.rs",
         "src/commands.rs"
       ],
       "tags": [
@@ -7476,10 +7448,41 @@
       "evidence": [],
       "verdicts": [],
       "created_at": "2026-10-27T01:35:47.983077574Z",
-      "updated_at": "2026-10-27T01:35:47.983077574Z",
+      "updated_at": "2026-10-27T01:48:38.251859831Z",
       "seal": {
         "by": "server",
-        "mac": "e2a8dc4becaf24c5cb295334a970afba91a9b9748cfa3e5dc9d9fdf997357eb2"
+        "mac": "a5531a36125e4171eca0c18f5e70d154668bbce480f7c22ab19023252f5ed660"
+      }
+    },
+    {
+      "id": "CLM-0131",
+      "statement": "An open StreamInput stream sends a keepalive message after 50 s without input, closing the input handle ends the request stream and waits for envd's response, and the stream deadline defaults to 60 s.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: sandbox_async/commands/command_input_handle.py:71-83, 114-131; py: connection_config.py:33, 48",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/stream_input.rs",
+        "src/envd/mod.rs"
+      ],
+      "tags": [
+        "s4",
+        "gap",
+        "m2"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-27T01:35:47.983077574Z",
+      "updated_at": "2026-10-27T01:48:38.265031562Z",
+      "seal": {
+        "by": "server",
+        "mac": "1c8e3700042c3b145e8006d83c38ea2751e44181b57cfd8cae34ee852631b390"
       }
     },
     {
