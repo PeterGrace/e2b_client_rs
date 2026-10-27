@@ -36,3 +36,11 @@ follow-up.
   claim tests passed (13 commands, 12 files, 21 lifecycle), and the sweep
   reported `killed 0 leftover sandbox(es)`. Neither key appears in the log.
   The log stays in `target/live-logs/`; Task 9 does the recorded run.
+
+## Review follow-ups (PR #41)
+
+- The header no longer stamps an empty commit and `dirty: no` when git can't
+  answer (outside a checkout, or git missing). The commit line uses
+  `git rev-parse --verify -q HEAD` and falls back to `unknown`; the dirty line
+  prints `dirty: unknown` when `git status` fails. The plan's Task 1 code was
+  corrected to match, and Task 9 now says `unknown` stamps don't count either.

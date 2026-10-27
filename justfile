@@ -26,9 +26,12 @@ test-live target:
     mkdir -p target/live-logs
     log="target/live-logs/${E2B_TEST_RUN_ID}.log"
     # The first two lines say exactly which code produced this log.
+    # Outside a git checkout, or without git, both say `unknown` rather than lying.
     {
-        echo "commit: $(git rev-parse HEAD)"
-        if [ -n "$(git status --porcelain)" ]; then echo "dirty: yes"; else echo "dirty: no"; fi
+        echo "commit: $(git rev-parse --verify -q HEAD 2>/dev/null || echo unknown)"
+        if ! porcelain="$(git status --porcelain 2>/dev/null)"; then echo "dirty: unknown"
+        elif [ -n "$porcelain" ]; then echo "dirty: yes"
+        else echo "dirty: no"; fi
     } | tee "$log"
     # --no-fail-fast: a failing binary must not stop the others from running.
     cargo test --no-fail-fast --test live_lifecycle --test live_commands --test live_files \

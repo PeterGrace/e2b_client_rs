@@ -181,14 +181,19 @@ In `test-live`, replace the first `cargo test ... | tee "$log"` so the log start
 ```bash
     log="target/live-logs/${E2B_TEST_RUN_ID}.log"
     # The first two lines say exactly which code produced this log.
+    # Outside a git checkout, or without git, both say `unknown` rather than lying.
     {
-        echo "commit: $(git rev-parse HEAD)"
-        if [ -n "$(git status --porcelain)" ]; then echo "dirty: yes"; else echo "dirty: no"; fi
+        echo "commit: $(git rev-parse --verify -q HEAD 2>/dev/null || echo unknown)"
+        if ! porcelain="$(git status --porcelain 2>/dev/null)"; then echo "dirty: unknown"
+        elif [ -n "$porcelain" ]; then echo "dirty: yes"
+        else echo "dirty: no"; fi
     } | tee "$log"
     # --no-fail-fast: a failing binary must not stop the others from running.
     cargo test --no-fail-fast --test live_lifecycle --test live_commands --test live_files \
         -- --ignored --test-threads=4 --show-output 2>&1 | tee -a "$log"
 ```
+
+> **Corrected (issue #26, 2026-10-27).** The header guards against running outside a git checkout or without git: the commit line falls back to `unknown` and the dirty line prints `dirty: unknown` when `git status` fails, instead of an empty commit with `dirty: no` (PR #41 review). `dirty: unknown` doesn't count as a recorded run, as with `dirty: yes`.
 
 `git status --porcelain` lists untracked files too, so a stray file also marks the tree dirty. That is intended: the log can't tell which files mattered.
 
@@ -2171,7 +2176,7 @@ Expected: the log starts with `commit:` and `dirty: no` (Task 1), then one resul
 
 - [ ] **Step 2: Check for leaks, secrets and the stamp**
 
-The sweep must report 0 leftovers. Check the log for both keys exactly as in M1 Task 6 Step 3, including its note on unquoted `.env` values; every count must be `0`. `dirty: yes` means the run doesn't count: commit or clean the tree, then rerun.
+The sweep must report 0 leftovers. Check the log for both keys exactly as in M1 Task 6 Step 3, including its note on unquoted `.env` values; every count must be `0`. `dirty: yes` (or `dirty: unknown`, or `commit: unknown`) means the run doesn't count: commit or clean the tree, then rerun.
 
 - [ ] **Step 3: Summarize**
 

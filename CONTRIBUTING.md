@@ -48,7 +48,7 @@ in scope.
   named `clm_NNNN_*` after the claim in `claims.json` it backs, and the run log
   in `target/live-logs/` is the evidence for that claim. The first two lines
   are the commit (`git rev-parse HEAD`) and whether the working tree had
-  changes (`dirty: yes|no`).
+  changes (`dirty: yes|no`). Both say `unknown` when git can't answer.
 
 ### Testing against a self-hosted E2B-compatible server
 
