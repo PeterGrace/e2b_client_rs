@@ -10,10 +10,12 @@ Issue #11, Task 7 of `docs/superpowers/plans/2026-10-26-milestone-1-verify-v0.1.
   with the client call, the observed request and response, and the expected
   E2B behaviour with an SDK citation. The coordinator files them on
   gfd/sandbawks.
-- `docs/verification/runs/`: the logs of all three runs, `20261026T225357Z-sandbawks-998331`,
-  `20261026T225651Z-sandbawks-1078537` (the run of record) and
-  `20261026T230103Z-sandbawks-rerun-1207087` (single-test reruns). Each was
-  key-checked before it was copied: 0 matches for both keys.
+- `docs/verification/runs/`: the logs of all four runs,
+  `20261026T225357Z-sandbawks-998331`, `20261026T225651Z-sandbawks-1078537`
+  (the run of record), `20261026T230103Z-sandbawks-rerun-1207087`
+  (single-test reruns) and `20261026T233507Z-sandbawks-2244779` (the
+  coordinator's second full run, see the update below). Each was key-checked
+  before it was copied: 0 matches for both keys.
 - `justfile`: `test-live` now passes `--no-fail-fast`. Without it, cargo
   skipped `live_files` and `live_lifecycle` once `live_commands` had failed,
   so a single failure hid two thirds of the results. This happens on any
@@ -26,7 +28,7 @@ Issue #11, Task 7 of `docs/superpowers/plans/2026-10-26-milestone-1-verify-v0.1.
 - Plan: a dated correction note in the Task 7 section only (the template, the
   two harness fixes, the capacity caveat, and 46 tests rather than 47).
 
-## Why three runs
+## Why three runs of mine (the fourth is the coordinator's, below)
 
 1. The first `just test-live sandbawks` used the default template `base`,
    which sandbawks doesn't have. Create still answered 201 `running`. All 13

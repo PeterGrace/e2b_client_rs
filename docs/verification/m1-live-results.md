@@ -98,7 +98,7 @@ There were four runs. Every log is checked in:
 | `20261026T230103Z-sandbawks-rerun-1207087` | each of the 29 failures from the run of record rerun on its own, one at a time, then the sweep | [log](runs/20261026T230103Z-sandbawks-rerun-1207087.log) |
 | `20261026T233507Z-sandbawks-2244779` | second full `just test-live sandbawks` (coordinator, with `E2B_TEMPLATE_SANDBAWKS` in `.env`); see "Second full run" below | [log](runs/20261026T233507Z-sandbawks-2244779.log) |
 
-**Why there are three runs.**
+**Why there are four runs.**
 
 - **The first run tested nothing.** sandbawks has no `base` template. Its only
   `SandboxTemplate` is `compound-sandbox`. Create still answered 201 with state
@@ -114,6 +114,10 @@ There were four runs. Every log is checked in:
   creates that followed were unschedulable (`Insufficient memory` on 17 of 25
   nodes), but create had already answered `running` (S2). Run alone, a test
   usually got a warm sandbox.
+- **The second full run** was made by the coordinator after
+  `E2B_TEMPLATE_SANDBAWKS=compound-sandbox` was added to `.env`. It has its
+  own subsection below. The main table is still the run of record and the
+  reruns.
 
 **The Hosted column** is from run `20261026T225333Z-hosted-980838` (PR #22,
 issue #10), in which all 46 tests passed. The per-PR hosted runs of #6, #7 and
@@ -190,7 +194,8 @@ probes showed only the two warm-pool sandboxes.
 
 **Secret check** (plan Task 6 Step 3, on each log before it was copied here;
 both `.env` values were confirmed unquoted without printing them):
-`E2B_API_KEY_HOSTED: 0` and `E2B_API_KEY_SANDBAWKS: 0` for each of the three logs.
+`E2B_API_KEY_HOSTED: 0` and `E2B_API_KEY_SANDBAWKS: 0` for each of the run of record, run 1 and the rerun logs. The fourth log is
+checked in its own subsection below.
 
 ### Second full run (run 20261026T233507Z-sandbawks-2244779, 2026-10-26T23:35:07Z)
 
