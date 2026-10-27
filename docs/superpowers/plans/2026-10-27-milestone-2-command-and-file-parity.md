@@ -106,7 +106,7 @@ SDK sources are e2b 2.61.0, the same packages as `docs/protocol-notes.md` (`py:`
 | tokio `AsyncRead` is always available; `BufReader`, `AsyncReadExt` and `io::repeat` need `io-util`; `tokio::spawn` needs `rt`; `tokio::sync::mpsc` needs `sync` | `tokio-1.54.1/src/io/mod.rs:209-210, 280`; `Cargo.toml:94, 119` |
 | rustc here is 1.97.1; sha2 0.11.1 needs 1.88, tokio-util 0.7.20 needs 1.85, async-compression 0.4.42 needs 1.83 | `rustc --version`; each crate's `Cargo.toml` `rust-version` |
 | The crate today: `ConnectStream::new(response, timeout)` and `next()`; `EnvdClient::{unary, server_stream, http_request, user_headers, effective_user, version, request_timeout}`; `Commands::open` waits for the start event within the request timeout; `ProcessInput { stdin }` is a struct; `StartRequest.stdin` is a plain `bool`; `FILES_ROUTE` is private to `filesystem.rs`; `EnvdClient::direct_base` is `#[cfg(test)]` only; the access token is kept only inside a header | `src/envd/connect.rs:289-379`; `src/envd/mod.rs:134-370`; `src/commands.rs:346-382`; `src/envd/process_pb.rs:31-151`; `src/filesystem.rs:21` |
-| Mock-test helpers: `sandbox`, `sandbox_with_version`, `sandbox_from_json`, `sandbox_json`, `message`, `end_stream`, `stream_response`, `decode_request_envelope`, `ACCESS_TOKEN`, `client_with_timeout` | `tests/common/mod.rs:15-105` |
+| Mock-test helpers: `sandbox`, `sandbox_with_version`, `sandbox_from_json`, `sandbox_json`, `message`, `end_stream`, `stream_response`, `decode_request_envelope`, `ACCESS_TOKEN`, `client_with_timeout`; Task 6 adds `sandbox_from_json_with_client(server, &client, created)` | `tests/common/mod.rs:15-105` |
 | Live helpers: `LiveSandbox::new()` (Deref to `Sandbox`), `poll_until`, `unix_now` | `tests/live_support/mod.rs:140-225` |
 
 ## Conventions for every task
@@ -1812,9 +1812,11 @@ git commit -m "feat: Filesystem::write_files with octet-stream and gzip encoding
 - `write_stream_sends_an_octet_stream_body` (CLM-0138 streamed path): envd 0.5.7; `write_stream("/w/big.bin", std::io::Cursor::new(vec![7u8; 300_000]), &WriteOptions::default())`; the mock matches `content-type: application/octet-stream`, and its body equals the 300 000 bytes.
 - `write_stream_with_gzip_compresses_on_the_fly`: `gzip(true)`; `content-encoding: gzip`; the gunzipped body equals the input.
 - `write_stream_falls_back_to_multipart_before_envd_0_5_7`: envd 0.5.6; multipart, field `file`, filename the path, with the data in the body.
-- `write_stream_is_not_bounded_by_the_request_timeout` (CLM-0066, 0142): `common::client_with_timeout(&server, Some(Duration::from_millis(100)))` builds the sandbox (via a `sandbox_from_json` variant that takes a client, added to `tests/common`). The mock answers after `set_delay(Duration::from_millis(300))`; `write_stream` succeeds, and `write` of the same data fails with a timeout transport error.
+- `write_stream_is_not_bounded_by_the_request_timeout` (CLM-0066, 0142): `common::client_with_timeout(&server, Some(Duration::from_secs(1)))` builds the sandbox (via `common::sandbox_from_json_with_client(server, &client, created)`, which `sandbox_from_json` now calls with `client_for`). The mock answers after `set_delay(Duration::from_secs(3))`; `write_stream` succeeds, and `write` of the same data fails with a timeout transport error.
 - `read_stream_yields_the_body_in_chunks` (CLM-0142): `GET /files` with `query_param("path", "/w/big.bin")` answers 1 MiB; collecting `next_chunk` until `None` gives the 1 MiB.
-- `read_stream_is_not_bounded_by_the_request_timeout` (CLM-0142): as above, with a 300 ms delay and a 100 ms request timeout: `read_stream` succeeds and `read` fails.
+- `read_stream_is_not_bounded_by_the_request_timeout` (CLM-0142): as above, with a 3 s delay and a 1 s request timeout: `read_stream` succeeds and `read` fails.
+
+> **Corrected (issue #35, 2026-10-27).** The timeout tests use a 1 s request timeout and a 3 s delay instead of 100 ms and 300 ms, so creating the sandbox stays well inside the timeout on a slow CI runner. One more test shipped: `write_stream_surfaces_a_reader_error_as_transport` (a reader that fails on its first read gives `Error::Transport`, as the rustdoc promises).
 - `read_stream_of_a_missing_file_is_envd_not_found`: 404 with `{"message": "no such file"}` gives `Error::Envd { status: 404, .. }` from `read_stream` itself, not from the first chunk.
 
 Run: `cargo test --test envd_stream_files` — Expected: compile errors.
@@ -1873,9 +1875,9 @@ Run: `cargo test --test envd_stream_files` — Expected: compile errors.
             self.post_octet_stream(path, body, options, None).await?
         } else {
             let part = Part::stream(reqwest::Body::wrap_stream(ReaderStream::new(reader))).file_name(path.to_owned());
-            // gzip is dropped on this path, as in the SDKs: multipart is never compressed.
-            let plain = WriteOptions { gzip: false, ..options.clone() };
-            self.post_multipart(Form::new().part("file", part), Some(path), &plain, None).await?
+            // `post_multipart` reads only the user from `options`, so gzip is
+            // dropped on this path, as in the SDKs: multipart is never compressed.
+            self.post_multipart(Form::new().part("file", part), Some(path), options, None).await?
         };
         written.into_iter().next().ok_or_else(no_written_file)
     }
@@ -1884,6 +1886,8 @@ Run: `cargo test --test envd_stream_files` — Expected: compile errors.
 > **Corrected (issue #34, 2026-10-27).** `BufReader` needs tokio's `io-util` feature, which Task 5 did not add. Add it to the `[dependencies]` tokio line in `Cargo.toml`: `features = ["time", "rt", "sync", "io-util"]`, and import `tokio::io::{AsyncRead, BufReader}` (`AsyncBufRead`, `ReaderStream` and `GzipEncoder` are already imported). `gzip_body` takes `impl AsyncBufRead + Send + 'static`, so `BufReader<impl AsyncRead + Send + 'static>` fits it directly.
 
 The doc example uses a byte slice rather than `tokio::fs::File`, because the library does not enable tokio's `fs` feature.
+
+> **Corrected (issue #35, 2026-10-27).** The fallback passes `options` to `post_multipart` unchanged instead of a clone with `gzip: false`: `post_multipart` never reads `gzip`, so the clone was dead weight. Both branches pass `options` through, so Task 7's metadata headers, added inside `post_multipart` and `post_octet_stream`, reach `write_stream` with no change there beyond the `metadata_headers` check at its top. Shipped code: `src/filesystem.rs::Filesystem::write_stream`.
 
 `post_octet_stream` must set `Content-Encoding: gzip` only from `options.gzip`. Taking `octet_stream` as implied, `write_stream` always uses octet-stream when envd allows it.
 

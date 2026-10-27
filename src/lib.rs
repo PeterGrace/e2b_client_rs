@@ -12,8 +12,9 @@
 //!   output stream ([`PtyHandle`]), input, resize and kill.
 //! - **envd filesystem service** ([`Filesystem`]): read and write files
 //!   (one at a time or in a batch, multipart, octet-stream or gzip, see
-//!   [`WriteOptions`]), list directories, stat, make directories, move and
-//!   remove, and watch a directory for changes ([`WatchHandle`]).
+//!   [`WriteOptions`]), stream uploads from an `AsyncRead` and downloads as
+//!   chunks ([`FileStream`]), list directories, stat, make directories, move
+//!   and remove, and watch a directory for changes ([`WatchHandle`]).
 //!
 //! # Quick start
 //!
@@ -68,8 +69,8 @@ pub use config::{
 pub use envd::EnvdVersion;
 pub use error::{ConnectCode, Error, Result};
 pub use filesystem::{
-    DEFAULT_WATCH_TIMEOUT, EntryInfo, FileType, Filesystem, FilesystemEvent, FilesystemEventType,
-    WatchHandle, WatchOptions, WriteEntry, WriteInfo, WriteOptions,
+    DEFAULT_WATCH_TIMEOUT, EntryInfo, FileStream, FileType, Filesystem, FilesystemEvent,
+    FilesystemEventType, WatchHandle, WatchOptions, WriteEntry, WriteInfo, WriteOptions,
 };
 pub use models::{
     CreateSandboxParams, DEFAULT_TEMPLATE, ListSandboxesParams, SandboxInfo, SandboxPage,
