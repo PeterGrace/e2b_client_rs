@@ -274,6 +274,12 @@ These are wrong for hosted E2B too, so they are fixed here.
   ran). The warm pool replaced them within about two minutes. The sweep now also
   checks `metadata["e2b-client-test"] == run id` on its own side before it
   kills. On hosted, which honours the filter, it behaves as before.
+  The check still finds this run's leftovers on sandbawks, because its list
+  entries carry each sandbox's metadata. A probe at 2026-10-27T00:16:31Z
+  created a sandbox tagged `e2b-client-test=probe-issue-11-listmeta`, and
+  `GET /v2/sandboxes?metadata=...&state=running,paused` returned it with
+  `"metadata":{"e2b-client-test":"probe-issue-11-listmeta"}`, beside two
+  untagged pool sandboxes with `{}`. The sandbox was then deleted (204).
 
 ### Environment findings (not sandbawks code)
 
