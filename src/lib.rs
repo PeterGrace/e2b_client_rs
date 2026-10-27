@@ -6,7 +6,8 @@
 //! - **REST control plane** ([`Client`]): create, connect/resume, inspect,
 //!   list, pause, kill and extend sandboxes, read their CPU, memory and
 //!   disk metrics ([`MetricsParams`]), and set their network egress rules
-//!   at create ([`NetworkConfig`]).
+//!   at create ([`NetworkConfig`]) or on a running sandbox
+//!   ([`NetworkUpdate`]).
 //! - **envd process service** ([`Commands`]): start commands, stream their
 //!   stdout and stderr to an exit code, send stdin (one write at a time or
 //!   as an ordered [`InputStream`]), signal, list processes.
@@ -91,7 +92,7 @@ pub use models::{
     CreateSandboxParams, DEFAULT_TEMPLATE, ListSandboxesParams, SandboxInfo, SandboxPage,
     SandboxState, SortOrder,
 };
-pub use network::{ALL_TRAFFIC, NetworkConfig, NetworkInfo, NetworkRule};
+pub use network::{ALL_TRAFFIC, NetworkConfig, NetworkInfo, NetworkRule, NetworkUpdate};
 pub use pty::{DEFAULT_PTY_TIMEOUT, Pty, PtyEvent, PtyHandle, PtyOptions, PtySize};
 pub use sandbox::{FileUrlOptions, Sandbox};
 pub use stream_input::{DEFAULT_STREAM_INPUT_TIMEOUT, InputStream, StreamInputOptions};

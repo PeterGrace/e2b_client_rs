@@ -18,6 +18,7 @@ use crate::error::{Error, Result};
 use crate::filesystem::{FILES_ROUTE, Filesystem};
 use crate::metrics::{MetricsParams, SandboxMetrics};
 use crate::models::{SandboxCreated, SandboxInfo};
+use crate::network::NetworkUpdate;
 use crate::pty::Pty;
 
 /// envd's health route (`e2b/envd/api.py:22`).
@@ -516,6 +517,22 @@ impl Sandbox {
     pub async fn set_timeout(&self, timeout: Duration) -> Result<()> {
         self.client
             .set_sandbox_timeout(&self.sandbox_id, timeout)
+            .await
+    }
+
+    /// Replaces this sandbox's egress settings, without a restart. See
+    /// [`Client::update_sandbox_network`].
+    ///
+    /// # Arguments
+    ///
+    /// * `update` - the new settings; fields it leaves unset are cleared.
+    ///
+    /// # Errors
+    ///
+    /// As [`Client::update_sandbox_network`].
+    pub async fn update_network(&self, update: &NetworkUpdate) -> Result<()> {
+        self.client
+            .update_sandbox_network(&self.sandbox_id, update)
             .await
     }
 

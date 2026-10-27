@@ -7,7 +7,7 @@ use std::time::{Duration, Instant};
 
 use e2b_client::{
     ALL_TRAFFIC, CommandOptions, EnvdVersion, Error, ListSandboxesParams, MetricsParams,
-    NetworkConfig, NetworkRule, SandboxInfo, SandboxState, SortOrder,
+    NetworkConfig, NetworkRule, NetworkUpdate, SandboxInfo, SandboxState, SortOrder,
 };
 use live_support::{LiveSandbox, RUN_METADATA_KEY, client, http_reply, params, poll_until, run_id};
 
@@ -739,4 +739,53 @@ async fn clm_0153_get_info_reports_network() {
         Some("v"),
         "{network:?}"
     );
+}
+
+#[tokio::test]
+#[ignore = "live: run with `just test-live <target>`"]
+async fn clm_0144_update_network_replaces_egress_without_restart() {
+    // Arrange: all egress denied, and a file in memory (tmpfs) that a
+    // restart would not keep.
+    let network = NetworkConfig::new().deny_out([ALL_TRAFFIC]);
+    let sandbox = LiveSandbox::create(&params().network(network)).await;
+    sandbox
+        .commands()
+        .run("echo kept > /dev/shm/marker", &CommandOptions::default())
+        .await
+        .expect("marker");
+    assert!(
+        !http_reply(&sandbox, "1.1.1.1").await,
+        "egress was open before any update"
+    );
+
+    // Act 1: an update with only allow_internet_access(true) clears deny_out.
+    sandbox
+        .update_network(&NetworkUpdate::new().allow_internet_access(true))
+        .await
+        .expect("open egress");
+    // Rust note: `async move` closures move what they capture, so they take
+    // a copy of this reference rather than the sandbox itself.
+    let sandbox_ref = &sandbox;
+    poll_until("egress to open", Duration::from_secs(30), || async move {
+        http_reply(sandbox_ref, "1.1.1.1").await.then_some(())
+    })
+    .await;
+
+    // Act 2: deny everything again.
+    sandbox
+        .update_network(&NetworkUpdate::new().deny_out([ALL_TRAFFIC]))
+        .await
+        .expect("close egress");
+    poll_until("egress to close", Duration::from_secs(30), || async move {
+        (!http_reply(sandbox_ref, "1.1.1.1").await).then_some(())
+    })
+    .await;
+
+    // Assert: no restart, so the in-memory file is still there.
+    let marker = sandbox
+        .commands()
+        .run("cat /dev/shm/marker", &CommandOptions::default())
+        .await
+        .expect("read marker");
+    assert_eq!(marker.stdout, "kept\n");
 }

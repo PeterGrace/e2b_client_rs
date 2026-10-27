@@ -16,6 +16,7 @@ use crate::models::{
     CreateSandboxParams, EmptyBody, ListSandboxesParams, RefreshBody, SandboxCreated, SandboxInfo,
     SandboxPage, TimeoutBody,
 };
+use crate::network::NetworkUpdate;
 use crate::sandbox::Sandbox;
 
 /// The header carrying the team API key (`e2b/api/__init__.py:251`; JS
@@ -413,6 +414,30 @@ impl Client {
         };
         let response = self
             .send_json(Method::POST, &["sandboxes", sandbox_id, "timeout"], &body)
+            .await?;
+        ensure_found_and_success(response, sandbox_id).await
+    }
+
+    /// Replaces a running sandbox's egress settings, without a restart
+    /// (`PUT /sandboxes/{id}/network`). Fields the update leaves unset are
+    /// cleared; see [`NetworkUpdate`].
+    ///
+    /// # Arguments
+    ///
+    /// * `sandbox_id` - the sandbox.
+    /// * `update` - the new settings.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::SandboxNotFound`] for HTTP 404, [`Error::Api`] for other
+    /// non-2xx answers, [`Error::Transport`] for connection failures.
+    pub async fn update_sandbox_network(
+        &self,
+        sandbox_id: &str,
+        update: &NetworkUpdate,
+    ) -> Result<()> {
+        let response = self
+            .send_json(Method::PUT, &["sandboxes", sandbox_id, "network"], update)
             .await?;
         ensure_found_and_success(response, sandbox_id).await
     }

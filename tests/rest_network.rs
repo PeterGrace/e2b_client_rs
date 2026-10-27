@@ -2,8 +2,10 @@
 
 mod common;
 
-use common::{SANDBOX_ID, client_for, sandbox_json};
-use e2b_client::{ALL_TRAFFIC, CreateSandboxParams, NetworkConfig, NetworkRule};
+use common::{SANDBOX_ID, client_for, sandbox, sandbox_json};
+use e2b_client::{
+    ALL_TRAFFIC, CreateSandboxParams, Error, NetworkConfig, NetworkRule, NetworkUpdate,
+};
 use serde_json::{Value, json};
 use wiremock::matchers::{body_json, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
@@ -210,4 +212,131 @@ async fn get_info_without_network_fields_reads_none() {
     // Assert
     assert_eq!(info.allow_internet_access, None);
     assert_eq!(info.network, None);
+}
+
+#[tokio::test]
+async fn update_network_puts_the_egress_fields() {
+    // Arrange
+    let server = MockServer::start().await;
+    Mock::given(method("PUT"))
+        .and(path(format!("/sandboxes/{SANDBOX_ID}/network")))
+        .and(body_json(json!({
+            "denyOut": ["0.0.0.0/0"],
+            "allowOut": ["1.1.1.1"],
+            "dnsServers": ["1.1.1.1"],
+            "rules": {"api.example.test": [{"transform": {"headers": {"X-Key": "v"}}}]},
+            "allow_internet_access": true
+        })))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let update = NetworkUpdate::new()
+        .deny_out([ALL_TRAFFIC])
+        .allow_out(["1.1.1.1"])
+        .dns_servers(["1.1.1.1"])
+        .rule("api.example.test", NetworkRule::new().header("X-Key", "v"))
+        .allow_internet_access(true);
+
+    // Act and assert: the mock only matches the exact body.
+    client_for(&server)
+        .update_sandbox_network(SANDBOX_ID, &update)
+        .await
+        .expect("update");
+}
+
+#[tokio::test]
+async fn an_empty_update_sends_an_empty_object() {
+    // Arrange
+    let server = MockServer::start().await;
+    Mock::given(method("PUT"))
+        .and(path(format!("/sandboxes/{SANDBOX_ID}/network")))
+        .and(body_json(json!({})))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    // Act and assert: unlike create, an update with nothing set is still sent.
+    client_for(&server)
+        .update_sandbox_network(SANDBOX_ID, &NetworkUpdate::new())
+        .await
+        .expect("update");
+}
+
+#[tokio::test]
+async fn update_network_of_a_missing_sandbox_is_not_found() {
+    // Arrange
+    let server = MockServer::start().await;
+    Mock::given(method("PUT"))
+        .and(path(format!("/sandboxes/{SANDBOX_ID}/network")))
+        .respond_with(
+            ResponseTemplate::new(404).set_body_json(json!({"code": 404, "message": "nope"})),
+        )
+        .mount(&server)
+        .await;
+
+    // Act
+    let error = client_for(&server)
+        .update_sandbox_network(SANDBOX_ID, &NetworkUpdate::new())
+        .await
+        .expect_err("not found");
+
+    // Assert
+    assert!(
+        matches!(error, Error::SandboxNotFound(ref id) if id == SANDBOX_ID),
+        "{error:?}"
+    );
+}
+
+#[tokio::test]
+async fn update_network_refused_by_the_api_is_an_api_error() {
+    // Arrange: hosted E2B's answer to two rules for one host.
+    let server = MockServer::start().await;
+    Mock::given(method("PUT"))
+        .and(path(format!("/sandboxes/{SANDBOX_ID}/network")))
+        .respond_with(ResponseTemplate::new(400).set_body_json(json!({
+            "code": 400,
+            "message": "Domain \"a.test\" can have at most 1 transform rule."
+        })))
+        .mount(&server)
+        .await;
+    let update = NetworkUpdate::new()
+        .rule("a.test", NetworkRule::new().header("X-A", "1"))
+        .rule("a.test", NetworkRule::new().header("X-B", "2"));
+
+    // Act
+    let error = client_for(&server)
+        .update_sandbox_network(SANDBOX_ID, &update)
+        .await
+        .expect_err("refused");
+
+    // Assert
+    assert!(
+        matches!(
+            error,
+            Error::Api { status: 400, ref message } if message.contains("at most 1 transform rule")
+        ),
+        "{error:?}"
+    );
+}
+
+#[tokio::test]
+async fn sandbox_update_network_puts_to_its_own_id() {
+    // Arrange
+    let server = MockServer::start().await;
+    let sandbox = sandbox(&server).await;
+    Mock::given(method("PUT"))
+        .and(path(format!("/sandboxes/{SANDBOX_ID}/network")))
+        .and(body_json(json!({"allow_internet_access": false})))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    // Act and assert: the mock only matches this sandbox's route and body.
+    sandbox
+        .update_network(&NetworkUpdate::new().allow_internet_access(false))
+        .await
+        .expect("update");
 }

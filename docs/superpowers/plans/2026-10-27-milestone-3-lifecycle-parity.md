@@ -1552,6 +1552,11 @@ git commit -m "feat: network settings at sandbox create"
 - Modify: `tests/rest_network.rs`, `tests/live_lifecycle.rs`, `docs/protocol-notes.md` ("Network"), `docs/verification/s4-evidence-map.md`
 
 > **Corrected (issue #63, 2026-10-27).** Task 4 shipped `src/network.rs` without links to `NetworkUpdate` and `Client::update_sandbox_network` in its module doc, because they didn't exist yet. When adding them, extend the module doc's first sentence with "and, through [`NetworkUpdate`], by [`crate::Client::update_sandbox_network`]". `NetworkConfig::is_empty` is private to create; don't use it for updates, which send `{}` when empty.
+>
+> **Corrected (issue #64, 2026-10-27).** What shipped matches the code below, with these additions; read `src/network.rs` and `tests/rest_network.rs`:
+> - **The module doc** also names `SandboxNetworkUpdateConfig` among the JSON shapes and cites `e2b/sandbox/sandbox_api.py:1128-1152` (`build_network_update_body`). The crate doc's feature list names `NetworkUpdate` next to `NetworkConfig`.
+> - **Extra tests:** mock tests `update_network_refused_by_the_api_is_an_api_error` (a 400, hosted E2B's answer to two rules for one host, is `Error::Api` with status and message) and `sandbox_update_network_puts_to_its_own_id` (`Sandbox::update_network` delegates); unit tests `update_sends_allow_internet_access_in_snake_case_next_to_camel_case_egress` and `update_debug_hides_rule_header_values`. The not-found test also checks the id `SandboxNotFound` carries.
+> - **Hosted E2B behaves as planned:** `clm_0144` passed as written (live, 2026-10-27). An update with only `allow_internet_access(true)` clears the create-time `deny_out`, and each update took effect by the first probe after the 204.
 
 - [ ] **Step 1: Write the failing mock tests**
 
