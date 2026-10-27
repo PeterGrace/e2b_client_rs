@@ -1,17 +1,21 @@
 //! Mock tests for `Filesystem::write_files` and its upload encodings
-//! (`POST /files`: multipart, octet-stream and gzip).
+//! (`POST /files`: multipart, octet-stream and gzip), and for file metadata
+//! on writes (`X-Metadata-*` headers, `metadata` in answers).
 
 mod common;
 
+use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
 use async_compression::tokio::bufread::GzipDecoder;
 use common::{ACCESS_TOKEN, sandbox, sandbox_with_version};
+use e2b_client::Sandbox;
 use e2b_client::{Error, FileType, WriteEntry, WriteOptions};
 use serde_json::json;
 use tokio::io::AsyncReadExt;
 use wiremock::matchers::{
-    body_bytes, body_string_contains, header, method, path, query_param, query_param_is_missing,
+    body_bytes, body_json, body_string_contains, header, method, path, query_param,
+    query_param_is_missing,
 };
 use wiremock::{Mock, MockServer, Request, ResponseTemplate};
 
@@ -381,4 +385,195 @@ async fn octet_stream_upload_errors_are_reported() {
         "{full:?}"
     );
     assert!(matches!(empty, Error::Protocol(_)), "{empty:?}");
+}
+
+/// The first envd version that stores file metadata.
+const METADATA_ENVD: &str = "0.6.2";
+
+/// Options carrying the two metadata pairs the metadata tests send.
+fn metadata_options() -> WriteOptions {
+    WriteOptions::default()
+        .metadata("team", "m2")
+        .metadata("Run", "1")
+}
+
+/// Whether a request carries both of [`metadata_options`]' headers. Header
+/// names are case-insensitive, and `Run` goes out as `x-metadata-run`.
+fn has_metadata_headers(request: &Request) -> bool {
+    let value = |name: &str| {
+        request
+            .headers
+            .get(name)
+            .and_then(|value| value.to_str().ok())
+    };
+    value("x-metadata-team") == Some("m2") && value("x-metadata-run") == Some("1")
+}
+
+/// Asserts that only the create call reached `server`, so nothing was
+/// uploaded.
+async fn assert_no_file_requests(server: &MockServer) {
+    assert!(
+        file_requests(server).await.is_empty(),
+        "no /files request may be sent"
+    );
+}
+
+/// A `{"team": "m2"}` map, the metadata envd reports in these tests.
+fn team_m2() -> HashMap<String, String> {
+    HashMap::from([("team".to_owned(), "m2".to_owned())])
+}
+
+#[tokio::test]
+async fn metadata_is_sent_as_x_metadata_headers_on_every_upload() {
+    // Arrange: every /files request must carry both headers; any request
+    // without them finds no mock and fails with 404.
+    let server = MockServer::start().await;
+    let sandbox = sandbox_with_version(&server, METADATA_ENVD).await;
+    Mock::given(method("POST"))
+        .and(path("/files"))
+        .and(has_metadata_headers)
+        .respond_with(written(&["/w/a.txt"]))
+        .expect(4)
+        .mount(&server)
+        .await;
+    let files = sandbox.files();
+    let options = metadata_options();
+
+    // Act: one multipart request, two octet-stream requests and one
+    // streamed upload.
+    files
+        .write_files(&two_entries(), &options)
+        .await
+        .expect("multipart write_files");
+    files
+        .write_files(&two_entries(), &options.clone().octet_stream(true))
+        .await
+        .expect("octet-stream write_files");
+    let data: &'static [u8] = b"streamed";
+    files
+        .write_stream("/w/s.bin", data, &options)
+        .await
+        .expect("write_stream");
+
+    // Assert: the expected mix of encodings, all with the headers (checked by
+    // the mock's `expect(4)` when the server drops).
+    let requests = file_requests(&server).await;
+    assert_eq!(
+        requests
+            .iter()
+            .filter(|request| is_multipart(request))
+            .count(),
+        1
+    );
+    assert!(requests.iter().all(has_metadata_headers));
+}
+
+#[tokio::test]
+async fn invalid_metadata_is_rejected_before_sending() {
+    // Arrange
+    let server = MockServer::start().await;
+    let sandbox = sandbox_with_version(&server, METADATA_ENVD).await;
+    let files = sandbox.files();
+    let invalid = [
+        WriteOptions::default().metadata("", "x"),
+        WriteOptions::default().metadata("a b", "x"),
+        WriteOptions::default().metadata("\u{e9}", "x"),
+        WriteOptions::default().metadata("team", "tab\there"),
+    ];
+
+    for options in &invalid {
+        // Act
+        let batch = files
+            .write_files(&two_entries(), options)
+            .await
+            .expect_err("invalid metadata in write_files");
+        let data: &'static [u8] = b"x";
+        let streamed = files
+            .write_stream("/w/s.bin", data, options)
+            .await
+            .expect_err("invalid metadata in write_stream");
+
+        // Assert
+        for err in [batch, streamed] {
+            assert!(
+                matches!(&err, Error::InvalidArgument(message) if message.contains("metadata")),
+                "{options:?}: {err:?}"
+            );
+        }
+    }
+    assert_no_file_requests(&server).await;
+}
+
+#[tokio::test]
+async fn metadata_is_refused_before_envd_0_6_2() {
+    // Arrange
+    let server = MockServer::start().await;
+    let sandbox = sandbox_with_version(&server, "0.6.1").await;
+    let files = sandbox.files();
+    let options = metadata_options().octet_stream(true);
+
+    // Act
+    let batch = files
+        .write_files(&two_entries(), &options)
+        .await
+        .expect_err("metadata on 0.6.1");
+    let data: &'static [u8] = b"x";
+    let streamed = files
+        .write_stream("/w/s.bin", data, &options)
+        .await
+        .expect_err("streamed metadata on 0.6.1");
+
+    // Assert: the error names the version needed, and nothing was sent.
+    for err in [batch, streamed] {
+        assert!(
+            matches!(&err, Error::InvalidArgument(message) if message.contains("0.6.2")),
+            "{err:?}"
+        );
+    }
+    assert_no_file_requests(&server).await;
+}
+
+/// Mounts an upload answer and a `Stat` answer for `/a`, each with `metadata`
+/// as given (or without the field for `None`), then returns what `write`
+/// and `get_info` report.
+async fn reported_metadata(
+    server: &MockServer,
+    sandbox: &Sandbox,
+    metadata: Option<serde_json::Value>,
+) -> (HashMap<String, String>, HashMap<String, String>) {
+    let mut entry = json!({"name": "a", "type": "file", "path": "/a"});
+    if let Some(metadata) = metadata {
+        entry["metadata"] = metadata;
+    }
+    server.reset().await;
+    Mock::given(method("POST"))
+        .and(path("/files"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!([entry.clone()])))
+        .mount(server)
+        .await;
+    Mock::given(method("POST"))
+        .and(path("/filesystem.Filesystem/Stat"))
+        .and(body_json(json!({"path": "/a"})))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({"entry": entry})))
+        .mount(server)
+        .await;
+    let files = sandbox.files();
+    let written = files.write("/a", "x", None).await.expect("write");
+    let info = files.get_info("/a", None).await.expect("stat");
+    (written.metadata, info.metadata)
+}
+
+#[tokio::test]
+async fn upload_response_and_stat_report_metadata() {
+    // Arrange
+    let server = MockServer::start().await;
+    let sandbox = sandbox_with_version(&server, METADATA_ENVD).await;
+
+    // Act
+    let with = reported_metadata(&server, &sandbox, Some(json!({"team": "m2"}))).await;
+    let without = reported_metadata(&server, &sandbox, None).await;
+
+    // Assert: the map when envd reports one, else empty in both.
+    assert_eq!(with, (team_m2(), team_m2()));
+    assert!(without.0.is_empty() && without.1.is_empty(), "{without:?}");
 }

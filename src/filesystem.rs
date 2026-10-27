@@ -2,6 +2,7 @@
 //! (in memory or streamed), metadata operations and directory watching over the
 //! `filesystem.Filesystem` Connect service.
 
+use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -9,7 +10,7 @@ use async_compression::tokio::bufread::GzipEncoder;
 use bytes::Bytes;
 use chrono::{DateTime, Utc};
 use reqwest::Method;
-use reqwest::header::{CONTENT_ENCODING, CONTENT_TYPE, HeaderValue};
+use reqwest::header::{CONTENT_ENCODING, CONTENT_TYPE, HeaderMap, HeaderName, HeaderValue};
 use reqwest::multipart::{Form, Part};
 use serde::Deserialize;
 use tokio::io::{AsyncBufRead, AsyncRead, BufReader};
@@ -22,10 +23,21 @@ use crate::envd::filesystem_pb::{
 };
 use crate::envd::{EnvdClient, EnvdVersion, envd_http_error, keepalive_headers};
 use crate::error::{ConnectCode, Error, Result};
-use crate::wire::EnumValue;
+use crate::wire::{EnumValue, deserialize_null_as_default};
 
 /// envd's file transfer route (`e2b/envd/api.py:21`).
 const FILES_ROUTE: &str = "/files";
+
+/// The header-name prefix that carries one metadata pair on an upload
+/// (`X-Metadata-<key>: <value>`, `e2b/sandbox/filesystem/filesystem.py:342`).
+/// Lowercase, because `HeaderName` stores names lowercased and HTTP header
+/// names are case-insensitive.
+const METADATA_HEADER_PREFIX: &str = "x-metadata-";
+
+/// The punctuation an HTTP token (and so a metadata key) may contain besides
+/// ASCII letters and digits (RFC 7230 `tchar`,
+/// `e2b/sandbox/filesystem/filesystem.py:344-348`).
+const TOKEN_PUNCTUATION: &[u8] = b"!#$%&'*+-.^_`|~";
 
 /// The SDKs' default bound on a directory watch (`timeout=60`,
 /// `e2b/sandbox_async/filesystem/filesystem.py:685`).
@@ -88,6 +100,10 @@ pub struct EntryInfo {
     pub modified_time: Option<DateTime<Utc>>,
     /// The link target, for symlinks.
     pub symlink_target: Option<String>,
+    /// User metadata stored on the file as `user.e2b.*` extended attributes
+    /// (set with [`WriteOptions::metadata`]; envd lowercases the keys). Empty
+    /// when none is set.
+    pub metadata: HashMap<String, String>,
 }
 
 impl From<EntryInfoWire> for EntryInfo {
@@ -107,6 +123,7 @@ impl From<EntryInfoWire> for EntryInfo {
             owner: wire.owner,
             group: wire.group,
             symlink_target: wire.symlink_target,
+            metadata: wire.metadata,
         }
     }
 }
@@ -121,6 +138,10 @@ pub struct WriteInfo {
     pub path: String,
     /// The entry type.
     pub file_type: FileType,
+    /// The user metadata envd stored on the file, as sent with
+    /// [`WriteOptions::metadata`] (keys lowercased by envd). Empty when none
+    /// is set.
+    pub metadata: HashMap<String, String>,
 }
 
 /// One element of the `/files` upload response (envd OpenAPI `EntryInfo`).
@@ -132,6 +153,8 @@ struct UploadedEntry {
     path: String,
     #[serde(default, rename = "type")]
     file_type: Option<EnumValue>,
+    #[serde(default, deserialize_with = "deserialize_null_as_default")]
+    metadata: HashMap<String, String>,
 }
 
 impl From<UploadedEntry> for WriteInfo {
@@ -140,6 +163,7 @@ impl From<UploadedEntry> for WriteInfo {
             file_type: FileType::from_wire(entry.file_type.as_ref()),
             name: entry.name,
             path: entry.path,
+            metadata: entry.metadata,
         }
     }
 }
@@ -184,22 +208,26 @@ impl WriteEntry {
 }
 
 /// How [`Filesystem::write_files`] and [`Filesystem::write_stream`] upload:
-/// as which user, and with which encoding.
+/// as which user, with which encoding, and with which user metadata.
 ///
 /// By default [`Filesystem::write_files`] uploads are `multipart/form-data`,
 /// the SDKs' default for in-memory data, with all files in one request.
 /// Octet-stream and gzip send one request per file, and need envd 0.5.7 or
 /// newer: on older envd they fall back to uncompressed multipart, as the SDKs
 /// do. [`Filesystem::write_stream`] always uses octet-stream where envd
-/// supports it, so only `user` and `gzip` matter there.
+/// supports it, so only `user`, `gzip` and `metadata` matter there.
 ///
 /// # Examples
 ///
 /// ```
 /// use e2b_client::WriteOptions;
 ///
-/// // Gzip-compressed octet-stream uploads, written as root.
-/// let options = WriteOptions::default().gzip(true).user("root");
+/// // Gzip-compressed octet-stream uploads, written as root, tagged with
+/// // metadata (envd 0.6.2 or newer).
+/// let options = WriteOptions::default()
+///     .gzip(true)
+///     .user("root")
+///     .metadata("team", "m2");
 /// # let _ = options;
 /// ```
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -207,6 +235,9 @@ pub struct WriteOptions {
     user: Option<String>,
     octet_stream: bool,
     gzip: bool,
+    /// Sorted (a `BTreeMap`, unlike Python's insertion-ordered `dict`), so the
+    /// `X-Metadata-*` headers always go out in the same order.
+    metadata: BTreeMap<String, String>,
 }
 
 impl WriteOptions {
@@ -259,6 +290,89 @@ impl WriteOptions {
     pub fn gzip(mut self, gzip: bool) -> Self {
         self.gzip = gzip;
         self
+    }
+
+    /// Adds one pair of user metadata, stored on every written file as a
+    /// `user.e2b.<key>` extended attribute and reported back in
+    /// [`WriteInfo::metadata`] and [`EntryInfo::metadata`]. It is sent as an
+    /// `X-Metadata-<key>: <value>` header on every upload request. Setting a
+    /// key again replaces its value; envd lowercases keys, so keys that
+    /// differ only in case end up as one attribute.
+    ///
+    /// The pairs are validated when the write is called, before any request:
+    /// a key must be a non-empty HTTP token (ASCII letters, digits and
+    /// ``!#$%&'*+-.^_`|~``), a value printable US-ASCII (`0x20..=0x7e`).
+    /// Metadata needs envd 0.6.2 or newer.
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - the metadata key, e.g. `"team"`.
+    /// * `value` - its value.
+    ///
+    /// # Returns
+    ///
+    /// The options, for chaining.
+    #[must_use]
+    pub fn metadata(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
+        self.metadata.insert(key.into(), value.into());
+        self
+    }
+
+    /// The `X-Metadata-*` headers for this upload's metadata, after checking
+    /// that `version` supports metadata and that every pair is valid
+    /// (`e2b/sandbox/filesystem/filesystem.py:342-373`,
+    /// `e2b/sandbox_async/filesystem/filesystem.py:363-367`).
+    ///
+    /// # Arguments
+    ///
+    /// * `version` - the sandbox's envd version.
+    ///
+    /// # Returns
+    ///
+    /// One header per pair, in key order; empty when no metadata is set (on
+    /// any envd version).
+    ///
+    /// # Errors
+    ///
+    /// [`Error::InvalidArgument`] for an invalid key or value (checked
+    /// first, as in the SDK), or for metadata on envd older than 0.6.2.
+    fn metadata_headers(&self, version: EnvdVersion) -> Result<HeaderMap> {
+        if self.metadata.is_empty() {
+            return Ok(HeaderMap::new());
+        }
+        let mut headers = HeaderMap::with_capacity(self.metadata.len());
+        for (key, value) in &self.metadata {
+            let valid_key = !key.is_empty()
+                && key
+                    .bytes()
+                    .all(|byte| byte.is_ascii_alphanumeric() || TOKEN_PUNCTUATION.contains(&byte));
+            if !valid_key {
+                return Err(Error::InvalidArgument(format!(
+                    "invalid metadata key {key:?}: keys must be non-empty and use only HTTP \
+                     token characters (letters, digits and !#$%&'*+-.^_`|~)"
+                )));
+            }
+            // `(0x20..=0x7e).contains(&byte)` is Python's `0x20 <= byte <= 0x7e`.
+            if !value.bytes().all(|byte| (0x20..=0x7e).contains(&byte)) {
+                return Err(Error::InvalidArgument(format!(
+                    "invalid metadata value for key {key:?}: values must be printable US-ASCII"
+                )));
+            }
+            // Both conversions re-check what was validated above, so their
+            // errors cannot occur; they are mapped rather than unwrapped.
+            let name = HeaderName::from_bytes(format!("{METADATA_HEADER_PREFIX}{key}").as_bytes())
+                .map_err(|err| Error::InvalidArgument(format!("metadata key {key:?}: {err}")))?;
+            let value = HeaderValue::from_str(value)
+                .map_err(|err| Error::InvalidArgument(format!("metadata key {key:?}: {err}")))?;
+            headers.insert(name, value);
+        }
+        if version < EnvdVersion::FILE_METADATA {
+            return Err(Error::InvalidArgument(format!(
+                "file metadata needs envd {} or newer; this sandbox runs envd {version}",
+                EnvdVersion::FILE_METADATA
+            )));
+        }
+        Ok(headers)
     }
 }
 
@@ -654,13 +768,16 @@ impl Filesystem {
 
     /// Uploads one file as an `application/octet-stream` body
     /// (`POST /files?path=<p>`), with `Content-Encoding: gzip` when
-    /// `options.gzip` is set (the caller compresses `body`).
+    /// `options.gzip` is set (the caller compresses `body`), and the
+    /// `X-Metadata-*` headers.
     ///
     /// # Arguments
     ///
     /// * `path` - where to write.
     /// * `body` - the request body.
     /// * `options` - user and gzip.
+    /// * `metadata` - the validated `X-Metadata-*` headers, from
+    ///   `WriteOptions::metadata_headers`.
     /// * `timeout` - the whole-request deadline, or `None` for none.
     ///
     /// # Returns
@@ -675,12 +792,15 @@ impl Filesystem {
         path: &str,
         body: reqwest::Body,
         options: &WriteOptions,
+        metadata: &HeaderMap,
         timeout: Option<Duration>,
     ) -> Result<Vec<WriteInfo>> {
+        // `HeaderMap::clone` copies a few small headers, once per request.
         let mut request = self
             .envd
             .http_request_with_timeout(Method::POST, FILES_ROUTE, timeout)
             .query(&self.upload_query(Some(path), options.user.as_deref()))
+            .headers(metadata.clone())
             .header(
                 CONTENT_TYPE,
                 HeaderValue::from_static("application/octet-stream"),
@@ -691,7 +811,8 @@ impl Filesystem {
         written_entries(request.body(body).send().await?).await
     }
 
-    /// Uploads a multipart form of `file` parts (`POST /files`).
+    /// Uploads a multipart form of `file` parts (`POST /files`), with the
+    /// `X-Metadata-*` headers, which apply to every file in the form.
     ///
     /// # Arguments
     ///
@@ -699,6 +820,8 @@ impl Filesystem {
     ///   filename.
     /// * `path` - the `path` query, sent only for a single-file upload.
     /// * `options` - the user.
+    /// * `metadata` - the validated `X-Metadata-*` headers, from
+    ///   `WriteOptions::metadata_headers`.
     /// * `timeout` - the whole-request deadline, or `None` for none.
     ///
     /// # Returns
@@ -713,12 +836,14 @@ impl Filesystem {
         form: Form,
         path: Option<&str>,
         options: &WriteOptions,
+        metadata: &HeaderMap,
         timeout: Option<Duration>,
     ) -> Result<Vec<WriteInfo>> {
         let response = self
             .envd
             .http_request_with_timeout(Method::POST, FILES_ROUTE, timeout)
             .query(&self.upload_query(path, options.user.as_deref()))
+            .headers(metadata.clone())
             .multipart(form)
             .send()
             .await?;
@@ -869,11 +994,15 @@ impl Filesystem {
     ///
     /// What envd reports about each written file, in envd's order (for
     /// octet-stream, the order of `entries`). An empty `entries` returns an
-    /// empty list without a request.
+    /// empty list without a request (and without checking the metadata, as
+    /// in the SDK).
     ///
     /// # Errors
     ///
-    /// As [`Filesystem::write`]. With octet-stream, the first failing
+    /// [`Error::InvalidArgument`] for invalid metadata, or metadata on envd
+    /// older than 0.6.2, before any request is sent (see
+    /// [`WriteOptions::metadata`]). Otherwise as [`Filesystem::write`]. With
+    /// octet-stream, the first failing
     /// upload's error is returned, and the other uploads are dropped
     /// (cancelled) where still running.
     ///
@@ -900,6 +1029,7 @@ impl Filesystem {
         if entries.is_empty() {
             return Ok(Vec::new());
         }
+        let metadata = options.metadata_headers(self.envd.version())?;
         let timeout = self.envd.request_timeout();
         if self.uses_octet_stream(options) {
             // `Bytes::clone` is a reference-count bump, not a copy of the data.
@@ -911,7 +1041,7 @@ impl Filesystem {
                 } else {
                     reqwest::Body::from(entry.data.clone())
                 };
-                self.post_octet_stream(&entry.path, body, options, timeout)
+                self.post_octet_stream(&entry.path, body, options, &metadata, timeout)
             });
             let written = futures_util::future::try_join_all(uploads).await?;
             return Ok(written.into_iter().flatten().collect());
@@ -928,7 +1058,7 @@ impl Filesystem {
             [only] => Some(only.path.as_str()),
             _ => None,
         };
-        self.post_multipart(form, single_path, options, timeout)
+        self.post_multipart(form, single_path, options, &metadata, timeout)
             .await
     }
 
@@ -947,7 +1077,7 @@ impl Filesystem {
     /// * `reader` - the content, read to its end (a socket, a byte slice, a
     ///   `tokio::fs::File`...). It must be `Send + 'static` because reqwest
     ///   may poll the body on another task, so it cannot borrow local data.
-    /// * `options` - user and gzip (`octet_stream` is implied).
+    /// * `options` - user, gzip and metadata (`octet_stream` is implied).
     ///
     /// # Returns
     ///
@@ -955,8 +1085,10 @@ impl Filesystem {
     ///
     /// # Errors
     ///
-    /// As [`Filesystem::write`]; a read error from `reader` surfaces as
-    /// [`Error::Transport`].
+    /// [`Error::InvalidArgument`] for invalid metadata, or metadata on envd
+    /// older than 0.6.2, before any request is sent and before `reader` is
+    /// read. Otherwise as [`Filesystem::write`]; a read error from `reader`
+    /// surfaces as [`Error::Transport`].
     ///
     /// # Examples
     ///
@@ -977,6 +1109,7 @@ impl Filesystem {
         reader: impl AsyncRead + Send + 'static,
         options: &WriteOptions,
     ) -> Result<WriteInfo> {
+        let metadata = options.metadata_headers(self.envd.version())?;
         // `BufReader` adds the buffered-read interface (`AsyncBufRead`) the
         // gzip encoder needs; reads still happen only as the body is sent.
         let reader = BufReader::new(reader);
@@ -986,14 +1119,16 @@ impl Filesystem {
             } else {
                 reqwest::Body::wrap_stream(ReaderStream::new(reader))
             };
-            self.post_octet_stream(path, body, options, None).await?
+            self.post_octet_stream(path, body, options, &metadata, None)
+                .await?
         } else {
             // `Part::stream` has no length, so the part is sent chunked.
             // `post_multipart` reads only the user from `options`, so gzip is
             // dropped on this path, as in the SDKs.
             let body = reqwest::Body::wrap_stream(ReaderStream::new(reader));
             let part = Part::stream(body).file_name(path.to_owned());
-            self.post_multipart(Form::new().part("file", part), Some(path), options, None)
+            let form = Form::new().part("file", part);
+            self.post_multipart(form, Some(path), options, &metadata, None)
                 .await?
         };
         written.into_iter().next().ok_or_else(no_written_file)
@@ -1396,7 +1531,8 @@ mod tests {
             WriteOptions {
                 user: None,
                 octet_stream: false,
-                gzip: false
+                gzip: false,
+                metadata: BTreeMap::new(),
             }
         );
         let options = WriteOptions::default()
@@ -1408,6 +1544,64 @@ mod tests {
     }
 
     #[test]
+    fn metadata_headers_are_prefixed_sorted_and_replace_repeated_keys() {
+        let options = WriteOptions::default()
+            .metadata("team", "first")
+            .metadata("Run", "1")
+            .metadata("team", "m2");
+        let headers = options
+            .metadata_headers(EnvdVersion::FILE_METADATA)
+            .expect("valid metadata");
+        let pairs: Vec<(&str, &str)> = headers
+            .iter()
+            .map(|(name, value)| (name.as_str(), value.to_str().expect("ascii value")))
+            .collect();
+        // `BTreeMap` sorts by bytes, so `Run` (uppercase) comes before `team`.
+        assert_eq!(pairs, [("x-metadata-run", "1"), ("x-metadata-team", "m2")]);
+    }
+
+    #[test]
+    fn metadata_headers_accept_every_token_character_and_an_empty_value() {
+        let key = "Az09!#$%&'*+-.^_`|~";
+        let options = WriteOptions::default().metadata(key, "");
+        let headers = options
+            .metadata_headers(EnvdVersion::FILE_METADATA)
+            .expect("token key, empty value");
+        let name = format!("{METADATA_HEADER_PREFIX}{}", key.to_ascii_lowercase());
+        assert_eq!(
+            headers.get(name.as_str()).map(HeaderValue::as_bytes),
+            Some(&b""[..])
+        );
+    }
+
+    #[test]
+    fn metadata_headers_check_keys_before_the_version() {
+        let old = EnvdVersion::new(0, 6, 1);
+        assert!(
+            WriteOptions::default()
+                .metadata_headers(old)
+                .expect("no metadata on old envd")
+                .is_empty()
+        );
+        let err = WriteOptions::default()
+            .metadata("a b", "x")
+            .metadata_headers(old)
+            .expect_err("invalid key on old envd");
+        assert!(
+            matches!(&err, Error::InvalidArgument(message) if message.contains("key")),
+            "{err:?}"
+        );
+        let err = WriteOptions::default()
+            .metadata("team", "m2")
+            .metadata_headers(old)
+            .expect_err("metadata on 0.6.1");
+        assert!(
+            matches!(&err, Error::InvalidArgument(message) if message.contains("0.6.2")),
+            "{err:?}"
+        );
+    }
+
+    #[test]
     fn uploaded_entry_converts_to_write_info() {
         let entry: UploadedEntry =
             serde_json::from_str(r#"{"name":"a","type":"dir","path":"/w/a"}"#).expect("json");
@@ -1415,6 +1609,13 @@ mod tests {
         assert_eq!(info.name, "a");
         assert_eq!(info.path, "/w/a");
         assert_eq!(info.file_type, FileType::Directory);
+        assert!(info.metadata.is_empty());
+
+        let entry: UploadedEntry =
+            serde_json::from_str(r#"{"name":"a","path":"/a","metadata":{"team":"m2"}}"#)
+                .expect("json with metadata");
+        let info = WriteInfo::from(entry);
+        assert_eq!(info.metadata.get("team").map(String::as_str), Some("m2"));
     }
 
     #[test]

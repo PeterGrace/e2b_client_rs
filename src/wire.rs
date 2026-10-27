@@ -43,6 +43,23 @@ fn decode_base64(encoded: &str) -> Result<Bytes, base64::DecodeError> {
         .map(Bytes::from)
 }
 
+/// Deserializes a value that may be JSON `null`, treating `null` like an
+/// absent field: the type's default (an empty map, for a metadata map). The
+/// SDK does the same with `map_metadata(payload.get("metadata"))`
+/// (`e2b/sandbox/filesystem/filesystem.py:89, 376-380`).
+///
+/// Python note: `#[serde(default)]` alone covers a missing field but fails on
+/// an explicit `null`; this covers both.
+pub(crate) fn deserialize_null_as_default<'de, D, T>(deserializer: D) -> Result<T, D::Error>
+where
+    D: Deserializer<'de>,
+    T: Default + Deserialize<'de>,
+{
+    // `unwrap_or_default` turns `None` (the JSON `null`) into `T::default()`;
+    // it cannot panic.
+    Ok(Option::<T>::deserialize(deserializer)?.unwrap_or_default())
+}
+
 /// Deserializes a proto3 JSON `int64`, which may be a string or a number.
 pub(crate) fn deserialize_i64_lenient<'de, D: Deserializer<'de>>(
     deserializer: D,

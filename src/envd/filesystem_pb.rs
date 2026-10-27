@@ -4,10 +4,12 @@
 //! the official Python SDK (`e2b/envd/filesystem/filesystem_pb.py`, line numbers
 //! in `docs/protocol-notes.md`).
 
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 
 use crate::envd::connect::Empty;
-use crate::wire::{EnumValue, deserialize_i64_lenient};
+use crate::wire::{EnumValue, deserialize_i64_lenient, deserialize_null_as_default};
 
 /// Service path prefix.
 pub(crate) const SERVICE: &str = "filesystem.Filesystem";
@@ -72,6 +74,11 @@ pub(crate) struct EntryInfoWire {
     pub(crate) modified_time: Option<String>,
     #[serde(default)]
     pub(crate) symlink_target: Option<String>,
+    /// User metadata, `map<string, string>` field 11
+    /// (`e2b/envd/filesystem/filesystem_pb.py:240-307`); empty when none is
+    /// set.
+    #[serde(default, deserialize_with = "deserialize_null_as_default")]
+    pub(crate) metadata: HashMap<String, String>,
 }
 
 /// `filesystem.WatchDirRequest`
@@ -120,7 +127,8 @@ mod tests {
     fn entry_info_parses_proto_json() {
         let json = r#"{"entry":{"name":"a.txt","type":"FILE_TYPE_FILE","path":"/tmp/a.txt",
             "size":"12","mode":420,"permissions":"-rw-r--r--","owner":"user","group":"user",
-            "modifiedTime":"2026-01-02T03:04:05Z","unknownField":true}}"#;
+            "modifiedTime":"2026-01-02T03:04:05Z","metadata":{"team":"m2"},
+            "unknownField":true}}"#;
         let response: EntryResponse = serde_json::from_str(json).expect("deserialize");
         let entry = response.entry.expect("entry");
         assert_eq!(entry.name, "a.txt");
@@ -131,6 +139,15 @@ mod tests {
         assert_eq!(entry.size, 12);
         assert_eq!(entry.mode, 0o644);
         assert_eq!(entry.modified_time.as_deref(), Some("2026-01-02T03:04:05Z"));
+        assert_eq!(entry.metadata.get("team").map(String::as_str), Some("m2"));
+    }
+
+    #[test]
+    fn entry_info_metadata_defaults_to_empty_when_absent_or_null() {
+        let absent: EntryInfoWire = serde_json::from_str(r#"{"name":"a"}"#).expect("absent");
+        let null: EntryInfoWire =
+            serde_json::from_str(r#"{"name":"a","metadata":null}"#).expect("null");
+        assert!(absent.metadata.is_empty() && null.metadata.is_empty());
     }
 
     #[test]
@@ -170,7 +187,7 @@ mod tests {
 
         let event: WatchDirResponse = serde_json::from_str(
             r#"{"filesystem":{"name":"a.txt","type":"EVENT_TYPE_CREATE",
-                "entry":{"name":"a.txt","path":"/w/a.txt"}}}"#,
+                "entry":{"name":"a.txt","path":"/w/a.txt","metadata":{"team":"m2"}}}}"#,
         )
         .expect("filesystem event");
         let event = event.filesystem.expect("filesystem member");
@@ -179,6 +196,9 @@ mod tests {
             event.event_type,
             Some(EnumValue::Name("EVENT_TYPE_CREATE".into()))
         );
-        assert_eq!(event.entry.expect("entry").path, "/w/a.txt");
+        let entry = event.entry.expect("entry");
+        assert_eq!(entry.path, "/w/a.txt");
+        // `include_entry` events carry the entry's metadata like `Stat` does.
+        assert_eq!(entry.metadata.get("team").map(String::as_str), Some("m2"));
     }
 }
