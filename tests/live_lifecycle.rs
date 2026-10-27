@@ -568,3 +568,44 @@ async fn clm_0027_is_running_tracks_kill() {
         "want Ok(false) after kill, got {last:?}"
     );
 }
+
+#[tokio::test]
+#[ignore = "live: run with `just test-live <target>`"]
+async fn clm_0028_get_host_reaches_a_port_in_the_sandbox() {
+    // Arrange: a web server on port 8000 serving one known file. The handle
+    // is kept so the server stays attached for the whole test.
+    let sandbox = LiveSandbox::new().await;
+    sandbox
+        .files()
+        .write("/tmp/www/hello.txt", "hello from 8000", None)
+        .await
+        .expect("write");
+    let _server = sandbox
+        .commands()
+        .start(
+            "cd /tmp/www && python3 -m http.server 8000",
+            &CommandOptions::default(),
+        )
+        .await
+        .expect("start server");
+    let url = format!("https://{}/hello.txt", sandbox.get_host(8000));
+    let http = reqwest::Client::new();
+
+    // Act: `async move` copies the two references into each future.
+    let (http, url) = (&http, url.as_str());
+    let body = poll_until(
+        "the server on port 8000",
+        Duration::from_secs(60),
+        || async move {
+            let response = http.get(url).send().await.ok()?;
+            if !response.status().is_success() {
+                return None;
+            }
+            response.text().await.ok()
+        },
+    )
+    .await;
+
+    // Assert
+    assert_eq!(body, "hello from 8000");
+}

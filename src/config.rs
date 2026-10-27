@@ -181,7 +181,7 @@ impl ConnectionConfig {
         if SUPPORTED_SANDBOX_DOMAINS.contains(&domain) {
             return format!("https://sandbox.{domain}");
         }
-        format!("https://{}", sandbox_host(sandbox_id, domain))
+        format!("https://{}", host_name(ENVD_PORT, sandbox_id, domain))
     }
 
     /// The URL envd's plain HTTP API (`/files`, `/health`) is reached at.
@@ -204,13 +204,53 @@ impl ConnectionConfig {
             return trim_url(url);
         }
         let domain = sandbox_domain.unwrap_or(&self.domain);
-        format!("https://{}", sandbox_host(sandbox_id, domain))
+        format!("https://{}", host_name(ENVD_PORT, sandbox_id, domain))
+    }
+
+    /// The host name that reaches `port` inside a sandbox from outside it,
+    /// for an HTTP or WebSocket client.
+    ///
+    /// Mirrors `ConnectionConfig.get_host` (`e2b/connection_config.py:366-379`;
+    /// JS `dist/index.js:1138-1141`): `<port>-<sandbox_id>.<domain>`, with the
+    /// domain the API reported for the sandbox, else this configuration's
+    /// domain. `E2B_SANDBOX_URL` does not change it, as in the SDKs.
+    ///
+    /// # Arguments
+    ///
+    /// * `sandbox_id` - the sandbox ID.
+    /// * `sandbox_domain` - the domain the API returned for the sandbox, if any.
+    /// * `port` - the port a service listens on inside the sandbox.
+    ///
+    /// # Returns
+    ///
+    /// The host name, without a scheme.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use e2b_client::ConnectionConfig;
+    ///
+    /// let config = ConnectionConfig::builder().api_key("k").domain("example.com").build()?;
+    /// assert_eq!(config.sandbox_host("sbx1", None, 3000), "3000-sbx1.example.com");
+    /// assert_eq!(config.sandbox_host("sbx1", Some("e2b.app"), 8080), "8080-sbx1.e2b.app");
+    /// # Ok::<(), e2b_client::Error>(())
+    /// ```
+    #[must_use]
+    pub fn sandbox_host(
+        &self,
+        sandbox_id: &str,
+        sandbox_domain: Option<&str>,
+        port: u16,
+    ) -> String {
+        // `unwrap_or` on an `Option<&str>` picks the reported domain, else a
+        // borrow of ours: no allocation until `format!` builds the result.
+        host_name(port, sandbox_id, sandbox_domain.unwrap_or(&self.domain))
     }
 }
 
-/// `<port>-<sandbox_id>.<domain>` (`e2b/connection_config.py:366-380`).
-fn sandbox_host(sandbox_id: &str, domain: &str) -> String {
-    format!("{ENVD_PORT}-{sandbox_id}.{domain}")
+/// `<port>-<sandbox_id>.<domain>` (`e2b/connection_config.py:366-379`).
+fn host_name(port: u16, sandbox_id: &str, domain: &str) -> String {
+    format!("{port}-{sandbox_id}.{domain}")
 }
 
 fn trim_url(url: &Url) -> String {
@@ -653,5 +693,27 @@ mod tests {
         let rendered = format!("{config:?}");
         assert!(!rendered.contains("super-secret"));
         assert!(rendered.contains("[redacted]"));
+    }
+
+    #[test]
+    fn sandbox_host_uses_the_sandbox_domain_then_the_configured_one() {
+        // Arrange: an envd URL override that must not leak into the host.
+        let config = ConnectionConfig::builder()
+            .api_key("k")
+            .domain("example.com")
+            .sandbox_url("https://ignored.test")
+            .build_with_env(|_| None)
+            .expect("config");
+
+        // Act and Assert: E2B_SANDBOX_URL does not change get_host, as in
+        // the SDKs.
+        assert_eq!(
+            config.sandbox_host("sbx1", None, 3000),
+            "3000-sbx1.example.com"
+        );
+        assert_eq!(
+            config.sandbox_host("sbx1", Some("e2b.app"), 8080),
+            "8080-sbx1.e2b.app"
+        );
     }
 }

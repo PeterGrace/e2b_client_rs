@@ -39,6 +39,7 @@ NOTICE for.
 | Direct URL (file API): override, else always the per-sandbox host | `py: connection_config.py:353-364`; `js: 1133-1137` |
 | Host format `<port>-<sandbox_id>.<domain>` | `py: connection_config.py:366-380`; `js: 1138-1141` |
 | Sandbox domain: the `domain` the API returned, else the configured one | `py: sandbox/main.py:46`; `js: 5794` |
+| `get_host(port)`: `<port>-<sandbox_id>.<sandbox domain or configured domain>`; not changed by `E2B_SANDBOX_URL` | `py: connection_config.py:366-379`; `py: sandbox/main.py:46, 213-224`; `js: 1138-1141` |
 
 ## envd headers
 
