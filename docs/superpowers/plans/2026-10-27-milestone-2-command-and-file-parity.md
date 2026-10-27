@@ -16,7 +16,7 @@
 
 In:
 
-- **Streamed stdin** (CLM-0046): `Commands::stream_input(pid, timeout) -> InputStream` over envd's client-streaming `StreamInput` RPC, with the SDK's 50 s keepalive.
+- **Streamed stdin** (CLM-0046): `Commands::stream_input(pid, &StreamInputOptions) -> InputStream` over envd's client-streaming `StreamInput` RPC, with the SDK's 50 s keepalive and 60 s default deadline.
 - **PTY** (CLM-0047, 0048, 0049): `Sandbox::pty()` with `create`, `connect`, `send_stdin`, `resize`, `kill` and `stream_input`, returning a `PtyHandle` whose events are `PtyEvent::{Data, Exit}`.
 - **Batch write** (CLM-0062): `Filesystem::write_files(&[WriteEntry], &WriteOptions)`. `write` becomes a one-entry `write_files`.
 - **Directory watching** (CLM-0063): `Filesystem::watch_dir(path, &WatchOptions) -> WatchHandle`, with `recursive`, `include_entry` and `allow_network_mounts` and their envd version gates.
@@ -56,6 +56,7 @@ Deferred:
 
 - **Handles, not callbacks.** The SDK's `pty.create(on_data=...)` and `watch_dir(on_event=..., on_exit=...)` take callbacks. Here `PtyHandle::next_event` and `WatchHandle::next_event` are pulled in a `while let` loop, like `CommandHandle`. Dropping a `WatchHandle` stops the watch, which is the SDK's `stop()`.
 - **Bounded input queue.** The SDK's input handle queues without limit. `InputStream::send` waits when 64 chunks are queued, so a fast producer can't buffer without bound.
+- **The input deadline is a `StreamInputOptions` field** (default 60 s), like the other options structs, rather than the SDK's keyword argument.
 - **`InputStream::send` is async and takes `&mut self`.** It is what reports a stream that already failed (the SDK raises the stored failure the same way).
 - **`write` keeps its v0.1 signature** (`path, data, user`). The new options are on `write_files` and `write_stream`. M4 reviews whether `write` should take `&WriteOptions`.
 - **Metadata is a `HashMap`, empty when none is set.** The SDK uses `None` for no metadata. An empty map is the Rust idiom and loses nothing.
@@ -258,12 +259,10 @@ Create `tests/envd_stream_input.rs`:
 
 mod common;
 
-use std::time::Duration;
-
 use common::{
     ACCESS_TOKEN, decode_request_envelopes, end_stream, message, sandbox, stream_response,
 };
-use e2b_client::{ConnectCode, Error};
+use e2b_client::{ConnectCode, Error, StreamInputOptions};
 use serde_json::json;
 use wiremock::matchers::{header, method, path};
 use wiremock::{Mock, MockServer};
@@ -284,7 +283,9 @@ async fn stream_input_sends_start_then_one_data_envelope_per_chunk() {
         .mount(&server)
         .await;
 
-    let mut input = sandbox.commands().stream_input(7, None);
+    let mut input = sandbox
+        .commands()
+        .stream_input(7, &StreamInputOptions::default().timeout(None));
     input.send("a").await.expect("send a");
     input.send(b"b".to_vec()).await.expect("send b");
     input.close().await.expect("close");
@@ -305,7 +306,7 @@ async fn stream_input_sends_start_then_one_data_envelope_per_chunk() {
 }
 
 #[tokio::test]
-async fn stream_input_advertises_its_deadline() {
+async fn stream_input_deadline_defaults_to_60_s() {
     let server = MockServer::start().await;
     let sandbox = sandbox(&server).await;
     Mock::given(method("POST"))
@@ -316,9 +317,10 @@ async fn stream_input_advertises_its_deadline() {
         .mount(&server)
         .await;
 
+    // No timeout given: the SDKs' 60 s default applies.
     let input = sandbox
         .commands()
-        .stream_input(7, Some(Duration::from_secs(60)));
+        .stream_input(7, &StreamInputOptions::default());
     input.close().await.expect("close");
 }
 
@@ -334,7 +336,9 @@ async fn stream_input_error_is_reported_by_close() {
         .mount(&server)
         .await;
 
-    let mut input = sandbox.commands().stream_input(7, None);
+    let mut input = sandbox
+        .commands()
+        .stream_input(7, &StreamInputOptions::default().timeout(None));
     input.send("x").await.expect("queued before the server answered");
     let err = input.close().await.expect_err("not found");
 
@@ -527,6 +531,42 @@ use crate::error::{Error, Result};
 /// `e2b/connection_config.py:33`).
 pub const DEFAULT_STREAM_INPUT_TIMEOUT: Duration = Duration::from_secs(60);
 
+/// Options for [`crate::Commands::stream_input`] and
+/// [`crate::Pty::stream_input`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct StreamInputOptions {
+    timeout: Option<Duration>,
+}
+
+impl Default for StreamInputOptions {
+    fn default() -> Self {
+        Self {
+            timeout: Some(DEFAULT_STREAM_INPUT_TIMEOUT),
+        }
+    }
+}
+
+impl StreamInputOptions {
+    /// Bounds the whole input stream; `None` for no limit. Defaults to
+    /// [`DEFAULT_STREAM_INPUT_TIMEOUT`].
+    ///
+    /// Keepalives do not extend this deadline: they only keep idle proxies
+    /// from dropping the connection.
+    ///
+    /// # Arguments
+    ///
+    /// * `timeout` - the stream deadline.
+    ///
+    /// # Returns
+    ///
+    /// The options, for chaining.
+    #[must_use]
+    pub fn timeout(mut self, timeout: Option<Duration>) -> Self {
+        self.timeout = timeout;
+        self
+    }
+}
+
 /// How long the stream may sit idle before a keepalive message is sent
 /// (`KEEPALIVE_PING_INTERVAL_SEC`, `e2b/connection_config.py:48`).
 const KEEPALIVE_INTERVAL: Duration = Duration::from_secs(50);
@@ -550,6 +590,13 @@ pub(crate) enum InputKind {
 /// were sent. Call [`close`](Self::close) to end the stream and learn whether
 /// envd accepted it. Dropping the stream without `close` also ends it, but any
 /// error is then lost.
+///
+/// The stream's deadline ([`StreamInputOptions::timeout`], 60 s by default)
+/// bounds the whole stream. The keepalive sent every 50 s while idle stops
+/// proxies from dropping the connection, but it does not extend the
+/// deadline: with the default, the stream ends 60 s after it opens however
+/// active it is, as in the SDKs. Pass `.timeout(None)` for a stream with no
+/// limit.
 ///
 /// Python note: this is the SDK's `AsyncCommandInputHandle`. `send` is
 /// `async` because it waits when the queue is full instead of buffering
@@ -710,8 +757,8 @@ async fn messages_start_then_data_then_keepalive_when_idle() {
     /// # Arguments
     ///
     /// * `pid` - the process ID.
-    /// * `timeout` - bound on the whole stream, usually
-    ///   `Some(`[`DEFAULT_STREAM_INPUT_TIMEOUT`]`)`; `None` for no limit.
+    /// * `options` - the stream deadline (60 s by default; keepalives do not
+    ///   extend it).
     ///
     /// # Returns
     ///
@@ -725,11 +772,11 @@ async fn messages_start_then_data_then_keepalive_when_idle() {
     /// # Examples
     ///
     /// ```no_run
-    /// use e2b_client::{CommandOptions, DEFAULT_STREAM_INPUT_TIMEOUT, Sandbox};
+    /// use e2b_client::{CommandOptions, Sandbox, StreamInputOptions};
     ///
     /// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
     /// let handle = sandbox.commands().start("cat", &CommandOptions::default().stdin(true)).await?;
-    /// let mut input = sandbox.commands().stream_input(handle.pid(), Some(DEFAULT_STREAM_INPUT_TIMEOUT));
+    /// let mut input = sandbox.commands().stream_input(handle.pid(), &StreamInputOptions::default());
     /// input.send("line 1\n").await?;
     /// input.send("line 2\n").await?;
     /// input.close().await?;
@@ -738,12 +785,12 @@ async fn messages_start_then_data_then_keepalive_when_idle() {
     /// # }
     /// ```
     #[must_use]
-    pub fn stream_input(&self, pid: u32, timeout: Option<Duration>) -> InputStream {
-        InputStream::open(Arc::clone(&self.envd), pid, InputKind::Stdin, timeout)
+    pub fn stream_input(&self, pid: u32, options: &StreamInputOptions) -> InputStream {
+        InputStream::open(Arc::clone(&self.envd), pid, InputKind::Stdin, options.timeout)
     }
 ```
 
-`send_stdin` builds `ProcessInput::Stdin(data.as_ref())`. In `src/lib.rs`: `mod stream_input;` and `pub use stream_input::{DEFAULT_STREAM_INPUT_TIMEOUT, InputStream};`; mention streamed stdin in the crate docs' process bullet.
+`send_stdin` builds `ProcessInput::Stdin(data.as_ref())`. In `src/lib.rs`: `mod stream_input;` and `pub use stream_input::{DEFAULT_STREAM_INPUT_TIMEOUT, InputStream, StreamInputOptions};` (`InputStream::open` reads `options.timeout`, so the field stays private and `open` keeps taking an `Option<Duration>`); mention streamed stdin in the crate docs' process bullet.
 
 - [ ] **Step 7: Live test**
 
@@ -762,7 +809,7 @@ async fn clm_0046_stream_input_delivers_chunks_in_order() {
 
     let mut input = sandbox
         .commands()
-        .stream_input(handle.pid(), Some(e2b_client::DEFAULT_STREAM_INPUT_TIMEOUT));
+        .stream_input(handle.pid(), &e2b_client::StreamInputOptions::default());
     for chunk in ["one ", "two ", "three\n"] {
         input.send(chunk).await.expect("send");
     }
@@ -777,7 +824,7 @@ async fn clm_0046_stream_input_delivers_chunks_in_order() {
 
 - [ ] **Step 8: Docs, gates, live check, changelog, commit**
 
-Add a "Streamed input" section to `docs/protocol-notes.md` (the StreamInput rows from Verified facts) and remove `StreamInput` from "Not implemented in v0.1". Add evidence-map rows: CLM-0130 → `tests/envd_stream_input.rs::stream_input_sends_start_then_one_data_envelope_per_chunk`, `src/envd/process_pb.rs::tests::stream_input_messages_match_proto_json`; CLM-0131 → `src/stream_input.rs::tests::messages_start_then_data_then_keepalive_when_idle`, `tests/envd_stream_input.rs::stream_input_advertises_its_deadline` (`partial` if the 60 s default is only documented: the test passes it explicitly; say so in Notes). Run the gates and the live test on hosted. Write `changelog/<ts>-m2-task-02-stream-input.md`.
+Add a "Streamed input" section to `docs/protocol-notes.md` (the StreamInput rows from Verified facts) and remove `StreamInput` from "Not implemented in v0.1". Add evidence-map rows: CLM-0130 → `tests/envd_stream_input.rs::stream_input_sends_start_then_one_data_envelope_per_chunk`, `src/envd/process_pb.rs::tests::stream_input_messages_match_proto_json`; CLM-0131 → `src/stream_input.rs::tests::messages_start_then_data_then_keepalive_when_idle`, `tests/envd_stream_input.rs::stream_input_deadline_defaults_to_60_s`, `tests/envd_stream_input.rs::stream_input_sends_start_then_one_data_envelope_per_chunk` (the close-then-acknowledge part). Run the gates and the live test on hosted. Write `changelog/<ts>-m2-task-02-stream-input.md`.
 
 ```bash
 git add Cargo.toml Cargo.lock src/ tests/ docs/ changelog/
@@ -906,7 +953,9 @@ async fn pty_stream_input_uses_the_pty_member() {
         .mount(&server)
         .await;
 
-    let mut input = sandbox.pty().stream_input(11, None);
+    let mut input = sandbox
+        .pty()
+        .stream_input(11, &e2b_client::StreamInputOptions::default());
     input.send("ls\r").await.expect("send");
     input.close().await.expect("close");
 
@@ -1075,7 +1124,7 @@ Methods, all documented with Arguments/Returns/Errors:
 - `send_stdin(&self, pid, data: impl AsRef<[u8]>) -> Result<()>`: `SendInput` with `ProcessInput::Pty`.
 - `resize(&self, pid, size) -> Result<()>`: unary `Update` with `UpdateRequest`, response `Empty`.
 - `kill(&self, pid) -> Result<bool>`: `Commands::new(Arc::clone(&self.envd)).kill(pid)`.
-- `stream_input(&self, pid, timeout) -> InputStream`: `InputStream::open(.., InputKind::Pty, timeout)`.
+- `stream_input(&self, pid, options: &StreamInputOptions) -> InputStream`: `InputStream::open(.., InputKind::Pty, options.timeout)`.
 
 ```rust
 /// A running PTY session. Read output with [`next_event`](Self::next_event).
