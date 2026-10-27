@@ -2053,6 +2053,8 @@ fn file_signature_matches_the_sdk_algorithm() {
 - `legacy_envd_signs_for_the_default_user` (CLM-0140): envd 0.3.9 without a user gives `username=user`, and the signature uses `user`.
 - `unsecured_sandbox_gets_an_unsigned_url_and_rejects_expiration` (CLM-0141): `sandbox_from_json` with `"envdAccessToken": null` gives a URL with no `signature`; with `expires_in` it is `Error::InvalidArgument`.
 
+> **Corrected (issue #37, 2026-10-27).** Every mock test also asserts that the URL does not contain `ACCESS_TOKEN`, and a unit test `src/sandbox.rs::tests::signed_urls_carry_the_signature_not_the_token` checks the same for both URLs. `debug_output_omits_the_api_key_and_access_tokens` now also renders `format!("{:?}", sandbox.envd)`, since `EnvdClient` holds the token itself.
+
 - [ ] **Step 3: Implementation**
 
 `src/envd/mod.rs`: `EnvdClient` keeps `access_token: Option<SecretString>` (cloned from the target), with `pub(crate) fn access_token(&self) -> Option<&SecretString>`. `direct_base` moves out of the `#[cfg(test)]` block. Check that the `Debug` derive on `EnvdClient` still hides the token: `SecretString`'s `Debug` prints `[REDACTED]`, and `debug_output_omits_the_api_key_and_access_tokens` must still pass.
@@ -2094,7 +2096,7 @@ fn file_signature(
     operation: FileOperation,
     user: Option<&str>,
     token: &str,
-    expiration: Option<i64>,
+    expiration: Option<u64>,
 ) -> String {
     let user = user.unwrap_or_default();
     let raw = match expiration {
@@ -2179,11 +2181,15 @@ fn file_signature(
     }
 ```
 
-`expiration_from_now(Duration) -> Result<i64>` uses `SystemTime::now().duration_since(UNIX_EPOCH)` plus the duration, and maps a pre-1970 clock or an overflow to `InvalidArgument`. Re-export `FileUrlOptions`.
+> **Corrected (issue #37, 2026-10-27).** The expiration is `u64`, not `i64`: it is Unix seconds after 1970, so it is never negative. An empty user is treated like no user in the URL (`effective_user(..).filter(|user| !user.is_empty())`), because both SDKs leave `username` out when it is empty (`py: sandbox/main.py:112`; `js: 6318`); the signature is the same either way. `file_url` also maps a URL that does not parse to `Error::InvalidConfig`, which the `download_url` rustdoc lists. Shipped code: `src/sandbox.rs`.
+
+`expiration_from_now(Duration) -> Result<u64>` uses `SystemTime::now().duration_since(UNIX_EPOCH)` plus the duration, and maps a pre-1970 clock or an overflow to `InvalidArgument`. Re-export `FileUrlOptions`.
 
 - [ ] **Step 4: Live tests**
 
 - `clm_0065_download_url_fetches_without_credentials`: write `/tmp/shared.txt` = `"signed read"`; `reqwest::get(download_url(.., &FileUrlOptions::default().expires_in(60 s)))` gives status 200 and body `"signed read"`. Also check that the same URL with the `signature` pair removed is refused (a 4xx), which shows the signature is what grants access.
+
+> **Corrected (issue #37, 2026-10-27).** A `reqwest::Error`'s `Display` includes the request URL, so a failing `expect` would print the signed URL. Both live tests pass every `reqwest` error through `err.without_url()` (helper `strip_url` in `tests/live_files.rs`) before `expect`, and no assertion message includes a URL.
 - `clm_0064_upload_url_accepts_a_multipart_post`: POST `reqwest::multipart::Form::new().part("file", Part::bytes(b"signed write".to_vec()).file_name("up.txt"))` to `upload_url("/tmp/up.txt", ..)` with a plain `reqwest::Client`; the status is a success; then `files().read_to_string("/tmp/up.txt")` is `"signed write"`.
 
 - [ ] **Step 5: Docs, gates, live check, changelog, commit**

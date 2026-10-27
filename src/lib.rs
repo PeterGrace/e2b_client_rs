@@ -15,6 +15,9 @@
 //!   [`WriteOptions`]), stream uploads from an `AsyncRead` and downloads as
 //!   chunks ([`FileStream`]), list directories, stat, make directories, move
 //!   and remove, and watch a directory for changes ([`WatchHandle`]).
+//! - **Signed file URLs** ([`Sandbox::upload_url`], [`Sandbox::download_url`]):
+//!   plain HTTP upload and download links, signed with the sandbox's envd
+//!   access token, optionally expiring ([`FileUrlOptions`]).
 //!
 //! # Quick start
 //!
@@ -77,5 +80,5 @@ pub use models::{
     SandboxState,
 };
 pub use pty::{DEFAULT_PTY_TIMEOUT, Pty, PtyEvent, PtyHandle, PtyOptions, PtySize};
-pub use sandbox::Sandbox;
+pub use sandbox::{FileUrlOptions, Sandbox};
 pub use stream_input::{DEFAULT_STREAM_INPUT_TIMEOUT, InputStream, StreamInputOptions};
