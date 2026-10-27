@@ -67,6 +67,7 @@ Because the egress proxy and IAM are deferred, CLM-0031 (update network "as the 
 - **Lists, not selector callables.** `allow_out` and `deny_out` take lists. `ALL_TRAFFIC` is the SDK's `ctx.all_traffic`.
 - **The MCP configuration is a JSON object** (`serde_json::Map`), not the SDK's 2,538-line generated `McpServer` TypedDict. The server sends it on; the crate does not validate server names.
 - **`mcp_token` is cached in a `tokio::sync::OnceCell`**, as the SDK caches `_mcp_token`. It is set when `create_sandbox` starts the gateway, and read from `/etc/mcp-gateway/.token` the first time on a handle from `connect_sandbox`.
+- **The token read from the file is trimmed at the end** (`trim_end`), where the SDK returns the file as is. The token is a UUID, so trailing whitespace can only be a newline the file was written with, and a token with a newline is unusable in a header and would not equal the token `create_sandbox` generated.
 - **Fork returns `Vec<Result<Sandbox>>`.** A per-fork error is `Error::Api { status: code, message }`; the SDK maps the code to an exception class, and a per-fork 404 stays generic in both.
 - **No debug mode.** The SDK's `E2B_DEBUG` (`localhost:<port>` hosts, empty metrics) has no equivalent in the crate, so `get_host` and `get_metrics` have no debug branch.
 - **Pages, not paginator objects.** `list_snapshots` returns a `SnapshotPage` with `next_token`, like `list_sandboxes` returns a `SandboxPage`.
@@ -4707,7 +4708,8 @@ async fn a_connected_handle_reads_the_token_file_as_root() {
         .and(path("/files"))
         .and(query_param("path", "/etc/mcp-gateway/.token"))
         .and(query_param("username", "root"))
-        .respond_with(ResponseTemplate::new(200).set_body_string("tok-from-file"))
+        // The trailing newline is trimmed (see the plan's deviations).
+        .respond_with(ResponseTemplate::new(200).set_body_string("tok-from-file\n"))
         .expect(1)
         .mount(&server)
         .await;
@@ -4879,7 +4881,8 @@ In `body()`, `template_id: self.template()` and `mcp: self.mcp.as_ref()`; on `Ne
 
     /// The MCP gateway's access token: the one [`Client::create_sandbox`]
     /// generated, or, on a handle from [`Client::connect_sandbox`], read
-    /// once from `/etc/mcp-gateway/.token` as root and then cached.
+    /// once from `/etc/mcp-gateway/.token` as root (without trailing
+    /// whitespace) and then cached.
     ///
     /// # Returns
     ///
@@ -4896,7 +4899,9 @@ In `body()`, `template_id: self.template()` and `mcp: self.mcp.as_ref()`; on `Ne
                     .files()
                     .read_to_string(MCP_TOKEN_PATH, Some("root"))
                     .await?;
-                Ok(SecretString::from(token))
+                // Trimmed, unlike the SDK: a trailing newline would make the
+                // token unusable in a header (see the plan's deviations).
+                Ok(SecretString::from(token.trim_end().to_owned()))
             })
             .await
     }
