@@ -1,9 +1,9 @@
 {
   "schema_version": 2,
-  "next_claim_seq": 128,
+  "next_claim_seq": 143,
   "next_claim_seq_seal": {
     "by": "server",
-    "mac": "1e4abf90e6c0fc60d73fc219a0ba7226aac34b82ff803a3502417c434c384f3e"
+    "mac": "527f25aed3b34599a08e4e01ba05dddeec52ef4d6e66f54f562241f27305ce0d"
   },
   "next_evidence_seq": 129,
   "next_evidence_seq_seal": {
@@ -7359,6 +7359,459 @@
       "seal": {
         "by": "server",
         "mac": "083e7193e860ad7e3cb5301613bbb68677ecf7cd93bf55d5297da7fd2134da9f"
+      }
+    },
+    {
+      "id": "CLM-0128",
+      "statement": "Filesystem can download a file as a stream of chunks without buffering the whole file in memory, as the SDK's read(format=\"stream\") does.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "py: sandbox_async/filesystem/filesystem.py:197-262",
+      "derived_from": [
+        "CLM-0004"
+      ],
+      "artifacts": [
+        "src/filesystem.rs"
+      ],
+      "tags": [
+        "s3",
+        "gap",
+        "m2"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-27T01:35:47.983077574Z",
+      "updated_at": "2026-10-27T01:35:47.983077574Z",
+      "seal": {
+        "by": "server",
+        "mac": "01334fef2931fcac199fe472dd77c956cc810f2f553c7b58379a2e589ad6b419"
+      }
+    },
+    {
+      "id": "CLM-0129",
+      "statement": "File writes can attach user metadata that envd stores as extended attributes and reports back in WriteInfo and in EntryInfo from get_info and list (envd >= 0.6.2).",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "py: sandbox_async/filesystem/filesystem.py:291-329, 363-367, 396; py: sandbox/filesystem/filesystem.py:56-90, 342-380",
+      "derived_from": [
+        "CLM-0004"
+      ],
+      "artifacts": [
+        "src/filesystem.rs"
+      ],
+      "tags": [
+        "s3",
+        "gap",
+        "m2"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-27T01:35:47.983077574Z",
+      "updated_at": "2026-10-27T01:35:47.983077574Z",
+      "seal": {
+        "by": "server",
+        "mac": "8d740498ca1c444b1de240d5929ca8eb713a98b1261a22f96a618782ab14b65c"
+      }
+    },
+    {
+      "id": "CLM-0130",
+      "statement": "Streamed input is a client-streaming call to process.Process/StreamInput (application/connect+json, one envelope per message) whose first message is a start event selecting the pid, followed by data events carrying input.stdin bytes for commands or input.pty bytes for PTYs.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: envd/process/process_connect.py:120-128; py: sandbox/commands/stream_input.py:10-37; py: sandbox_async/commands/command_input_handle.py:114-131; py: envd/process/process_pb.py:597-700",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/commands.rs",
+        "src/envd/mod.rs"
+      ],
+      "tags": [
+        "s4",
+        "gap",
+        "m2"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-27T01:35:47.983077574Z",
+      "updated_at": "2026-10-27T01:35:47.983077574Z",
+      "seal": {
+        "by": "server",
+        "mac": "7eddab77263ab2ac985996700629acc100451c8a611a6655e6f1e804b0c2fb41"
+      }
+    },
+    {
+      "id": "CLM-0131",
+      "statement": "An open StreamInput stream sends a keepalive message after 50 s without input, closing the input handle ends the request stream and waits for envd's response, and the stream deadline defaults to 60 s.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: sandbox_async/commands/command_input_handle.py:71-83, 114-131; py: connection_config.py:33, 48",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/commands.rs"
+      ],
+      "tags": [
+        "s4",
+        "gap",
+        "m2"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-27T01:35:47.983077574Z",
+      "updated_at": "2026-10-27T01:35:47.983077574Z",
+      "seal": {
+        "by": "server",
+        "mac": "e2a8dc4becaf24c5cb295334a970afba91a9b9748cfa3e5dc9d9fdf997357eb2"
+      }
+    },
+    {
+      "id": "CLM-0132",
+      "statement": "PTY create sends Start with cmd /bin/bash, args [\"-i\", \"-l\"], pty.size {cols, rows}, no stdin field, and envs where TERM=xterm-256color, LANG=C.UTF-8 and LC_ALL=C.UTF-8 are added unless the caller set them.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: sandbox_async/commands/pty.py:162-185; js: 4686-4706; py: envd/process/process_pb.py:18-80, 212-260",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/pty.rs"
+      ],
+      "tags": [
+        "s4",
+        "gap",
+        "m2"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-27T01:35:47.983077574Z",
+      "updated_at": "2026-10-27T01:35:47.983077574Z",
+      "seal": {
+        "by": "server",
+        "mac": "129dd1f58d9fb1979e3ed12c8732c32abc48d5d070e6872c7144e0455e419789"
+      }
+    },
+    {
+      "id": "CLM-0133",
+      "statement": "PTY output arrives as data.pty bytes in process events and is surfaced separately from stdout and stderr.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: envd/process/process_pb.py:369-394; py: sandbox_async/commands/command_handle.py:169, 221-231",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/pty.rs",
+        "src/envd/process_pb.rs"
+      ],
+      "tags": [
+        "s4",
+        "gap",
+        "m2"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-27T01:35:47.983077574Z",
+      "updated_at": "2026-10-27T01:35:47.983077574Z",
+      "seal": {
+        "by": "server",
+        "mac": "4dd240a3fb188edad03003e16af74d1957bffc4390bebe11d456a63cd0f882d3"
+      }
+    },
+    {
+      "id": "CLM-0134",
+      "statement": "PTY input is SendInput with input.pty bytes, and PTY resize is process.Process/Update with the pid selector and pty.size {cols, rows}.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: sandbox_async/commands/pty.py:85-111, 256-283; py: envd/process/process_pb.py:261-300, 569-596; py: envd/process/process_connect.py:110-115",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/pty.rs"
+      ],
+      "tags": [
+        "s4",
+        "gap",
+        "m2"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-27T01:35:47.983077574Z",
+      "updated_at": "2026-10-27T01:35:47.983077574Z",
+      "seal": {
+        "by": "server",
+        "mac": "d7a61613dcf11efa66f005885132365f4a777acab9bd3b70f8da9e3ae288204c"
+      }
+    },
+    {
+      "id": "CLM-0135",
+      "statement": "watch_dir opens a filesystem.Filesystem/WatchDir server stream with {path, recursive, includeEntry, allowNetworkMounts}, requires a start event first, and yields filesystem events {name, type, entry?} with types create, write, remove, rename and chmod; keepalives and unspecified types are skipped.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: sandbox_async/filesystem/filesystem.py:723-766; py: sandbox_async/filesystem/watch_handle.py:47-64; py: sandbox/filesystem/watch_handle.py:36-46; py: envd/filesystem/filesystem_pb.py:404-560, 774-810",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/filesystem.rs",
+        "src/envd/filesystem_pb.rs"
+      ],
+      "tags": [
+        "s4",
+        "gap",
+        "m2"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-27T01:35:47.983077574Z",
+      "updated_at": "2026-10-27T01:35:47.983077574Z",
+      "seal": {
+        "by": "server",
+        "mac": "fb50ae8bc5e600c58685ae95e41a2191d6d63628b7a7cc09affbe6d5624fb2bb"
+      }
+    },
+    {
+      "id": "CLM-0136",
+      "statement": "watch_dir is refused without sending a request when recursive is asked of envd < 0.1.4, include_entry of envd < 0.6.3, or allow_network_mounts of envd < 0.6.4.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: sandbox_async/filesystem/filesystem.py:705-721; py: envd/versions.py:3, 10, 11",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/filesystem.rs"
+      ],
+      "tags": [
+        "s4",
+        "gap",
+        "m2"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-27T01:35:47.983077574Z",
+      "updated_at": "2026-10-27T01:35:47.983077574Z",
+      "seal": {
+        "by": "server",
+        "mac": "228c62d2f9e1846d8ecdac073d6fa3c53c45a22b89318579ed0ece260485d8bd"
+      }
+    },
+    {
+      "id": "CLM-0137",
+      "statement": "A multipart write_files sends one POST /files whose parts are all named file with the target path as filename, and sends the path query parameter only when exactly one file is written.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: sandbox_async/filesystem/filesystem.py:445-462; py: sandbox/filesystem/filesystem.py:267-280",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/filesystem.rs"
+      ],
+      "tags": [
+        "s4",
+        "gap",
+        "m2"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-27T01:35:47.983077574Z",
+      "updated_at": "2026-10-27T01:35:47.983077574Z",
+      "seal": {
+        "by": "server",
+        "mac": "2c8c3863a2b253e657eee2f08c5a1f47d0cb8566fd1eba7c19ba284a947f6183"
+      }
+    },
+    {
+      "id": "CLM-0138",
+      "statement": "An octet-stream upload sends one POST /files?path=<p> per file with Content-Type: application/octet-stream and, for gzip, Content-Encoding: gzip over a gzip body; gzip implies octet-stream, and both need envd >= 0.5.7, falling back to uncompressed multipart on older envd.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: sandbox_async/filesystem/filesystem.py:369-447; py: envd/versions.py:8",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/filesystem.rs"
+      ],
+      "tags": [
+        "s4",
+        "gap",
+        "m2"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-27T01:35:47.983077574Z",
+      "updated_at": "2026-10-27T01:35:47.983077574Z",
+      "seal": {
+        "by": "server",
+        "mac": "55a96e2877e53f637d80b3ddf417cc8835a1e6405c87648d79d1f8559d2db2f9"
+      }
+    },
+    {
+      "id": "CLM-0139",
+      "statement": "Upload metadata is sent as X-Metadata-<key> request headers; a key that is not an HTTP token or a value that is not printable US-ASCII is rejected with InvalidArgument before sending, and any metadata on envd < 0.6.2 is refused.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: sandbox/filesystem/filesystem.py:342-373; py: sandbox_async/filesystem/filesystem.py:363-367, 396; py: envd/versions.py:9",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/filesystem.rs"
+      ],
+      "tags": [
+        "s4",
+        "gap",
+        "m2"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-27T01:35:47.983077574Z",
+      "updated_at": "2026-10-27T01:35:47.983077574Z",
+      "seal": {
+        "by": "server",
+        "mac": "48e916b72ea78ac0c51849dc49a110229da62b1998ac69f2c3e5e2f615c5c9ff"
+      }
+    },
+    {
+      "id": "CLM-0140",
+      "statement": "Signed file URLs are <envd direct url>/files?path=<p>[&username=<u>]&signature=v1_<unpadded base64 of SHA-256 of \"<path>:<read|write>:<user or empty>:<envd access token>[:<expiration unix seconds>]\">[&signature_expiration=<unix seconds>], with the user defaulting to \"user\" on envd < 0.4.0.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: sandbox/signature.py:15-47; py: sandbox/main.py:102-213; js: 6225-6290",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/sandbox.rs"
+      ],
+      "tags": [
+        "s4",
+        "gap",
+        "m2"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-27T01:35:47.983077574Z",
+      "updated_at": "2026-10-27T01:35:47.983077574Z",
+      "seal": {
+        "by": "server",
+        "mac": "a7e606990473db5b2c07cb0f04fca7bcba1d9e7abfb813d132c3a0db2e23100c"
+      }
+    },
+    {
+      "id": "CLM-0141",
+      "statement": "Without an envd access token, upload_url and download_url return the unsigned URL, and asking for a signature expiration is an InvalidArgument error.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: sandbox/main.py:147-151, 189-193; js: 6229-6231, 6263-6265",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/sandbox.rs"
+      ],
+      "tags": [
+        "s4",
+        "gap",
+        "m2"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-27T01:35:47.983077574Z",
+      "updated_at": "2026-10-27T01:35:47.983077574Z",
+      "seal": {
+        "by": "server",
+        "mac": "30d88b67b236c6957bc1e4f82b4133dbc4cc5782912acf8334d1d7d3fbcde050"
+      }
+    },
+    {
+      "id": "CLM-0142",
+      "statement": "A streamed download is GET /files?path=<p>[&username=<u>] whose body is handed to the caller chunk by chunk, with no whole-request timeout unless the caller sets one.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: sandbox_async/filesystem/filesystem.py:220-262",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/filesystem.rs"
+      ],
+      "tags": [
+        "s4",
+        "gap",
+        "m2"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-27T01:35:47.983077574Z",
+      "updated_at": "2026-10-27T01:35:47.983077574Z",
+      "seal": {
+        "by": "server",
+        "mac": "2f9b1b179fefbe8727dcc46fdc2d3fe809847f96f8100617ce109bddb65ff1f8"
       }
     }
   ]
