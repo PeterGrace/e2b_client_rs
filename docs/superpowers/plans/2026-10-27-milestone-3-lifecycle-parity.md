@@ -970,6 +970,7 @@ git commit -m "feat: list filters order, started_after and template"
 > - **Hosted E2B reports `allowInternetAccess: false` as given**, not as a `deny_out` entry, so `clm_0153` asserts as written. A sandbox created without network settings reports `allowInternetAccess: null` and `network: null`.
 > - **Extra tests:** mock tests `create_sends_network_next_to_allow_internet_access`, `create_leaves_out_a_network_with_nothing_set`, `get_info_reads_null_network_fields_as_none` and `get_info_without_network_fields_reads_none`; unit tests `config_debug_hides_rule_header_values`, `rules_for_one_host_keep_their_order_and_an_empty_rule_is_an_empty_object`, `only_a_config_with_nothing_set_is_empty`, `rule_reads_null_transform_and_null_headers_as_empty` and `info_reads_null_fields_as_empty_or_none`.
 > - **`clm_0012`'s failure messages** no longer print the `CommandResult`, since `http_reply` returns a `bool`.
+> - **`clm_0153` also sends a rule** (`one.one.one.one` with header `X-Probe: v`) and asserts that hosted E2B reports it back (review of PR #77).
 
 - [ ] **Step 1: Write the failing mock tests**
 

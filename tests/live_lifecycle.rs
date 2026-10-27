@@ -7,7 +7,7 @@ use std::time::{Duration, Instant};
 
 use e2b_client::{
     ALL_TRAFFIC, CommandOptions, EnvdVersion, Error, ListSandboxesParams, MetricsParams,
-    NetworkConfig, SandboxInfo, SandboxState, SortOrder,
+    NetworkConfig, NetworkRule, SandboxInfo, SandboxState, SortOrder,
 };
 use live_support::{LiveSandbox, RUN_METADATA_KEY, client, http_reply, params, poll_until, run_id};
 
@@ -706,10 +706,11 @@ async fn clm_0143_create_network_allow_and_deny_lists_are_enforced() {
 #[tokio::test]
 #[ignore = "live: run with `just test-live <target>`"]
 async fn clm_0153_get_info_reports_network() {
-    // Arrange
+    // Arrange: rules are keyed by DNS name; hosted E2B echoes them back.
     let network = NetworkConfig::new()
         .allow_out(["1.1.1.1"])
-        .dns_servers(["1.1.1.1"]);
+        .dns_servers(["1.1.1.1"])
+        .rule("one.one.one.one", NetworkRule::new().header("X-Probe", "v"));
     let sandbox =
         LiveSandbox::create(&params().allow_internet_access(false).network(network)).await;
 
@@ -726,6 +727,16 @@ async fn clm_0153_get_info_reports_network() {
     assert_eq!(
         network.dns_servers.as_deref(),
         Some(&["1.1.1.1".to_owned()][..]),
+        "{network:?}"
+    );
+    let rules = network
+        .rules
+        .get("one.one.one.one")
+        .expect("the rule in the detail");
+    assert_eq!(rules.len(), 1, "{network:?}");
+    assert_eq!(
+        rules[0].headers().get("X-Probe").map(String::as_str),
+        Some("v"),
         "{network:?}"
     );
 }

@@ -61,3 +61,6 @@ updated:
 - `just lint`, `just test`, `just doc`: green (counts in the PR).
 - Live, hosted E2B, one test at a time: `clm_0143`, `clm_0153` and `clm_0012`
   passed (run ids in the PR).
+- Review (brooke-reviews): `clm_0153` now also sends a rule for
+  `one.one.one.one` and asserts that its header comes back in the detail.
+  On hosted E2B, run `dev-20261027T233544Z-1510604`, it passed in 1.78 s.
