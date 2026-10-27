@@ -775,9 +775,10 @@ impl Filesystem {
     /// Downloads a file as a stream of chunks (`GET /files?path=...`),
     /// without holding the whole file in memory.
     ///
-    /// No request timeout applies, to the wait for the answer or to the
-    /// transfer, because a deadline would cut off any download that outlasts
-    /// it; this is the SDK's default. Bound it yourself with
+    /// No timeout applies at all, including the wait for envd's response
+    /// headers, because a deadline would cut off any download that outlasts
+    /// it; this is the SDK's default. A server that accepts the connection
+    /// and never answers therefore hangs this call. Bound it yourself with
     /// `tokio::time::timeout` around this call and [`FileStream::next_chunk`]
     /// if needed.
     ///
