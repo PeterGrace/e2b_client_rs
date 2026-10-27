@@ -5,10 +5,10 @@
     "by": "server",
     "mac": "1e4abf90e6c0fc60d73fc219a0ba7226aac34b82ff803a3502417c434c384f3e"
   },
-  "next_evidence_seq": 127,
+  "next_evidence_seq": 129,
   "next_evidence_seq_seal": {
     "by": "server",
-    "mac": "9a57864cd402159d064f782df721a936726fce0010334207b1be80bbcb69caa7"
+    "mac": "32ce7b964c3db94b0d90da5ba58e15359d9541a76151e11953ea1267d9908f09"
   },
   "claims": [
     {
@@ -202,6 +202,18 @@
             "by": "server",
             "mac": "9ec35a10bdc6a6e39a4dc5edf041a5881d323c14dc8f8f2cf9e12b0e2a1b8617"
           }
+        },
+        {
+          "id": "EVD-0127",
+          "kind": "analysis",
+          "locator": "claims ledger: children of CLM-0005 = CLM-0067..0116 minus retired 0085, plus 0127 (50 claims); docs/verification/s4-evidence-map.md @ 8cd5040",
+          "summary": "Corrects EVD-0103's count: CLM-0005 has 50 active child claims (not 51; the map's 51st row is the S5 claim CLM-0122). All 50 have supported verdicts from tests passing at 8cd5040, CLM-0071 and CLM-0109 after fixes #18/#19.",
+          "stance": "supports",
+          "recorded_at": "2026-10-27T00:24:51.083529475Z",
+          "seal": {
+            "by": "server",
+            "mac": "17b89635ebd0a864b77f2a08e2718f3d299cebda2c5cc57773a5bd24fc3c0481"
+          }
         }
       ],
       "verdicts": [
@@ -217,13 +229,26 @@
             "by": "server",
             "mac": "43f2057fd8b41fefc2dafd810ed07629e5671d4ac778cbd0134d532aa44378d9"
           }
+        },
+        {
+          "verdict": "supported",
+          "rationale": "Re-recorded on the corrected count: all 50 child wire claims are supported by passing tests at 8cd5040 (EVD-0103 overstated the count as 51).",
+          "auditor": "claude-code/claude-opus-5-5 (M1 coordinator)",
+          "evidence_ids": [
+            "EVD-0127"
+          ],
+          "recorded_at": "2026-10-27T00:24:57.292424434Z",
+          "seal": {
+            "by": "server",
+            "mac": "182ebc80b1f4ab217567187de0a13bcece7d49b8d1f37c92b8004f8c5c0986c9"
+          }
         }
       ],
       "created_at": "2026-10-26T22:09:06.855685366Z",
-      "updated_at": "2026-10-26T23:03:02.341681036Z",
+      "updated_at": "2026-10-27T00:24:57.292424434Z",
       "seal": {
         "by": "server",
-        "mac": "a4093ca09b21c3c8e2267616297fcc800ba5ced799ff7fe89626bc3d5fffe370"
+        "mac": "ed79e092a427c0dc3d786da2362688f74d43ed663cc5b751c67a731d9dfe8abd"
       }
     },
     {
@@ -6852,6 +6877,18 @@
             "by": "server",
             "mac": "88fb914628cac185131bdbb42701f2a564f7bfdb5422e531c96d98e43952abe9"
           }
+        },
+        {
+          "id": "EVD-0128",
+          "kind": "analysis",
+          "locator": "EVD-0115, EVD-0118, EVD-0121, EVD-0122, EVD-0125 (clm_0042, 0052, 0056, 0057, 0061 @ sandbawks); PR #24 review comment 4383920365",
+          "summary": "Five of the 46 tests (CLM-0042, 0052, 0056, 0057, 0061) never reached the behaviour under test on sandbawks: every attempt got 503/Unavailable \"still starting up\" because the cluster had no room for the Pod (#674). Those claims have not meaningfully been run live against sandbawks; a run with cluster headroom is still needed.",
+          "stance": "neutral",
+          "recorded_at": "2026-10-27T00:24:53.527454229Z",
+          "seal": {
+            "by": "server",
+            "mac": "04087039bf66274bb61400bcddce6b2ca5a7bf28312ed17da80869d255d64e30"
+          }
         }
       ],
       "verdicts": [
@@ -6867,13 +6904,27 @@
             "by": "server",
             "mac": "029e58fbcd15a48499d6e87841b54d590f0dd71f73524a04ae0905944ebda4d6"
           }
+        },
+        {
+          "verdict": "not_enough_info",
+          "rationale": "Supersedes the earlier supported verdict, per the PR #24 review. 41 of the 46 claims were genuinely exercised on sandbawks, and every failure among them is filed on gfd/sandbawks. The other 5 never reached the behaviour under test because of cluster capacity, so \"run live against sandbawks\" is not yet true for them. Re-decide after a sandbawks run with cluster headroom.",
+          "auditor": "claude-code/claude-opus-5-5 (M1 coordinator)",
+          "evidence_ids": [
+            "EVD-0126",
+            "EVD-0128"
+          ],
+          "recorded_at": "2026-10-27T00:24:59.487027610Z",
+          "seal": {
+            "by": "server",
+            "mac": "2d0c8e69c12e2decedbc84847709fbeeb3b83e3e0d914ac7fe33b8d6d451490f"
+          }
         }
       ],
       "created_at": "2026-10-26T22:12:45.325766859Z",
-      "updated_at": "2026-10-27T00:20:23.979839054Z",
+      "updated_at": "2026-10-27T00:24:59.487027610Z",
       "seal": {
         "by": "server",
-        "mac": "fc9587ebf6b676d278f20a1f3331b9128afe8d5d1d27c78653777d87af77da38"
+        "mac": "587fe89fa36deb24bc4c7fc4be01466e97bb6a0a7ec00e34328c84d5e2a9966b"
       }
     },
     {

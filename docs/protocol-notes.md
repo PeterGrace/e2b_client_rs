@@ -194,9 +194,11 @@ Behaviour:
 
 ## Verification against a live server
 
-Every behaviour the crate claims was verified live on 2026-10-26 by the M1
-suite (`tests/live_*.rs`, `just test-live <target>`). Each test is named
-after the claim it backs in `claims.json`.
+Every v0.1 behaviour was verified live on 2026-10-26 by the M1 suite
+(`tests/live_*.rs`, `just test-live <target>`). Each test is named after the
+claim it backs in `claims.json`. The wire details in this file are covered by
+mock and unit tests instead; `docs/verification/s4-evidence-map.md` maps each
+one to its tests.
 
 - **Hosted E2B (canonical):** all 46 live tests passed in run
   `20261026T225333Z-hosted-980838` at `8cd5040`
