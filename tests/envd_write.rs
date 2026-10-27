@@ -290,11 +290,56 @@ async fn octet_stream_uploads_run_concurrently() {
         .expect("write_files");
     let elapsed = started.elapsed();
 
-    // Assert: one after another would take at least 1.2 s.
+    // Assert: one after another would take at least 3 x 400 ms = 1.2 s, so
+    // anything below that sequential minimum means they overlapped.
     assert_eq!(infos.len(), 3);
+    let sequential_minimum = Duration::from_millis(400) * 3;
     assert!(
-        elapsed < Duration::from_millis(1_000),
+        elapsed < sequential_minimum,
         "uploads ran one after another: {elapsed:?}"
+    );
+}
+
+#[tokio::test]
+async fn octet_stream_batch_fails_fast_without_waiting_for_the_other_uploads() {
+    // Arrange: in one batch, one file fails at once with 507 while the other
+    // would answer only after 5 s.
+    let server = MockServer::start().await;
+    let sandbox = sandbox_with_version(&server, "0.5.7").await;
+    Mock::given(method("POST"))
+        .and(path("/files"))
+        .and(query_param("path", "/w/slow"))
+        .respond_with(written(&["/w/slow"]).set_delay(Duration::from_secs(5)))
+        .mount(&server)
+        .await;
+    Mock::given(method("POST"))
+        .and(path("/files"))
+        .and(query_param("path", "/w/full"))
+        .respond_with(
+            ResponseTemplate::new(507).set_body_json(json!({"code": 507, "message": "no space"})),
+        )
+        .mount(&server)
+        .await;
+    let entries = [
+        WriteEntry::new("/w/slow", "x"),
+        WriteEntry::new("/w/full", "x"),
+    ];
+
+    // Act
+    let started = Instant::now();
+    let err = sandbox
+        .files()
+        .write_files(&entries, &WriteOptions::default().octet_stream(true))
+        .await
+        .expect_err("507 in the batch");
+    let elapsed = started.elapsed();
+
+    // Assert: the failure is returned well before the slow upload would
+    // answer, so the slow upload was dropped (cancelled), not awaited.
+    assert!(matches!(err, Error::Envd { status: 507, .. }), "{err:?}");
+    assert!(
+        elapsed < Duration::from_secs(4),
+        "write_files waited for the slow upload: {elapsed:?}"
     );
 }
 

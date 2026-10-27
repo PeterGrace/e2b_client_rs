@@ -775,6 +775,11 @@ impl Filesystem {
     /// 0.5.7 they fall back to uncompressed multipart. Every request is
     /// bounded by the client's request timeout.
     ///
+    /// The octet-stream requests all start at once, with no limit, as the
+    /// SDK's `asyncio.gather` does: a batch of N files opens N requests to
+    /// envd. For a very large batch, call `write_files` on chunks of
+    /// `entries` (`entries.chunks(64)`) to bound it.
+    ///
     /// # Arguments
     ///
     /// * `entries` - the files.
