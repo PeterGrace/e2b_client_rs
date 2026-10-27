@@ -238,11 +238,16 @@ file from a reader, read as the body is sent.
 | Octet-stream: one `POST /files?path=<p>[&username=<u>]` per file, `Content-Type: application/octet-stream`, the body is the file; the requests run concurrently (`asyncio.gather`) and the results are concatenated in entry order | `py: sandbox_async/filesystem/filesystem.py:400-444` |
 | Gzip: the octet-stream request with `Content-Encoding: gzip` and a gzip body; gzip implies octet-stream, since the encoding applies to the whole request body | `py: sandbox_async/filesystem/filesystem.py:380-384, 409-411`; `py: sandbox/filesystem/filesystem.py:323-339` |
 | Octet-stream and gzip need envd 0.5.7: `use_octet_stream = (use_octet_stream or gzip) and envd >= 0.5.7`, so older envd gets *uncompressed* multipart | `py: sandbox_async/filesystem/filesystem.py:369-384`; `py: envd/versions.py:8` |
-| Every answer is a JSON array of `{name, type, path}`; an empty array (or not an array) is an error | `py: sandbox_async/filesystem/filesystem.py:431-438, 480-487`; `py: sandbox/filesystem/filesystem.py:56-90` |
+| Every answer is a JSON array of `{name, type, path, metadata?}`; an empty array (or not an array) is an error | `py: sandbox_async/filesystem/filesystem.py:431-438, 480-487`; `py: sandbox/filesystem/filesystem.py:56-90` |
 | An in-memory upload is bounded by the request timeout | `py: sandbox_async/filesystem/filesystem.py:386-393` |
 | A streamed upload (`write_stream`) is an octet-stream `POST /files?path=<p>[&username=<u>]` whose body is read from the caller's reader as it is sent (chunked); with gzip, the reader is compressed on the fly and `Content-Encoding: gzip` is set | `py: sandbox_async/filesystem/filesystem.py:400-419`; `py: sandbox/filesystem/filesystem.py:323-339` |
 | A streamed upload on envd older than 0.5.7 is a multipart upload with one streamed `file` part (filename = path, `path` query set), uncompressed even when gzip was asked for | `py: sandbox_async/filesystem/filesystem.py:369-384, 445-462` |
 | A streamed upload carries no client-side timeout | `py: sandbox_async/filesystem/filesystem.py:386-393, 413-419` |
+| Metadata (`WriteOptions::metadata`) goes as one `X-Metadata-<key>: <value>` header per pair on every upload request: the multipart request, each octet-stream request and the streamed one; in a multi-file upload every file gets the same map | `py: sandbox/filesystem/filesystem.py:342, 367-373`; `py: sandbox_async/filesystem/filesystem.py:394-396, 409, 462` |
+| Metadata is validated before any request: a key is a non-empty HTTP token (`A-Za-z0-9!#$%&'*+-.^_`\|~`), a value printable US-ASCII (`0x20..=0x7e`, empty allowed); keys are checked before the envd version | `py: sandbox/filesystem/filesystem.py:344-364`; `py: sandbox_async/filesystem/filesystem.py:363-367` |
+| Metadata needs envd 0.6.2; on older envd any metadata is refused before a request (the crate's `Error::InvalidArgument`, the SDK's `TemplateException`) | `py: sandbox_async/filesystem/filesystem.py:365-366`; `py: envd/versions.py:9` |
+| `write_files([])` returns before the metadata is checked | `py: sandbox_async/filesystem/filesystem.py:360-363` |
+| envd stores metadata as `user.e2b.*` extended attributes and lowercases the keys (the crate lowercases them already in `WriteOptions::metadata`, so the last call for a key wins whatever its case); the upload answer, `Stat`, `ListDir` and `include_entry` watch events report it as `metadata` (proto `map<string, string>` field 11, a JSON object); absent or `null` reads as an empty map | `py: sandbox/filesystem/filesystem.py:57-90, 130-148, 376-380`; `py: envd/filesystem/filesystem_pb.py:240, 291-297` |
 
 Differences: the SDK compresses an in-memory gzip upload whole
 (`gzip.compress`) and sends it with a `Content-Length`. This crate
@@ -251,6 +256,10 @@ buffer), so the request is chunked and the compressed copy is never held
 whole. envd decodes both; hosted envd 0.10.0 accepted it live on 2026-10-27.
 `write` returns the first entry of the answer, where the SDK errors unless
 there is exactly one; that is the v0.1 behaviour, kept.
+No metadata is reported as an empty map, where the SDK uses `None`. Because
+the streamed multipart fallback only applies below envd 0.5.7, it never
+carries metadata: metadata on such envd is refused first. Hosted envd 0.10.0
+stored and reported metadata live on 2026-10-27.
 
 ## Directory watching
 

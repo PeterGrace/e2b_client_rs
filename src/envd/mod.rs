@@ -90,6 +90,10 @@ impl EnvdVersion {
     /// envd 0.5.7 accepts `application/octet-stream` (and gzip) uploads;
     /// older envd only takes multipart (`e2b/envd/versions.py:8`).
     pub(crate) const OCTET_STREAM_UPLOAD: Self = Self::new(0, 5, 7);
+    /// envd 0.6.2 stores user metadata sent as `X-Metadata-*` upload
+    /// headers; the SDKs refuse metadata on older envd
+    /// (`e2b/envd/versions.py:9`).
+    pub(crate) const FILE_METADATA: Self = Self::new(0, 6, 2);
 
     /// Creates a version from its parts.
     ///

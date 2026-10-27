@@ -1990,6 +1990,15 @@ git commit -m "feat: streamed and gzip uploads from AsyncRead, streamed download
 - `WriteOptions` gains `metadata: BTreeMap<String, String>` (sorted, so the headers come out in a stable order for tests), set with `pub fn metadata(mut self, key: impl Into<String>, value: impl Into<String>) -> Self`.
 - `fn metadata_headers(&self, options: &WriteOptions) -> Result<HeaderMap>`: empty map gives empty headers; else check the version, then validate each pair (a key is non-empty and every byte is in `b"!#$%&'*+-.^_`|~"` or ASCII alphanumeric; a value has every byte in `0x20..=0x7e`), and build `x-metadata-<key>` headers with `HeaderName::from_bytes` / `HeaderValue::from_str`, mapping failures to `InvalidArgument`. It is called once at the top of `write_files` and `write_stream`, before any request, and the headers are added in `post_multipart` and `post_octet_stream`.
 
+> **Corrected (issue #36, 2026-10-27).** What shipped differs in five mechanical ways; read `src/filesystem.rs`:
+> - The check is `WriteOptions::metadata_headers(&self, version: EnvdVersion) -> Result<HeaderMap>`, a method on the options like `WatchOptions::check_supported`, not a `Filesystem` method taking `&WriteOptions`.
+> - It validates every pair *before* the version check, as the SDK does (`py: sandbox_async/filesystem/filesystem.py:363-367`), so invalid metadata on old envd reports the bad key. It is still `InvalidArgument` either way (the SDK raises `TemplateException` for the version).
+> - In `write_files` it runs after the empty-`entries` early return, as in the SDK (`:360-363`), so `write_files(&[], ..)` sends nothing and checks nothing. `write_stream` calls it first.
+> - `post_octet_stream` and `post_multipart` take the validated headers as a new `metadata: &HeaderMap` parameter, before `timeout`, and add them with `RequestBuilder::headers`. They do not re-derive them from `options`.
+> - `WriteOptions::metadata` ASCII-lowercases the key before inserting it, as envd stores it. So `metadata("team", ..)` then `metadata("Team", ..)` is one entry and the last call wins, instead of two `BTreeMap` entries that collapse into one header in byte order (review of PR #47).
+>
+> `EntryInfoWire.metadata` and `UploadedEntry.metadata` use `#[serde(default, deserialize_with = "deserialize_null_as_default")]` (a new helper in `src/wire.rs`), so an explicit JSON `null` reads as an empty map too, as the SDK's `map_metadata(payload.get("metadata"))` does.
+
 - [ ] **Step 3: Live test**
 
 `clm_0129_write_metadata_round_trips`: if `sandbox.envd_version() < EnvdVersion::new(0, 6, 2)`, fail with a message naming the version, which tells Task 9 the template is too old (not a crate bug). Otherwise write with `metadata("team", "m2")` and check that `WriteInfo.metadata`, `get_info(..).metadata` and the `list` entry all contain `("team", "m2")`.

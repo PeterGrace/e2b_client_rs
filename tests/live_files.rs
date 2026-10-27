@@ -2,11 +2,12 @@
 
 mod live_support;
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::time::Duration;
 
 use e2b_client::{
-    CommandOptions, FileType, FilesystemEventType, WatchOptions, WriteEntry, WriteOptions,
+    CommandOptions, EnvdVersion, FileType, FilesystemEventType, WatchOptions, WriteEntry,
+    WriteOptions,
 };
 use live_support::LiveSandbox;
 use tokio::io::AsyncReadExt;
@@ -464,4 +465,44 @@ async fn clm_0128_read_stream_downloads_in_chunks() {
 
     assert_eq!(offset, SIZE, "total bytes");
     assert!(chunks > 1, "expected several chunks, got {chunks}");
+}
+
+#[tokio::test]
+#[ignore = "live: run with `just test-live <target>`"]
+async fn clm_0129_write_metadata_round_trips() {
+    let sandbox = LiveSandbox::new().await;
+    let version = sandbox.envd_version();
+    // An older template is an environment limit, not a crate bug: say so.
+    assert!(
+        version >= EnvdVersion::new(0, 6, 2),
+        "file metadata needs envd 0.6.2 or newer; this template runs envd {version}"
+    );
+    let files = sandbox.files();
+    let options = WriteOptions::default().metadata("team", "m2");
+    let entry = [WriteEntry::new("/tmp/meta/tagged.txt", "tagged")];
+
+    let written = files
+        .write_files(&entry, &options)
+        .await
+        .expect("write_files with metadata");
+    let info = files
+        .get_info("/tmp/meta/tagged.txt", None)
+        .await
+        .expect("get_info");
+    let listed = files.list("/tmp/meta", 1, None).await.expect("list");
+
+    // A nested `fn` rather than a closure, so the returned `&str` can borrow
+    // from the argument (closures cannot tie their output lifetime to it).
+    // `map(String::as_str)` turns `Option<&String>` into `Option<&str>`.
+    fn team(metadata: &HashMap<String, String>) -> Option<&str> {
+        metadata.get("team").map(String::as_str)
+    }
+    assert_eq!(written.len(), 1);
+    assert_eq!(team(&written[0].metadata), Some("m2"), "{written:?}");
+    assert_eq!(team(&info.metadata), Some("m2"), "{info:?}");
+    let listed_entry = listed
+        .iter()
+        .find(|entry| entry.path == "/tmp/meta/tagged.txt")
+        .expect("listed entry");
+    assert_eq!(team(&listed_entry.metadata), Some("m2"), "{listed:?}");
 }
