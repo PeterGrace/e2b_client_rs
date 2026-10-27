@@ -1,9 +1,9 @@
 {
   "schema_version": 2,
-  "next_claim_seq": 143,
+  "next_claim_seq": 168,
   "next_claim_seq_seal": {
     "by": "server",
-    "mac": "527f25aed3b34599a08e4e01ba05dddeec52ef4d6e66f54f562241f27305ce0d"
+    "mac": "80261f8c67b21f251943875b9ba8147d4fdf77bb62c9e9154d90f913ce2d1786"
   },
   "next_evidence_seq": 169,
   "next_evidence_seq_seal": {
@@ -8705,6 +8705,681 @@
       "seal": {
         "by": "server",
         "mac": "60121a74d1a5778006aa14e9c6e0538393e53efb59f69b6150233b5b105635a3"
+      }
+    },
+    {
+      "id": "CLM-0143",
+      "statement": "create_sandbox sends the core network settings (allow_out, deny_out, dns_servers, allow_public_traffic, mask_request_host, https_ports) and per-host header rules, and the sandbox enforces its egress lists.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "py: sandbox/sandbox_api.py:381-511, 965-996",
+      "derived_from": [
+        "CLM-0032"
+      ],
+      "artifacts": [],
+      "tags": [
+        "s1",
+        "m3"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-27T19:57:29.982344497Z",
+      "updated_at": "2026-10-27T19:58:18.439760966Z",
+      "seal": {
+        "by": "server",
+        "mac": "ddb58b0cb44e1a01f500b5627adba9000f2e7dd65100fd9015408d96de7d4f73"
+      }
+    },
+    {
+      "id": "CLM-0144",
+      "statement": "update_network replaces a running sandbox's egress settings (allow_out, deny_out, dns_servers, rules, allow_internet_access) without a restart, clearing the fields it omits.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "py: sandbox/sandbox_api.py:515-561, 1128-1152; py: sandbox_async/sandbox_api.py:190-209",
+      "derived_from": [
+        "CLM-0031"
+      ],
+      "artifacts": [],
+      "tags": [
+        "s1",
+        "m3"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-27T19:57:29.982344497Z",
+      "updated_at": "2026-10-27T19:57:29.982344497Z",
+      "seal": {
+        "by": "server",
+        "mac": "3be9839af17e03219493a5a2520b3ed63c96c993b76c9f9d0a6b1dc45793bedb"
+      }
+    },
+    {
+      "id": "CLM-0145",
+      "statement": "create_sandbox sends the lifecycle settings on_timeout (kill, or pause with a full or filesystem-only snapshot) and auto_resume, and rejects before any request the combinations the SDK rejects.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "py: sandbox/sandbox_api.py:665-742, 1046-1125",
+      "derived_from": [
+        "CLM-0032"
+      ],
+      "artifacts": [],
+      "tags": [
+        "s1",
+        "m3"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-27T19:57:29.982344497Z",
+      "updated_at": "2026-10-27T19:57:29.982344497Z",
+      "seal": {
+        "by": "server",
+        "mac": "61ad468ea885e816d1945741d2bbc9890a26be39e17d41b584cec788b171928c"
+      }
+    },
+    {
+      "id": "CLM-0146",
+      "statement": "pause_sandbox can take a full or filesystem-only snapshot, and connect_sandbox can resume a paused sandbox by restoring its memory or by rebooting it, as SDK 2.61 does.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "py: sandbox_async/sandbox_api.py:399-432, 498-533; py: sandbox/sandbox_api.py:627-662, 761-791",
+      "derived_from": [
+        "CLM-0002"
+      ],
+      "artifacts": [],
+      "tags": [
+        "s1",
+        "m3"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-27T19:57:29.982344497Z",
+      "updated_at": "2026-10-27T19:57:29.982344497Z",
+      "seal": {
+        "by": "server",
+        "mac": "20a8c6b8854ab7e07bdd0f253094e1bb474fee24ce615bad995e089bc92cd31f"
+      }
+    },
+    {
+      "id": "CLM-0147",
+      "statement": "The client can list snapshots, filtered by source sandbox or name and paged by x-next-token, and delete a snapshot, as the SDK's list_snapshots and delete_snapshot do.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "py: sandbox_async/main.py:964-1060; py: sandbox_async/paginator.py:103-160; py: sandbox_async/sandbox_api.py:377-396",
+      "derived_from": [
+        "CLM-0030"
+      ],
+      "artifacts": [],
+      "tags": [
+        "s1",
+        "m3"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-27T19:57:29.982344497Z",
+      "updated_at": "2026-10-27T19:57:29.982344497Z",
+      "seal": {
+        "by": "server",
+        "mac": "3ca184dfe477115902dccca6f8a49a443303fffe6579e3aa14d724ff74e8c6ce"
+      }
+    },
+    {
+      "id": "CLM-0148",
+      "statement": "The client can create, look up, list and destroy volumes as the SDK's Volume class does, keeping each volume's token secret.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "py: volume/volume_async.py:133-285",
+      "derived_from": [
+        "CLM-0002"
+      ],
+      "artifacts": [],
+      "tags": [
+        "s1",
+        "m3"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-27T19:57:29.982344497Z",
+      "updated_at": "2026-10-27T19:57:29.982344497Z",
+      "seal": {
+        "by": "server",
+        "mac": "a9e2e184ad7d1e33fbe4fd75356ae077a0e49679247affd6911228cc65d102f6"
+      }
+    },
+    {
+      "id": "CLM-0149",
+      "statement": "create_sandbox can mount named volumes at paths, and a file written under the mount is visible to a later sandbox that mounts the same volume.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "py: sandbox_async/main.py:171-229; py: api/client/models/sandbox_volume_mount.py:18-43",
+      "derived_from": [
+        "CLM-0032"
+      ],
+      "artifacts": [],
+      "tags": [
+        "s1",
+        "m3"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-27T19:57:29.982344497Z",
+      "updated_at": "2026-10-27T19:57:29.982344497Z",
+      "seal": {
+        "by": "server",
+        "mac": "0b8784f69398c8d183104e43decdf451e4fbaf1484d7021062b218ae1e1f7511"
+      }
+    },
+    {
+      "id": "CLM-0150",
+      "statement": "create_sandbox with an MCP configuration starts the MCP gateway as the SDK does, and the sandbox exposes the gateway's URL and access token.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "py: sandbox_async/main.py:171-268, 1063-1073; py: sandbox/main.py:28-33, 226-232",
+      "derived_from": [
+        "CLM-0032"
+      ],
+      "artifacts": [],
+      "tags": [
+        "s1",
+        "m3"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-27T19:57:29.982344497Z",
+      "updated_at": "2026-10-27T19:58:17.048297177Z",
+      "seal": {
+        "by": "server",
+        "mac": "da85bde769e32e5cec1865f2ff0331b4aeb6218eade0c66e8690017bc6922d45"
+      }
+    },
+    {
+      "id": "CLM-0151",
+      "statement": "list_sandboxes can filter by template and by start time and order results by start time, as SDK 2.61 does.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "py: api/client/api/sandboxes/get_v2_sandboxes.py:14-58; py: sandbox_async/paginator.py:55-90",
+      "derived_from": [
+        "CLM-0002"
+      ],
+      "artifacts": [],
+      "tags": [
+        "s1",
+        "m3"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-27T19:57:29.982344497Z",
+      "updated_at": "2026-10-27T19:57:29.982344497Z",
+      "seal": {
+        "by": "server",
+        "mac": "e082a536d403e41994f6b59159e1a2d81955bc938dd5770a7befec5708fb9071"
+      }
+    },
+    {
+      "id": "CLM-0152",
+      "statement": "create_sandbox sends a caller-supplied idempotency key as the Idempotency-Key header, and rejects before any request a key that is not 1-255 lowercase ASCII letters, digits or hyphens.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: retry.py:29-44; py: api/client/api/sandboxes/post_v2_sandboxes.py:17-25",
+      "derived_from": [
+        "CLM-0032"
+      ],
+      "artifacts": [],
+      "tags": [
+        "s1",
+        "m3"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-27T19:57:29.982344497Z",
+      "updated_at": "2026-10-27T19:57:29.982344497Z",
+      "seal": {
+        "by": "server",
+        "mac": "7bb50732464c644632c0424c6f4a39ddee46956a61fbe855efb0c9af1dd0fc38"
+      }
+    },
+    {
+      "id": "CLM-0153",
+      "statement": "get_info reports a sandbox's network settings, lifecycle, pause mode, volume mounts and allow_internet_access when the API returns them.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "py: api/client/models/sandbox_detail.py:51-69, 174-250",
+      "derived_from": [
+        "CLM-0002"
+      ],
+      "artifacts": [],
+      "tags": [
+        "s1",
+        "m3"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-27T19:57:29.982344497Z",
+      "updated_at": "2026-10-27T19:57:29.982344497Z",
+      "seal": {
+        "by": "server",
+        "mac": "79e95c1c580f4663231340e30ea27581581c46a7c52b16a304c67c41bb68088b"
+      }
+    },
+    {
+      "id": "CLM-0154",
+      "statement": "Sandbox::get_host(port) returns <port>-<sandbox id>.<domain>, using the domain the API reported for the sandbox and otherwise the configured domain.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: connection_config.py:366-379; py: sandbox/main.py:46, 213-224; js: 1138-1141",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [],
+      "tags": [
+        "s4",
+        "m3"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-27T19:57:29.982344497Z",
+      "updated_at": "2026-10-27T19:57:29.982344497Z",
+      "seal": {
+        "by": "server",
+        "mac": "2e2836a74ebc9c64291f3e887d04a5ad39b85b6f672f4cf06d6d1e713e498025"
+      }
+    },
+    {
+      "id": "CLM-0155",
+      "statement": "get_metrics calls GET /sandboxes/{id}/metrics with optional start and end as Unix seconds, parses timestamp, cpuCount, cpuUsedPct, memUsed, memTotal, memCache, diskUsed and diskTotal, and maps 404 to SandboxNotFound.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: sandbox_async/sandbox_api.py:280-336; py: api/client/api/sandboxes/get_sandboxes_sandbox_id_metrics.py:21-29; py: api/client/models/sandbox_metric.py:79-95; js: 5346-5378",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [],
+      "tags": [
+        "s4",
+        "m3"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-27T19:57:29.982344497Z",
+      "updated_at": "2026-10-27T19:57:29.982344497Z",
+      "seal": {
+        "by": "server",
+        "mac": "859667438118f112ffb2f3a65eda34a07fac09c8b655a95e993b5c80fac7bdda"
+      }
+    },
+    {
+      "id": "CLM-0156",
+      "statement": "The create body's network object uses allowOut, denyOut, dnsServers, allowPublicTraffic, maskRequestHost, httpsPorts and rules {host: [{transform: {headers}}]}, omits unset fields, and sends an empty dnsServers list when one is set.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: api/client/models/sandbox_network_config.py:51-120; py: sandbox/sandbox_api.py:928-996",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [],
+      "tags": [
+        "s4",
+        "m3"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-27T19:57:29.982344497Z",
+      "updated_at": "2026-10-27T19:57:29.982344497Z",
+      "seal": {
+        "by": "server",
+        "mac": "b7e2578096e6299857a7301335d22100e516eeb89bdfeda2a1498b2d362a7e83"
+      }
+    },
+    {
+      "id": "CLM-0157",
+      "statement": "update_network sends PUT /sandboxes/{id}/network with allowOut, denyOut, dnsServers, rules and allow_internet_access (snake_case), treats 204 as success and maps 404 to SandboxNotFound.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: api/client/api/sandboxes/put_sandboxes_sandbox_id_network.py:21-55; py: api/client/models/sandbox_network_update_config.py:50-103; py: sandbox_async/sandbox_api.py:190-209; js: 5420",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [],
+      "tags": [
+        "s4",
+        "m3"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-27T19:57:29.982344497Z",
+      "updated_at": "2026-10-27T19:58:16.299749209Z",
+      "seal": {
+        "by": "server",
+        "mac": "ec6b28bd2c6928625c5ff8ef126905c7935ee99293c57c4ec0a71752a65b2537"
+      }
+    },
+    {
+      "id": "CLM-0158",
+      "statement": "The create body sends autoPause only when on_timeout is set, autoPauseMemory only for a pause with a chosen mode (false for filesystem), and autoResume as {enabled}, and the SDK's invalid lifecycle combinations are rejected as InvalidArgument without a request.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: sandbox/sandbox_api.py:1054-1125; py: api/client/models/new_sandbox_v2.py:112-118; py: api/client/models/sandbox_auto_resume_config.py:18",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [],
+      "tags": [
+        "s4",
+        "m3"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-27T19:57:29.982344497Z",
+      "updated_at": "2026-10-27T19:57:29.982344497Z",
+      "seal": {
+        "by": "server",
+        "mac": "2c3adf267b79a072f20d01740cff7e68d2548da696240b733821be1861dee33a"
+      }
+    },
+    {
+      "id": "CLM-0159",
+      "statement": "pause sends {memory: true} for a full snapshot, {memory: false} for filesystem-only and {} with no mode; the v2 connect body carries memory: false only for a reboot.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: sandbox/sandbox_api.py:639-662, 761-780; py: api/client/models/sandbox_pause_request.py:22-39; py: api/client/models/connect_sandbox_v2.py:25-49; js: 5442-5446, 5621",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [],
+      "tags": [
+        "s4",
+        "m3"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-27T19:57:29.982344497Z",
+      "updated_at": "2026-10-27T19:58:15.250210221Z",
+      "seal": {
+        "by": "server",
+        "mac": "0476bdb67adbaf0f4a58079fd30c196493124f14202616a06e60816df80a95fa"
+      }
+    },
+    {
+      "id": "CLM-0160",
+      "statement": "create_snapshot sends POST /sandboxes/{id}/snapshots with optional name and memory, reads 201 {snapshotID, names}, and maps 404 to SandboxNotFound.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: api/client/api/sandboxes/post_sandboxes_sandbox_id_snapshots.py:22-57; py: api/client/models/sandbox_snapshot_request.py:24-48; py: api/client/models/snapshot_info.py:21-46; py: sandbox_async/sandbox_api.py:339-374; js: 5484",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [],
+      "tags": [
+        "s4",
+        "m3"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-27T19:57:29.982344497Z",
+      "updated_at": "2026-10-27T19:57:29.982344497Z",
+      "seal": {
+        "by": "server",
+        "mac": "d89fb960999cc05585ede04a53a617a3c0fdf8c205debd93a0e2567d7875c063"
+      }
+    },
+    {
+      "id": "CLM-0161",
+      "statement": "list_snapshots sends GET /snapshots with sandboxID, name, limit and nextToken and reads the next page token from x-next-token; delete_snapshot sends DELETE /templates/{id} with the id as one encoded path segment and returns false on 404.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: api/client/api/snapshots/get_snapshots.py:22-34; py: api/client/api/templates/delete_templates_template_id.py:16-37; py: sandbox_async/sandbox_api.py:377-396; py: api/__init__.py:32-40; py: paginator.py:48-50; js: 5721",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [],
+      "tags": [
+        "s4",
+        "m3"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-27T19:57:29.982344497Z",
+      "updated_at": "2026-10-27T19:57:29.982344497Z",
+      "seal": {
+        "by": "server",
+        "mac": "cdcbb7583cb025be33996840d6784f7f846a13f853a8becf55d554527fd7ce42"
+      }
+    },
+    {
+      "id": "CLM-0162",
+      "statement": "fork sends POST /sandboxes/{id}/fork with optional timeout and count (1 to 20, checked before the request), reads the 201 array of {sandbox | error} into one result per fork, and maps a whole-request 404 to SandboxNotFound.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: api/client/api/sandboxes/post_sandboxes_sandbox_id_fork.py:22-66; py: api/client/models/sandbox_fork_request.py:22-46; py: api/client/models/sandbox_fork_result.py:27-63; py: sandbox/sandbox_api.py:81-118; py: sandbox_async/sandbox_api.py:435-495; js: 5137-5141, 5579-5604",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [],
+      "tags": [
+        "s4",
+        "m3"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-27T19:57:29.982344497Z",
+      "updated_at": "2026-10-27T19:57:29.982344497Z",
+      "seal": {
+        "by": "server",
+        "mac": "1b6943ba77304e7590ac85ce7f8037c1a20575f741f65bddd8123b26151c7540"
+      }
+    },
+    {
+      "id": "CLM-0163",
+      "statement": "Volumes use POST /volumes {name} -> 201 {volumeID, name, token, domain?}, GET /volumes -> [{volumeID, name}], GET /volumes/{id} (404 -> VolumeNotFound) and DELETE /volumes/{id} (204 -> true, 404 -> false).",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: api/client/api/volumes/post_volumes.py:21-52; py: api/client/api/volumes/get_volumes.py:15-42; py: api/client/api/volumes/get_volumes_volume_id.py:17-43; py: api/client/api/volumes/delete_volumes_volume_id.py:16-41; py: api/client/models/volume_and_token.py:50-63",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [],
+      "tags": [
+        "s4",
+        "m3"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-27T19:57:29.982344497Z",
+      "updated_at": "2026-10-27T19:57:29.982344497Z",
+      "seal": {
+        "by": "server",
+        "mac": "e01dcb5b233b9eeff2265287048d8865a6a6b2655996f5336cf55fc507d6a554"
+      }
+    },
+    {
+      "id": "CLM-0164",
+      "statement": "Volume mounts are sent as volumeMounts [{name, path}] in the create body and read back from sandbox detail and list entries.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: api/client/models/new_sandbox_v2.py:132, 198; py: api/client/models/sandbox_volume_mount.py:18-43; py: api/client/models/sandbox_detail.py:242; py: api/client/models/listed_sandbox.py:140",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [],
+      "tags": [
+        "s4",
+        "m3"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-27T19:57:29.982344497Z",
+      "updated_at": "2026-10-27T19:57:29.982344497Z",
+      "seal": {
+        "by": "server",
+        "mac": "a116143908e0c8e3d059d36bf434a606ed68182cb9c8fc02f016e511f2222704"
+      }
+    },
+    {
+      "id": "CLM-0165",
+      "statement": "With an MCP configuration and no explicit template, create uses the mcp-gateway template, sends the configuration as mcp, then runs mcp-gateway --config <shell-quoted JSON> as root with GATEWAY_ACCESS_TOKEN set, killing the sandbox if that fails; the MCP URL is https://<get_host(50005)>/mcp and a handle without the token reads it from /etc/mcp-gateway/.token as root.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: sandbox_async/main.py:171-268, 1063-1073; py: sandbox/main.py:28-33, 226-232; js: 277-281, 5873-5893, 6201-6212",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [],
+      "tags": [
+        "s4",
+        "m3"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-27T19:57:29.982344497Z",
+      "updated_at": "2026-10-27T19:58:17.949132496Z",
+      "seal": {
+        "by": "server",
+        "mac": "e714c30a52bd43896292dde7c617ea16779c2544180970949253f60b3c5434c5"
+      }
+    },
+    {
+      "id": "CLM-0166",
+      "statement": "list_sandboxes sends order as asc or desc, startedAfter as an RFC 3339 timestamp and template as given, and omits each when unset.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: api/client/api/sandboxes/get_v2_sandboxes.py:40-58; py: sandbox_async/paginator.py:55-90",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [],
+      "tags": [
+        "s4",
+        "m3"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-27T19:57:29.982344497Z",
+      "updated_at": "2026-10-27T19:57:29.982344497Z",
+      "seal": {
+        "by": "server",
+        "mac": "6f69f8c47e35e240c4a8fea398addca679c7df2a02928397c4d5d7b5fbb74b8e"
+      }
+    },
+    {
+      "id": "CLM-0167",
+      "statement": "SandboxInfo parses allowInternetAccess, network, lifecycle {onTimeout, autoResume}, pauseMode (full or filesystem) and volumeMounts when present, and still parses responses without them.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: api/client/models/sandbox_detail.py:174-250; py: api/client/models/sandbox_lifecycle.py:44-46; py: api/client/models/sandbox_pause_mode.py:5-6",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [],
+      "tags": [
+        "s4",
+        "m3"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-27T19:57:29.982344497Z",
+      "updated_at": "2026-10-27T19:57:29.982344497Z",
+      "seal": {
+        "by": "server",
+        "mac": "1d8a95e64811912c4936f3142631e74e7a3d021f929bd02168a89f56c204e482"
       }
     }
   ]
