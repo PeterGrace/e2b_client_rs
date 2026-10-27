@@ -30,5 +30,9 @@ follow-up.
 - `just test-live nosuchtarget` (plan Step 2): the tests fail fast on the
   unknown target, no sandbox is created, and the log starts with
   `commit: <40 hex>` and `dirty: yes` (the change was not yet committed).
-- A full `just test-live hosted` run on the committed tree is reported in the
-  PR.
+- `just test-live hosted`, run `20261027T112435Z-hosted-554735` on commit
+  `cc85e67` with the tree committed: the log starts with
+  `commit: cc85e67fec62703ae8ef4f45218ddb65ac5d9621` and `dirty: no`. All 46
+  claim tests passed (13 commands, 12 lifecycle, 21 files), and the sweep
+  reported `killed 0 leftover sandbox(es)`. Neither key appears in the log.
+  The log stays in `target/live-logs/`; Task 9 does the recorded run.
