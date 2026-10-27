@@ -295,9 +295,10 @@ impl WriteOptions {
     /// Adds one pair of user metadata, stored on every written file as a
     /// `user.e2b.<key>` extended attribute and reported back in
     /// [`WriteInfo::metadata`] and [`EntryInfo::metadata`]. It is sent as an
-    /// `X-Metadata-<key>: <value>` header on every upload request. Setting a
-    /// key again replaces its value; envd lowercases keys, so keys that
-    /// differ only in case end up as one attribute.
+    /// `X-Metadata-<key>: <value>` header on every upload request. The key
+    /// is lowercased (ASCII only) here, as envd would store it, so setting a
+    /// key again replaces its value even when the case differs: the last call
+    /// wins.
     ///
     /// The pairs are validated when the write is called, before any request:
     /// a key must be a non-empty HTTP token (ASCII letters, digits and
@@ -306,7 +307,7 @@ impl WriteOptions {
     ///
     /// # Arguments
     ///
-    /// * `key` - the metadata key, e.g. `"team"`.
+    /// * `key` - the metadata key, e.g. `"team"` (`"Team"` is the same key).
     /// * `value` - its value.
     ///
     /// # Returns
@@ -314,7 +315,11 @@ impl WriteOptions {
     /// The options, for chaining.
     #[must_use]
     pub fn metadata(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
-        self.metadata.insert(key.into(), value.into());
+        let mut key = key.into();
+        // In place, so the `String` is not copied; non-ASCII bytes are left
+        // as they are, for validation to reject.
+        key.make_ascii_lowercase();
+        self.metadata.insert(key, value.into());
         self
     }
 
@@ -1548,7 +1553,7 @@ mod tests {
         let options = WriteOptions::default()
             .metadata("team", "first")
             .metadata("Run", "1")
-            .metadata("team", "m2");
+            .metadata("Team", "m2");
         let headers = options
             .metadata_headers(EnvdVersion::FILE_METADATA)
             .expect("valid metadata");
@@ -1556,7 +1561,8 @@ mod tests {
             .iter()
             .map(|(name, value)| (name.as_str(), value.to_str().expect("ascii value")))
             .collect();
-        // `BTreeMap` sorts by bytes, so `Run` (uppercase) comes before `team`.
+        // Keys are lowercased, so `Team` replaced `team` (the last call wins)
+        // and `run` sorts before `team`.
         assert_eq!(pairs, [("x-metadata-run", "1"), ("x-metadata-team", "m2")]);
     }
 

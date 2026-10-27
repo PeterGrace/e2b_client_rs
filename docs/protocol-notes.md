@@ -247,7 +247,7 @@ file from a reader, read as the body is sent.
 | Metadata is validated before any request: a key is a non-empty HTTP token (`A-Za-z0-9!#$%&'*+-.^_`\|~`), a value printable US-ASCII (`0x20..=0x7e`, empty allowed); keys are checked before the envd version | `py: sandbox/filesystem/filesystem.py:344-364`; `py: sandbox_async/filesystem/filesystem.py:363-367` |
 | Metadata needs envd 0.6.2; on older envd any metadata is refused before a request (the crate's `Error::InvalidArgument`, the SDK's `TemplateException`) | `py: sandbox_async/filesystem/filesystem.py:365-366`; `py: envd/versions.py:9` |
 | `write_files([])` returns before the metadata is checked | `py: sandbox_async/filesystem/filesystem.py:360-363` |
-| envd stores metadata as `user.e2b.*` extended attributes and lowercases the keys; the upload answer, `Stat`, `ListDir` and `include_entry` watch events report it as `metadata` (proto `map<string, string>` field 11, a JSON object); absent or `null` reads as an empty map | `py: sandbox/filesystem/filesystem.py:57-90, 130-148, 376-380`; `py: envd/filesystem/filesystem_pb.py:240, 291-297` |
+| envd stores metadata as `user.e2b.*` extended attributes and lowercases the keys (the crate lowercases them already in `WriteOptions::metadata`, so the last call for a key wins whatever its case); the upload answer, `Stat`, `ListDir` and `include_entry` watch events report it as `metadata` (proto `map<string, string>` field 11, a JSON object); absent or `null` reads as an empty map | `py: sandbox/filesystem/filesystem.py:57-90, 130-148, 376-380`; `py: envd/filesystem/filesystem_pb.py:240, 291-297` |
 
 Differences: the SDK compresses an in-memory gzip upload whole
 (`gzip.compress`) and sends it with a `Content-Length`. This crate
