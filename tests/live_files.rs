@@ -6,8 +6,8 @@ use std::collections::{HashMap, HashSet};
 use std::time::Duration;
 
 use e2b_client::{
-    CommandOptions, EnvdVersion, FileType, FilesystemEventType, WatchOptions, WriteEntry,
-    WriteOptions,
+    CommandOptions, EnvdVersion, FileType, FileUrlOptions, FilesystemEventType, WatchOptions,
+    WriteEntry, WriteOptions,
 };
 use live_support::LiveSandbox;
 use tokio::io::AsyncReadExt;
@@ -505,4 +505,90 @@ async fn clm_0129_write_metadata_round_trips() {
         .find(|entry| entry.path == "/tmp/meta/tagged.txt")
         .expect("listed entry");
     assert_eq!(team(&listed_entry.metadata), Some("m2"), "{listed:?}");
+}
+
+/// A signed URL is a bearer credential until it expires, so the live tests
+/// never let one reach their output: `without_url` strips it from a
+/// `reqwest::Error` before `expect` would print it.
+fn strip_url(err: reqwest::Error) -> reqwest::Error {
+    err.without_url()
+}
+
+#[tokio::test]
+#[ignore = "live: run with `just test-live <target>`"]
+async fn clm_0064_upload_url_accepts_a_multipart_post() {
+    let sandbox = LiveSandbox::new().await;
+    let url = sandbox
+        .upload_url("/tmp/up.txt", &FileUrlOptions::default())
+        .expect("upload url");
+    let form = reqwest::multipart::Form::new().part(
+        "file",
+        reqwest::multipart::Part::bytes(b"signed write".to_vec()).file_name("up.txt"),
+    );
+
+    // A plain client: no API key, no envd headers, only the URL.
+    let response = reqwest::Client::new()
+        .post(&url)
+        .multipart(form)
+        .send()
+        .await
+        .map_err(strip_url)
+        .expect("POST to the upload URL");
+    let status = response.status();
+    let text = sandbox
+        .files()
+        .read_to_string("/tmp/up.txt", None)
+        .await
+        .expect("read the uploaded file");
+
+    assert!(status.is_success(), "upload URL answered {status}");
+    assert_eq!(text, "signed write");
+}
+
+#[tokio::test]
+#[ignore = "live: run with `just test-live <target>`"]
+async fn clm_0065_download_url_fetches_without_credentials() {
+    let sandbox = LiveSandbox::new().await;
+    sandbox
+        .files()
+        .write("/tmp/shared.txt", "signed read", None)
+        .await
+        .expect("write");
+    let url = sandbox
+        .download_url(
+            "/tmp/shared.txt",
+            &FileUrlOptions::default().expires_in(Duration::from_secs(60)),
+        )
+        .expect("download url");
+    // The same URL with its `signature` pair removed.
+    let mut unsigned = url::Url::parse(&url).expect("parse the download URL");
+    let kept: Vec<(String, String)> = unsigned
+        .query_pairs()
+        .into_owned()
+        .filter(|(key, _)| key != "signature")
+        .collect();
+    unsigned.query_pairs_mut().clear().extend_pairs(&kept);
+
+    let signed_response = reqwest::get(&url)
+        .await
+        .map_err(strip_url)
+        .expect("GET the download URL");
+    let signed_status = signed_response.status();
+    let body = signed_response
+        .text()
+        .await
+        .map_err(strip_url)
+        .expect("download body");
+    let unsigned_status = reqwest::get(unsigned)
+        .await
+        .map_err(strip_url)
+        .expect("GET the unsigned URL")
+        .status();
+
+    assert_eq!(signed_status, reqwest::StatusCode::OK);
+    assert_eq!(body, "signed read");
+    assert!(
+        unsigned_status.is_client_error(),
+        "the URL without its signature answered {unsigned_status}"
+    );
 }

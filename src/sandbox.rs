@@ -2,21 +2,164 @@
 
 use std::fmt;
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
+use base64::Engine;
+use base64::engine::general_purpose::STANDARD_NO_PAD;
 use reqwest::{Method, StatusCode};
-use secrecy::SecretString;
+use secrecy::{ExposeSecret, SecretString};
+use sha2::{Digest, Sha256};
+use url::Url;
 
 use crate::client::Client;
 use crate::commands::Commands;
 use crate::envd::{EnvdClient, EnvdTarget, EnvdVersion, envd_http_error};
-use crate::error::Result;
-use crate::filesystem::Filesystem;
+use crate::error::{Error, Result};
+use crate::filesystem::{FILES_ROUTE, Filesystem};
 use crate::models::{SandboxCreated, SandboxInfo};
 use crate::pty::Pty;
 
 /// envd's health route (`e2b/envd/api.py:22`).
 const ENVD_HEALTH_ROUTE: &str = "/health";
+
+/// Options for [`Sandbox::upload_url`] and [`Sandbox::download_url`].
+///
+/// The default reads or writes as envd's default user (`"user"` on envd
+/// older than 0.4.0) with a URL that does not expire.
+///
+/// # Examples
+///
+/// ```
+/// use std::time::Duration;
+/// use e2b_client::FileUrlOptions;
+///
+/// let options = FileUrlOptions::default()
+///     .user("root")
+///     .expires_in(Duration::from_secs(300));
+/// # let _ = options;
+/// ```
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct FileUrlOptions {
+    user: Option<String>,
+    expires_in: Option<Duration>,
+}
+
+impl FileUrlOptions {
+    /// Sets the user the URL reads or writes as.
+    ///
+    /// # Arguments
+    ///
+    /// * `user` - the sandbox user, e.g. `"root"`. `impl Into<String>`
+    ///   accepts both `&str` and `String`.
+    ///
+    /// # Returns
+    ///
+    /// The options, for chaining.
+    #[must_use]
+    pub fn user(mut self, user: impl Into<String>) -> Self {
+        self.user = Some(user.into());
+        self
+    }
+
+    /// Makes the URL stop working this long after it is made. Only a
+    /// secured sandbox (one with an envd access token, which every hosted
+    /// sandbox is) can sign an expiry.
+    ///
+    /// The expiry is counted in whole seconds, as in the SDKs: the URL
+    /// expires at the current Unix second plus `expires_in`'s whole
+    /// seconds, and any fraction of a second is dropped. Making the URL
+    /// fails with [`crate::Error::InvalidArgument`] if `expires_in` is
+    /// under one second, since that URL would already be expired.
+    ///
+    /// # Arguments
+    ///
+    /// * `expires_in` - how long the URL stays valid, at least one second.
+    ///
+    /// # Returns
+    ///
+    /// The options, for chaining.
+    #[must_use]
+    pub fn expires_in(mut self, expires_in: Duration) -> Self {
+        self.expires_in = Some(expires_in);
+        self
+    }
+}
+
+/// What a signed URL lets its holder do.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum FileOperation {
+    Read,
+    Write,
+}
+
+impl FileOperation {
+    /// The operation's name inside the signed string.
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Read => "read",
+            Self::Write => "write",
+        }
+    }
+}
+
+/// The SDKs' v1 file signature: `v1_` + unpadded standard base64 of SHA-256
+/// over `<path>:<operation>:<user>:<token>[:<expiration>]`, with an empty
+/// user for envd's default user (`e2b/sandbox/signature.py:15-47`).
+///
+/// # Arguments
+///
+/// * `path` - the file path, exactly as sent in the `path` query pair.
+/// * `operation` - read (download) or write (upload).
+/// * `user` - the user named in the URL, if any.
+/// * `token` - the sandbox's envd access token.
+/// * `expiration` - the expiry as Unix seconds, if any.
+///
+/// # Returns
+///
+/// The `signature` query value.
+fn file_signature(
+    path: &str,
+    operation: FileOperation,
+    user: Option<&str>,
+    token: &str,
+    expiration: Option<u64>,
+) -> String {
+    let user = user.unwrap_or_default();
+    let operation = operation.as_str();
+    let raw = match expiration {
+        Some(expiration) => format!("{path}:{operation}:{user}:{token}:{expiration}"),
+        None => format!("{path}:{operation}:{user}:{token}"),
+    };
+    format!(
+        "v1_{}",
+        STANDARD_NO_PAD.encode(Sha256::digest(raw.as_bytes()))
+    )
+}
+
+/// The Unix time, in whole seconds, `expires_in` from now: the current
+/// second plus `expires_in`'s whole seconds, which is the SDKs'
+/// `int(time.time()) + expiration_in_seconds`
+/// (`e2b/sandbox/signature.py:28-32`).
+///
+/// # Errors
+///
+/// [`Error::InvalidArgument`] if `expires_in` is under one second (the URL
+/// would expire on arrival), the system clock is before 1970, or the sum
+/// overflows.
+fn expiration_from_now(expires_in: Duration) -> Result<u64> {
+    let seconds = expires_in.as_secs();
+    if seconds == 0 {
+        return Err(Error::InvalidArgument(
+            "a URL expiration must be at least one second".into(),
+        ));
+    }
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|_| Error::InvalidArgument("the system clock is before 1970".into()))?;
+    now.as_secs()
+        .checked_add(seconds)
+        .ok_or_else(|| Error::InvalidArgument("the URL expiration overflows".into()))
+}
 
 /// A sandbox you created or connected to.
 ///
@@ -161,6 +304,128 @@ impl Sandbox {
     #[must_use]
     pub fn files(&self) -> Filesystem {
         Filesystem::new(Arc::clone(&self.envd))
+    }
+
+    /// A URL that downloads `path` with a plain `GET`, with no API key or
+    /// headers needed. On a secured sandbox (every hosted one) it is signed
+    /// with the sandbox's envd access token; the URL carries the signature,
+    /// never the token. Treat it as a credential until it expires.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - the file to download.
+    /// * `options` - the user to read as, and an optional expiry.
+    ///
+    /// # Returns
+    ///
+    /// The URL.
+    ///
+    /// # Errors
+    ///
+    /// [`crate::Error::InvalidArgument`] if an expiry is asked for on a
+    /// sandbox without an access token, the expiry is under one second, or
+    /// the system clock is before 1970;
+    /// [`crate::Error::InvalidConfig`] if the envd URL does not parse.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::time::Duration;
+    /// use e2b_client::{FileUrlOptions, Sandbox};
+    ///
+    /// # fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
+    /// let url = sandbox.download_url(
+    ///     "/home/user/report.pdf",
+    ///     &FileUrlOptions::default().expires_in(Duration::from_secs(600)),
+    /// )?;
+    /// # let _ = url;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn download_url(&self, path: &str, options: &FileUrlOptions) -> Result<String> {
+        self.file_url(path, FileOperation::Read, options)
+    }
+
+    /// A URL that uploads to `path`: POST the file to it as
+    /// `multipart/form-data` in a part named `file`, with no API key or
+    /// headers needed. On a secured sandbox (every hosted one) it is signed
+    /// with the sandbox's envd access token; the URL carries the signature,
+    /// never the token. Treat it as a credential until it expires.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - the file to write.
+    /// * `options` - the user to write as, and an optional expiry.
+    ///
+    /// # Returns
+    ///
+    /// The URL.
+    ///
+    /// # Errors
+    ///
+    /// As [`Sandbox::download_url`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use e2b_client::{FileUrlOptions, Sandbox};
+    ///
+    /// # fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
+    /// let url = sandbox.upload_url("/home/user/input.csv", &FileUrlOptions::default())?;
+    /// # let _ = url;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn upload_url(&self, path: &str, options: &FileUrlOptions) -> Result<String> {
+        self.file_url(path, FileOperation::Write, options)
+    }
+
+    /// Builds a `/files` URL for `operation`, signed when the sandbox has an
+    /// access token (`e2b/sandbox/main.py:102-213`; JS `dist/index.js:6225-6290`).
+    fn file_url(
+        &self,
+        path: &str,
+        operation: FileOperation,
+        options: &FileUrlOptions,
+    ) -> Result<String> {
+        let token = self.envd.access_token();
+        if token.is_none() && options.expires_in.is_some() {
+            return Err(Error::InvalidArgument(
+                "a URL expiration needs a secured sandbox (one with an envd access token)".into(),
+            ));
+        }
+        // An empty user means envd's default user, as no user does: the
+        // signature is the same and the SDKs leave `username` out.
+        let user = self
+            .envd
+            .effective_user(options.user.as_deref())
+            .filter(|user| !user.is_empty());
+        let mut url = Url::parse(&format!("{}{FILES_ROUTE}", self.envd.direct_base()))
+            .map_err(|err| Error::InvalidConfig(format!("envd URL: {err}")))?;
+        {
+            // `query_pairs_mut` borrows `url` mutably until this block ends,
+            // and form-encodes each pair as it is appended.
+            let mut query = url.query_pairs_mut();
+            if !path.is_empty() {
+                query.append_pair("path", path);
+            }
+            if let Some(user) = user {
+                query.append_pair("username", user);
+            }
+            if let Some(token) = token {
+                // `transpose` turns `Option<Result<_>>` into `Result<Option<_>>`
+                // so `?` can return the error.
+                let expiration = options.expires_in.map(expiration_from_now).transpose()?;
+                query.append_pair(
+                    "signature",
+                    &file_signature(path, operation, user, token.expose_secret(), expiration),
+                );
+                if let Some(expiration) = expiration {
+                    query.append_pair("signature_expiration", &expiration.to_string());
+                }
+            }
+        }
+        Ok(url.into())
     }
 
     /// Checks envd's health endpoint.
@@ -315,15 +580,87 @@ mod tests {
     }
 
     #[test]
+    fn file_signature_matches_the_sdk_algorithm() {
+        // Arrange, Act and Assert: vectors computed with the Python SDK's
+        // `hashlib.sha256` + `base64.b64encode(..).rstrip(b"=")`.
+        assert_eq!(
+            file_signature("/home/user/a.txt", FileOperation::Read, None, "tok", None),
+            "v1_Zkbb3914oLJLvMBzCAHQhm2ydBLxbSx2eQUR/kLdvIY"
+        );
+        assert_eq!(
+            file_signature(
+                "/tmp/up.bin",
+                FileOperation::Write,
+                Some("root"),
+                "tok",
+                Some(1_700_000_000)
+            ),
+            "v1_Y0uzWP5ST4jxa8RLcFIf65h1K6NEbMc0oox+Mgq89DY"
+        );
+    }
+
+    #[test]
+    fn expiration_is_whole_seconds_and_refuses_under_one_second() {
+        // Arrange
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock after 1970")
+            .as_secs();
+
+        // Act
+        let expiration =
+            expiration_from_now(Duration::from_millis(60_900)).expect("60.9 s expiration");
+        let rejected = [
+            expiration_from_now(Duration::ZERO),
+            expiration_from_now(Duration::from_millis(999)),
+            expiration_from_now(Duration::MAX),
+        ];
+
+        // Assert: the fraction is dropped, so 60.9 s is now + 60.
+        assert!(
+            (now + 60..=now + 61).contains(&expiration),
+            "{expiration} is not now + 60 s"
+        );
+        for result in rejected {
+            assert!(
+                matches!(result, Err(Error::InvalidArgument(_))),
+                "{result:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn signed_urls_carry_the_signature_not_the_token() {
+        // Arrange
+        let sandbox = sandbox_on(None);
+        let options = FileUrlOptions::default().expires_in(Duration::from_secs(60));
+
+        // Act
+        let urls = [
+            sandbox.download_url("/a", &options).expect("download url"),
+            sandbox.upload_url("/a", &options).expect("upload url"),
+        ];
+
+        // Assert
+        for url in &urls {
+            assert!(url.contains("signature=v1_"), "unsigned URL");
+            assert!(!url.contains(ENVD_TOKEN), "envd token leaked into a URL");
+        }
+    }
+
+    #[test]
     fn debug_output_omits_the_api_key_and_access_tokens() {
         // Arrange
         let sandbox = sandbox_on(None);
 
         // Act: `{:?}` renders the `Debug` impl, what `dbg!` and logs show.
+        // The `EnvdClient` now holds the access token itself, so its own
+        // `Debug` is checked too.
         let rendered = [
             format!("{:?}", sandbox.client),
             format!("{:?}", sandbox.client.config()),
             format!("{sandbox:?}"),
+            format!("{:?}", sandbox.envd),
         ];
 
         // Assert

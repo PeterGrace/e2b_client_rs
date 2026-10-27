@@ -174,12 +174,19 @@ pub(crate) struct EnvdTarget<'a> {
 /// `E2b-Sandbox-Id`, `E2b-Sandbox-Port`, and `X-Access-Token` when the sandbox
 /// is secured (`e2b/sandbox_async/main.py:1180-1236`; JS
 /// `dist/index.js:5805-5818`).
+///
+/// The derived `Debug` is safe to print: the access token is held as a
+/// [`SecretString`], whose `Debug` writes `[REDACTED]`, and the header copy
+/// is marked sensitive, which `HeaderMap`'s `Debug` also hides.
 #[derive(Debug)]
 pub(crate) struct EnvdClient {
     http: reqwest::Client,
     rpc_base: String,
     direct_base: String,
     headers: HeaderMap,
+    /// Kept apart from the header so signed file URLs can be computed from
+    /// it (`e2b/sandbox/main.py:102-213`).
+    access_token: Option<SecretString>,
     version: EnvdVersion,
     request_timeout: Option<Duration>,
 }
@@ -224,6 +231,10 @@ impl EnvdClient {
             rpc_base: config.envd_rpc_url(target.sandbox_id, target.sandbox_domain),
             direct_base: config.envd_direct_url(target.sandbox_id, target.sandbox_domain),
             headers,
+            // `cloned` turns `Option<&SecretString>` into an owned
+            // `Option<SecretString>`; the copy stays wrapped, so it is still
+            // redacted in `Debug` and zeroed when dropped.
+            access_token: target.access_token.cloned(),
             version: target.version,
             request_timeout: config.request_timeout(),
         })
@@ -232,6 +243,25 @@ impl EnvdClient {
     /// The sandbox's envd version.
     pub(crate) fn version(&self) -> EnvdVersion {
         self.version
+    }
+
+    /// The sandbox's envd access token, which signs file URLs.
+    ///
+    /// # Returns
+    ///
+    /// The token, or `None` for an unsecured sandbox.
+    pub(crate) fn access_token(&self) -> Option<&SecretString> {
+        self.access_token.as_ref()
+    }
+
+    /// The base URL of the plain HTTP API (`/files`, `/health`), which is
+    /// also the base of signed file URLs.
+    ///
+    /// # Returns
+    ///
+    /// The URL, without a trailing slash.
+    pub(crate) fn direct_base(&self) -> &str {
+        &self.direct_base
     }
 
     /// The client's request timeout, which bounds unary calls, stream
@@ -495,18 +525,13 @@ impl EnvdClient {
     }
 }
 
-// Test-only accessors: `#[cfg(test)]` compiles this block only for
-// `cargo test`, so the base URLs stay private in the published crate.
+// Test-only accessor: `#[cfg(test)]` compiles this block only for
+// `cargo test`, so the RPC base URL stays private in the published crate.
 #[cfg(test)]
 impl EnvdClient {
     /// The base URL Connect-RPC calls are sent to.
     pub(crate) fn rpc_base(&self) -> &str {
         &self.rpc_base
-    }
-
-    /// The base URL of the plain HTTP API (`/files`, `/health`).
-    pub(crate) fn direct_base(&self) -> &str {
-        &self.direct_base
     }
 }
 

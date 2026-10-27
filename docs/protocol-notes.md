@@ -284,6 +284,39 @@ The SDK's `on_event`/`on_exit` callbacks are replaced by the handle's
 stream is `Ok(None)`; the error that ends a watch is returned by
 `next_event`, where the SDK hands it to `on_exit`.
 
+## Signed URLs
+
+`Sandbox::download_url(path, &FileUrlOptions)` and
+`Sandbox::upload_url(path, &FileUrlOptions)` build `/files` URLs that work
+with no API key or envd headers (`src/sandbox.rs`). The caller `GET`s a
+download URL, and `POST`s a file to an upload URL as `multipart/form-data`
+in a part named `file`. `FileUrlOptions` carries the user and an optional
+expiry (`expires_in`).
+
+| Fact | Citation |
+|---|---|
+| The URL is `<envd direct url>/files?path=<p>[&username=<u>]&signature=<sig>[&signature_expiration=<unix s>]`; `path` is left out when empty, `username` when no user (or an empty one) applies | `py: sandbox/main.py:102-129`; `js: 6316-6321` |
+| `sig = "v1_" + base64(sha256(raw))` with standard alphabet and the `=` padding stripped, `raw = "<path>:<read\|write>:<user or empty>:<token>"`, plus `":<expiration>"` when an expiry is set; download signs `read`, upload `write` | `py: sandbox/signature.py:15-47`; `py: sandbox/main.py:157-163, 199-205`; `js: 1538-1548` |
+| The expiry is the current Unix time plus the requested seconds, sent as `signature_expiration` and included in the signed string | `py: sandbox/signature.py:28-42`; `js: 1541-1545` |
+| With no user, the user is `"user"` on envd older than 0.4.0 (in both `username` and the signature), else empty in the signature and absent from the URL | `py: sandbox/main.py:153-155, 195-197`; `py: envd/versions.py:6`; `js: 6232, 6266` |
+| A sandbox with no envd access token gets the unsigned URL; asking for an expiry on one is an error (the SDKs' `InvalidArgumentException`/`InvalidArgumentError`, the crate's `Error::InvalidArgument`), checked before anything else | `py: sandbox/main.py:147-151, 189-193`; `js: 6229-6230, 6263-6264` |
+| Every hosted sandbox is secured, so hosted URLs are always signed | `py: sandbox_async/main.py:177, 197` |
+
+The query is form-encoded by `url::Url::query_pairs_mut`, like the JS SDK's
+`URLSearchParams` (`/` becomes `%2F`, a space `+`); the Python SDK's `quote`
+leaves `/` alone and writes a space as `%20`. envd decodes both, and the
+signature is over the raw path, so neither changes it. The URL carries the
+signature, never the token, but it is a bearer credential until it expires.
+`EnvdClient` keeps the token as a `secrecy::SecretString`, so `Debug` output
+shows `[REDACTED]`. The expiry is counted in whole seconds, as in the SDKs: the current Unix
+second plus `expires_in`'s whole seconds (any fraction is dropped). An
+`expires_in` under one second is refused with `Error::InvalidArgument`,
+where the SDKs would sign a URL that is already expired (`0` is still an
+expiry in 2.61.0, `py: sandbox/signature.py:28-32`, `js: 1541`).
+Hosted envd accepted a multipart `POST` to an upload URL and
+served a download URL with no credentials live on 2026-10-27, and refused
+the download URL with its `signature` pair removed with a 4xx.
+
 ## Deliberate differences from the SDKs
 
 - **Connect v1 fallback.** If `POST /v2/sandboxes/{id}/connect` answers 404,
@@ -297,8 +330,7 @@ stream is `Ok(None)`; the error that ends a watch is returned by
 - **`wait()` does not replay consumed output.** The SDK handle buffers all
   output; here `next_event()` hands chunks to the caller and `wait()` only
   collects what is left, so output is held once.
-- **Not implemented in v0.1:** signed file URLs,
-  sandbox health probing on transport errors, metrics, snapshots, fork,
+- **Not implemented in v0.1:** sandbox health probing on transport errors, metrics, snapshots, fork,
   network updates, template builds, and the sync API.
 
 ## Verification against a live server

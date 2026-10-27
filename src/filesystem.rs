@@ -26,7 +26,7 @@ use crate::error::{ConnectCode, Error, Result};
 use crate::wire::{EnumValue, deserialize_null_as_default};
 
 /// envd's file transfer route (`e2b/envd/api.py:21`).
-const FILES_ROUTE: &str = "/files";
+pub(crate) const FILES_ROUTE: &str = "/files";
 
 /// The header-name prefix that carries one metadata pair on an upload
 /// (`X-Metadata-<key>: <value>`, `e2b/sandbox/filesystem/filesystem.py:342`).
