@@ -124,7 +124,7 @@ SDK sources are e2b 2.61.0, the same packages as `docs/protocol-notes.md` (`py:`
   Report the result in the PR. The recorded runs are Tasks 12 and 13.
 - **Tests:** mock tests use `wiremock` through `tests/common`. Each feature task creates its own mock test file (named in its Files list), to keep conflicts out of `tests/rest_api.rs`. Each new type a live test uses goes into the `use e2b_client::{...}` list at the top of `tests/live_lifecycle.rs`. Live tests are `#[tokio::test]` plus `#[ignore = "live: run with `just test-live <target>`"]`, named `clm_NNNN_<slug>`, one claim each, Arrange-Act-Assert. Use `.expect("<what>")` in tests, never `.unwrap()`. No `println!`/`dbg!`.
 - **Cost and leaks:** every sandbox a live test makes is a `LiveSandbox` (forks are adopted into one, Task 9). Snapshots and volumes are named with `live_support::resource_name(slug)` (Task 8 adds it), deleted by the test, and swept by `tests/live_sweep.rs` (Tasks 8 and 10 extend it).
-- **Docs per task:** every new public item gets a rustdoc comment with Arguments/Returns/Errors and an example where useful (CLAUDE.md). Every wire fact the task implements gets a row in `docs/protocol-notes.md`: REST rows go in the "REST endpoints" table; Tasks 4, 5, 8, 10 and 11 add the sections "Network", "Snapshots and fork", "Volumes" and "MCP gateway". Each S4 claim gets a row in `docs/verification/s4-evidence-map.md` (append rows; extend the intro line to "CLM-0152, and CLM-0154 to CLM-0167").
+- **Docs per task:** every new public item gets a rustdoc comment with Arguments/Returns/Errors and an example where useful (CLAUDE.md). Every wire fact the task implements gets a row in `docs/protocol-notes.md`: REST rows go in the "REST endpoints" table; Tasks 4, 5, 8, 10 and 11 add the sections "Network", "Snapshots and fork", "Volumes" and "MCP gateway". Each S4 claim (CLM-0154 to CLM-0167) gets a row in `docs/verification/s4-evidence-map.md`, and so does CLM-0152: it is an S1 claim (a child of CLM-0032), but it is verified by mock tests, as CLM-0122 is. Append rows, and extend the intro line to "CLM-0152 (an S1 claim verified by tests), and CLM-0154 to CLM-0167".
 - **Ledger:** subagents never call `mcp__claims__*` write tools. Read tools are fine.
 - **Changelog:** one entry per task, `changelog/<UTC ts>-m3-task-<NN>-<slug>.md`, timestamp from `date -u +%Y-%m-%dT%H-%M-%SZ`.
 - **Logs:** live run logs go to `target/live-logs/` inside your own worktree. Never write them to a shared scratchpad.
@@ -5058,12 +5058,12 @@ Done by the coordinator session, which alone writes the ledger. The ledger work 
 
 - [ ] **Step 1: Evidence and verdicts.**
   - **Live evidence:** for each M3 live test, `add_evidence` (kind `demonstration`, locator `<test> @ hosted, docs/verification/runs/<log>`, stance from the result), and the same from the sandbawks run. A sandbawks failure names its gfd/sandbawks issue, has stance `neutral`, and does not refute the claim.
-  - **S4 evidence:** for each S4 claim (CLM-0152, CLM-0154 to CLM-0167), `test` evidence from its evidence-map row at the merge commit.
+  - **Test evidence:** for each S4 claim (CLM-0154 to CLM-0167), and for CLM-0152 (S1, under CLM-0032, verified by test), `test` evidence from its evidence-map row at the merge commit.
   - **Before writing any summary,** read the test body it describes; evidence can't be edited (an M2 lesson).
   - **Verdicts** for CLM-0028 to CLM-0030 and CLM-0143 to CLM-0167. An environment limit (Task 12) leaves its claim `not_enough_info`, with the limit as the rationale.
   - **The parents:**
     - CLM-0031, CLM-0032 and CLM-0002 stay `not_enough_info`, because the egress proxy and IAM are deferred (see Scope). Their rationale names the supported children.
-    - CLM-0005 is re-affirmed over its wire claims.
+    - CLM-0005 is re-affirmed over its wire claims, which now include CLM-0154 to CLM-0167. CLM-0152 is not one of them.
   - **Retag:** CLM-0028 to CLM-0032 lose `gap` and carry `m3`; keep the history.
 - [ ] **Step 2: Bugs.** Each refuted claim gets a bug task (Task 15, 16, ...) added under this step with a dated note, a sub-issue, and a fix and re-verification within M3, as in M1.
 - [ ] **Step 3: Docs.**
