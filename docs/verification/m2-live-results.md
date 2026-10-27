@@ -296,9 +296,10 @@ envd requests go to `https://49983-<id>.sb-ghlw.gfd.dev` with the
   ([sandbawks#675](https://git.gfpd.us/gfd/sandbawks/issues/675)).
 - Response: `413` with nginx's HTML body (`<title>413 Request Entity Too
   Large</title>`, `<center>nginx</center>`), in the run of record and R1. The
-  limit sits in front of the gateway: the page is nginx's, not a gateway JSON
-  error. The size where it starts was not measured. ingress-nginx's default
-  `proxy-body-size` is 1 MiB, which would also break much smaller uploads.
+  page is nginx's, not a gateway JSON error, so the limit is probably in front
+  of the gateway. The size where it starts was not measured. Hypothesis, not
+  checked: if it is ingress-nginx's default `proxy-body-size` of 1 MiB, much
+  smaller uploads fail too.
 - Expected: envd accepts large uploads; hosted took both 64 MiB uploads
   (plain and gzip) in this suite. A deliberate cap should answer with an
   E2B-shaped error, not an HTML page.
