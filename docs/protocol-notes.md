@@ -98,6 +98,7 @@ alphabet). Compression is off in both directions (`py: envd/client_shared.py:133
 | Route: `POST <base>/<package.Service>/<Method>` | `py: envd/process/process_connect.py:80-150`; `py: envd/filesystem/filesystem_connect.py:79-159` |
 | Unary methods: `process.Process/{List, SendInput, SendSignal, CloseStdin}`, `filesystem.Filesystem/{Stat, MakeDir, Move, ListDir, Remove}` | same lines |
 | Server-streaming: `process.Process/{Start, Connect}` | `py: envd/process/process_connect.py:90, 100` |
+| Client-streaming: `process.Process/StreamInput` (one envelope per request message; the answer is one message plus an end-of-stream envelope) | `py: envd/process/process_connect.py:110-128` |
 | Unary `Content-Type: application/json`; streaming `application/connect+json` | `connect-es: protocol-connect/content-type.js:37-40`; `protocol-connect/request-header.js:31-37` |
 | `Connect-Protocol-Version: 1` | `connect-es: protocol-connect/headers.js:27`; `protocol-connect/version.js:28`; `protocol-connect/request-header.js:38` |
 | Deadline header `Connect-Timeout-Ms` | `connect-es: protocol-connect/headers.js:26`; `protocol-connect/request-header.js:28-30` |
@@ -144,6 +145,27 @@ Behaviour:
 | `close_stdin` needs envd ≥ 0.5.2 | `py: sandbox_async/commands/command.py:189-193`; `py: envd/versions.py:7` |
 | `list` maps `ProcessInfo` (`tag`, `cwd` optional) | `py: sandbox_async/commands/command.py:75-95` |
 
+## Streamed input
+
+`Commands::stream_input` returns an `InputStream` over the client-streaming
+`StreamInput` RPC (`src/stream_input.rs`). The request body is streamed from a
+bounded queue by a background task.
+
+| Fact | Citation |
+|---|---|
+| `StreamInput` is client-streaming at `/process.Process/StreamInput`, sent as `application/connect+json` | `py: envd/process/process_connect.py:110-128` |
+| `StreamInputRequest` is a oneof `start {process: ProcessSelector}` / `data {input: ProcessInput}` / `keepalive {}`; the response is empty | `py: envd/process/process_pb.py:597-716` |
+| `ProcessInput` is a oneof `stdin` / `pty` (bytes, base64 in JSON) | `py: envd/process/process_pb.py:569-596` |
+| The handle sends `start` first, then one `data` per queued chunk, and a `keepalive` after 50 s without input | `py: sandbox_async/commands/command_input_handle.py:91-131`; `py: sandbox/commands/stream_input.py:10-37`; `js: 2781-2870` |
+| `close()` ends the request stream, then waits for the call to finish | `py: sandbox_async/commands/command_input_handle.py:71-83` |
+| Keepalive interval 50 s (`KEEPALIVE_PING_INTERVAL_SEC`) | `py: connection_config.py:48-49` |
+| Stream deadline defaults to 60 s (`STREAM_INPUT_TIMEOUT`), sent as `Connect-Timeout-Ms`; `None` disables it | `py: connection_config.py:33`; `py: sandbox_async/commands/command.py:150-174` |
+| No envd version gate | `py: sandbox_async/commands/command.py:150-174`; `py: envd/versions.py:1-11` |
+
+The SDK's queue is unbounded; `InputStream::send` waits once 64 chunks are
+queued. An error that ends the call early is returned by the next `send` or
+by `close`.
+
 ## Filesystem service and file API
 
 Messages from `filesystem/filesystem.proto` as embedded in
@@ -187,7 +209,7 @@ Behaviour:
 - **`wait()` does not replay consumed output.** The SDK handle buffers all
   output; here `next_event()` hands chunks to the caller and `wait()` only
   collects what is left, so output is held once.
-- **Not implemented in v0.1:** PTY, `StreamInput`, `Update`, directory
+- **Not implemented in v0.1:** PTY, `Update`, directory
   watching, signed file URLs, octet-stream and gzip uploads, sandbox health
   probing on transport errors, metrics, snapshots, fork, network updates,
   template builds, and the sync API.

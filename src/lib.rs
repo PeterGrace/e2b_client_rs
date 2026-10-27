@@ -6,7 +6,8 @@
 //! - **REST control plane** ([`Client`]): create, connect/resume, inspect,
 //!   list, pause, kill and extend sandboxes.
 //! - **envd process service** ([`Commands`]): start commands, stream their
-//!   stdout and stderr to an exit code, send stdin, signal, list processes.
+//!   stdout and stderr to an exit code, send stdin (one write at a time or
+//!   as an ordered [`InputStream`]), signal, list processes.
 //! - **envd filesystem service** ([`Filesystem`]): read and write files, list
 //!   directories, stat, make directories, move and remove.
 //!
@@ -48,6 +49,7 @@ mod error;
 mod filesystem;
 mod models;
 mod sandbox;
+mod stream_input;
 mod wire;
 
 pub use client::Client;
@@ -66,3 +68,4 @@ pub use models::{
     SandboxState,
 };
 pub use sandbox::Sandbox;
+pub use stream_input::{DEFAULT_STREAM_INPUT_TIMEOUT, InputStream, StreamInputOptions};
