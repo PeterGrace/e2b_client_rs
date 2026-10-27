@@ -4812,7 +4812,7 @@ plus the Step 1 unit tests. `src/error.rs`:
     }
 ```
 
-(`..Self::default()` fills every other field with its default, like `dataclasses.replace`.) Update `new`'s `# Returns` to "Parameters for `template` with nothing else set", and `Default`'s rustdoc to say it uses [`DEFAULT_TEMPLATE`], or [`DEFAULT_MCP_TEMPLATE`] once [`CreateSandboxParams::mcp`] is set. Then:
+(`..Self::default()` fills every other field with its default, like `dataclasses.replace`.) Update `new`'s `# Returns` to "Parameters for `template` with nothing else set", and `Default`'s rustdoc to say it uses [`DEFAULT_TEMPLATE`], or [`DEFAULT_MCP_TEMPLATE`] once [`CreateSandboxParams::mcp`] is set. Then replace the existing `template()` accessor (`src/models.rs:75`, which returns `&self.template`) with the version below, which resolves the optional template, and add `mcp` and `mcp_config` after it:
 
 ```rust
     /// The template ID or alias the sandbox is created from: the one given
