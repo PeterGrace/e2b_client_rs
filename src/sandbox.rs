@@ -63,11 +63,17 @@ impl FileUrlOptions {
 
     /// Makes the URL stop working this long after it is made. Only a
     /// secured sandbox (one with an envd access token, which every hosted
-    /// sandbox is) can sign an expiry; it is counted in whole seconds.
+    /// sandbox is) can sign an expiry.
+    ///
+    /// The expiry is counted in whole seconds, as in the SDKs: the URL
+    /// expires at the current Unix second plus `expires_in`'s whole
+    /// seconds, and any fraction of a second is dropped. Making the URL
+    /// fails with [`crate::Error::InvalidArgument`] if `expires_in` is
+    /// under one second, since that URL would already be expired.
     ///
     /// # Arguments
     ///
-    /// * `expires_in` - how long the URL stays valid.
+    /// * `expires_in` - how long the URL stays valid, at least one second.
     ///
     /// # Returns
     ///
@@ -130,18 +136,28 @@ fn file_signature(
     )
 }
 
-/// The Unix time, in whole seconds, `expires_in` from now.
+/// The Unix time, in whole seconds, `expires_in` from now: the current
+/// second plus `expires_in`'s whole seconds, which is the SDKs'
+/// `int(time.time()) + expiration_in_seconds`
+/// (`e2b/sandbox/signature.py:28-32`).
 ///
 /// # Errors
 ///
-/// [`Error::InvalidArgument`] if the system clock is before 1970 or the
-/// sum overflows.
+/// [`Error::InvalidArgument`] if `expires_in` is under one second (the URL
+/// would expire on arrival), the system clock is before 1970, or the sum
+/// overflows.
 fn expiration_from_now(expires_in: Duration) -> Result<u64> {
+    let seconds = expires_in.as_secs();
+    if seconds == 0 {
+        return Err(Error::InvalidArgument(
+            "a URL expiration must be at least one second".into(),
+        ));
+    }
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map_err(|_| Error::InvalidArgument("the system clock is before 1970".into()))?;
-    now.checked_add(expires_in)
-        .map(|expiry| expiry.as_secs())
+    now.as_secs()
+        .checked_add(seconds)
         .ok_or_else(|| Error::InvalidArgument("the URL expiration overflows".into()))
 }
 
@@ -307,7 +323,8 @@ impl Sandbox {
     /// # Errors
     ///
     /// [`crate::Error::InvalidArgument`] if an expiry is asked for on a
-    /// sandbox without an access token, or the system clock is before 1970;
+    /// sandbox without an access token, the expiry is under one second, or
+    /// the system clock is before 1970;
     /// [`crate::Error::InvalidConfig`] if the envd URL does not parse.
     ///
     /// # Examples
@@ -580,6 +597,36 @@ mod tests {
             ),
             "v1_Y0uzWP5ST4jxa8RLcFIf65h1K6NEbMc0oox+Mgq89DY"
         );
+    }
+
+    #[test]
+    fn expiration_is_whole_seconds_and_refuses_under_one_second() {
+        // Arrange
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock after 1970")
+            .as_secs();
+
+        // Act
+        let expiration =
+            expiration_from_now(Duration::from_millis(60_900)).expect("60.9 s expiration");
+        let rejected = [
+            expiration_from_now(Duration::ZERO),
+            expiration_from_now(Duration::from_millis(999)),
+            expiration_from_now(Duration::MAX),
+        ];
+
+        // Assert: the fraction is dropped, so 60.9 s is now + 60.
+        assert!(
+            (now + 60..=now + 61).contains(&expiration),
+            "{expiration} is not now + 60 s"
+        );
+        for result in rejected {
+            assert!(
+                matches!(result, Err(Error::InvalidArgument(_))),
+                "{result:?}"
+            );
+        }
     }
 
     #[test]

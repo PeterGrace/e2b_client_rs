@@ -2183,7 +2183,7 @@ fn file_signature(
 
 > **Corrected (issue #37, 2026-10-27).** The expiration is `u64`, not `i64`: it is Unix seconds after 1970, so it is never negative. An empty user is treated like no user in the URL (`effective_user(..).filter(|user| !user.is_empty())`), because both SDKs leave `username` out when it is empty (`py: sandbox/main.py:112`; `js: 6318`); the signature is the same either way. `file_url` also maps a URL that does not parse to `Error::InvalidConfig`, which the `download_url` rustdoc lists. Shipped code: `src/sandbox.rs`.
 
-`expiration_from_now(Duration) -> Result<u64>` uses `SystemTime::now().duration_since(UNIX_EPOCH)` plus the duration, and maps a pre-1970 clock or an overflow to `InvalidArgument`. Re-export `FileUrlOptions`.
+`expiration_from_now(Duration) -> Result<u64>` is the current Unix second (`SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs()`) plus the duration's whole seconds, the SDKs' `int(time.time()) + seconds`. It maps an expiry under one second, a pre-1970 clock or an overflow to `InvalidArgument`. (Corrected in the review of PR #48: adding the `Duration` before truncating could sign a URL that expires in the current second.) Re-export `FileUrlOptions`.
 
 - [ ] **Step 4: Live tests**
 

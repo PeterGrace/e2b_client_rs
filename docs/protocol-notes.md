@@ -308,8 +308,11 @@ leaves `/` alone and writes a space as `%20`. envd decodes both, and the
 signature is over the raw path, so neither changes it. The URL carries the
 signature, never the token, but it is a bearer credential until it expires.
 `EnvdClient` keeps the token as a `secrecy::SecretString`, so `Debug` output
-shows `[REDACTED]`. The expiry is counted in whole seconds (`expires_in`
-takes a `Duration`, and its sub-second part is truncated with the clock's).
+shows `[REDACTED]`. The expiry is counted in whole seconds, as in the SDKs: the current Unix
+second plus `expires_in`'s whole seconds (any fraction is dropped). An
+`expires_in` under one second is refused with `Error::InvalidArgument`,
+where the SDKs would sign a URL that is already expired (`0` is still an
+expiry in 2.61.0, `py: sandbox/signature.py:28-32`, `js: 1541`).
 Hosted envd accepted a multipart `POST` to an upload URL and
 served a download URL with no credentials live on 2026-10-27, and refused
 the download URL with its `signature` pair removed with a 4xx.
