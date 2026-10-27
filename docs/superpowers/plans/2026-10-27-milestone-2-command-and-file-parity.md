@@ -2189,8 +2189,9 @@ fn file_signature(
 
 - `clm_0065_download_url_fetches_without_credentials`: write `/tmp/shared.txt` = `"signed read"`; `reqwest::get(download_url(.., &FileUrlOptions::default().expires_in(60 s)))` gives status 200 and body `"signed read"`. Also check that the same URL with the `signature` pair removed is refused (a 4xx), which shows the signature is what grants access.
 
-> **Corrected (issue #37, 2026-10-27).** A `reqwest::Error`'s `Display` includes the request URL, so a failing `expect` would print the signed URL. Both live tests pass every `reqwest` error through `err.without_url()` (helper `strip_url` in `tests/live_files.rs`) before `expect`, and no assertion message includes a URL.
 - `clm_0064_upload_url_accepts_a_multipart_post`: POST `reqwest::multipart::Form::new().part("file", Part::bytes(b"signed write".to_vec()).file_name("up.txt"))` to `upload_url("/tmp/up.txt", ..)` with a plain `reqwest::Client`; the status is a success; then `files().read_to_string("/tmp/up.txt")` is `"signed write"`.
+
+> **Corrected (issue #37, 2026-10-27).** A `reqwest::Error`'s `Display` includes the request URL, so a failing `expect` would print the signed URL. Both live tests pass every `reqwest` error through `err.without_url()` (helper `strip_url` in `tests/live_files.rs`) before `expect`, and no assertion message includes a URL.
 
 - [ ] **Step 5: Docs, gates, live check, changelog, commit**
 
