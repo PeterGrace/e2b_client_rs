@@ -6,10 +6,10 @@ use std::collections::HashSet;
 use std::time::{Duration, Instant};
 
 use e2b_client::{
-    CommandOptions, EnvdVersion, Error, ListSandboxesParams, MetricsParams, SandboxInfo,
-    SandboxState, SortOrder,
+    ALL_TRAFFIC, CommandOptions, EnvdVersion, Error, ListSandboxesParams, MetricsParams,
+    NetworkConfig, SandboxInfo, SandboxState, SortOrder,
 };
-use live_support::{LiveSandbox, RUN_METADATA_KEY, client, params, poll_until, run_id};
+use live_support::{LiveSandbox, RUN_METADATA_KEY, client, http_reply, params, poll_until, run_id};
 
 /// A sandbox id that cannot exist.
 const MISSING_ID: &str = "i0000000000000000000z";
@@ -151,35 +151,21 @@ async fn clm_0011_auto_pause_pauses_at_timeout() {
 #[ignore = "live: run with `just test-live <target>`"]
 async fn clm_0012_internet_access_false_blocks_outbound() {
     // Arrange: a control sandbox proves the probe works when access is allowed.
-    // The probe must see an HTTP reply: hosted E2B completes the TCP handshake
-    // on the host even when egress is denied, so a bare connect proves nothing.
     let open = LiveSandbox::new().await;
     let closed = LiveSandbox::create(&params().allow_internet_access(false)).await;
-    let probe = r#"timeout 10 bash -c 'exec 3<>/dev/tcp/1.1.1.1/80
-printf "GET / HTTP/1.0\r\nHost: one.one.one.one\r\n\r\n" >&3
-read -r status <&3
-[[ $status == HTTP/* ]]'"#;
 
     // Act
-    let open_result = open
-        .commands()
-        .run(probe, &CommandOptions::default())
-        .await
-        .expect("open probe");
-    let closed_result = closed
-        .commands()
-        .run(probe, &CommandOptions::default())
-        .await
-        .expect("closed probe");
+    let open_reply = http_reply(&open, "1.1.1.1").await;
+    let closed_reply = http_reply(&closed, "1.1.1.1").await;
 
     // Assert
-    assert_eq!(
-        open_result.exit_code, 0,
-        "control sandbox got no HTTP reply from 1.1.1.1:80: {open_result:?}"
+    assert!(
+        open_reply,
+        "control sandbox got no HTTP reply from 1.1.1.1:80"
     );
-    assert_ne!(
-        closed_result.exit_code, 0,
-        "sandbox without internet access got an HTTP reply from 1.1.1.1:80: {closed_result:?}"
+    assert!(
+        !closed_reply,
+        "sandbox without internet access got an HTTP reply from 1.1.1.1:80"
     );
 }
 
@@ -696,5 +682,50 @@ async fn clm_0151_list_filters_by_template_and_start_time_and_orders() {
     assert!(
         !since_second.iter().any(|id| id == first_id),
         "{since_second:?}"
+    );
+}
+
+#[tokio::test]
+#[ignore = "live: run with `just test-live <target>`"]
+async fn clm_0143_create_network_allow_and_deny_lists_are_enforced() {
+    // Arrange: deny everything except 1.1.1.1.
+    let network = NetworkConfig::new()
+        .deny_out([ALL_TRAFFIC])
+        .allow_out(["1.1.1.1"]);
+    let sandbox = LiveSandbox::create(&params().network(network)).await;
+
+    // Act
+    let allowed = http_reply(&sandbox, "1.1.1.1").await;
+    let denied = http_reply(&sandbox, "1.0.0.1").await;
+
+    // Assert
+    assert!(allowed, "1.1.1.1 is in allow_out but gave no HTTP reply");
+    assert!(!denied, "1.0.0.1 is denied by ALL_TRAFFIC but replied");
+}
+
+#[tokio::test]
+#[ignore = "live: run with `just test-live <target>`"]
+async fn clm_0153_get_info_reports_network() {
+    // Arrange
+    let network = NetworkConfig::new()
+        .allow_out(["1.1.1.1"])
+        .dns_servers(["1.1.1.1"]);
+    let sandbox =
+        LiveSandbox::create(&params().allow_internet_access(false).network(network)).await;
+
+    // Act
+    let info = sandbox.get_info().await.expect("info");
+
+    // Assert
+    assert_eq!(info.allow_internet_access, Some(false), "{info:?}");
+    let network = info.network.expect("network in the detail");
+    assert!(
+        network.allow_out.iter().any(|target| target == "1.1.1.1"),
+        "{network:?}"
+    );
+    assert_eq!(
+        network.dns_servers.as_deref(),
+        Some(&["1.1.1.1".to_owned()][..]),
+        "{network:?}"
     );
 }
