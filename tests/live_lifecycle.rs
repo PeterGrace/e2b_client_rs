@@ -9,7 +9,10 @@ use e2b_client::{
     ALL_TRAFFIC, CommandOptions, EnvdVersion, Error, ListSandboxesParams, MetricsParams,
     NetworkConfig, NetworkRule, NetworkUpdate, SandboxInfo, SandboxState, SortOrder,
 };
-use live_support::{LiveSandbox, RUN_METADATA_KEY, client, http_reply, params, poll_until, run_id};
+use live_support::{
+    LiveSandbox, RUN_METADATA_KEY, client, http_reply, no_http_reply_twice, params, poll_until,
+    run_id,
+};
 
 /// A sandbox id that cannot exist.
 const MISSING_ID: &str = "i0000000000000000000z";
@@ -754,7 +757,7 @@ async fn clm_0144_update_network_replaces_egress_without_restart() {
         .await
         .expect("marker");
     assert!(
-        !http_reply(&sandbox, "1.1.1.1").await,
+        no_http_reply_twice(&sandbox, "1.1.1.1").await,
         "egress was open before any update"
     );
 
@@ -777,7 +780,9 @@ async fn clm_0144_update_network_replaces_egress_without_restart() {
         .await
         .expect("close egress");
     poll_until("egress to close", Duration::from_secs(30), || async move {
-        (!http_reply(sandbox_ref, "1.1.1.1").await).then_some(())
+        no_http_reply_twice(sandbox_ref, "1.1.1.1")
+            .await
+            .then_some(())
     })
     .await;
 

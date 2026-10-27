@@ -40,7 +40,11 @@ because the natural reading of an "update" is a merge.
 `deny_out([ALL_TRAFFIC])` closed egress again, and a file in `/dev/shm` was
 still there afterwards, so the sandbox was not restarted.
 
+After review (PR #78): `clm_0144` treats egress as closed only after two
+probes in a row get no reply (`live_support::no_http_reply_twice`), and passed
+again on hosted E2B with that check.
+
 ## Plan divergences
 
-None in the code. A dated correction at Task 5 records the extra tests and
-the module doc's wording. No later task names the new symbols.
+None in the library code. A dated correction at Task 5 records the extra
+tests, the module doc's wording and the two-probe check in `clm_0144`. No later task names the new symbols.

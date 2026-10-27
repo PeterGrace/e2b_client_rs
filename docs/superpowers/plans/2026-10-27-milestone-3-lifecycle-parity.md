@@ -1556,7 +1556,8 @@ git commit -m "feat: network settings at sandbox create"
 > **Corrected (issue #64, 2026-10-27).** What shipped matches the code below, with these additions; read `src/network.rs` and `tests/rest_network.rs`:
 > - **The module doc** also names `SandboxNetworkUpdateConfig` among the JSON shapes and cites `e2b/sandbox/sandbox_api.py:1128-1152` (`build_network_update_body`). The crate doc's feature list names `NetworkUpdate` next to `NetworkConfig`.
 > - **Extra tests:** mock tests `update_network_refused_by_the_api_is_an_api_error` (a 400, hosted E2B's answer to two rules for one host, is `Error::Api` with status and message) and `sandbox_update_network_puts_to_its_own_id` (`Sandbox::update_network` delegates); unit tests `update_sends_allow_internet_access_in_snake_case_next_to_camel_case_egress` and `update_debug_hides_rule_header_values`. The not-found test also checks the id `SandboxNotFound` carries.
-> - **Hosted E2B behaves as planned:** `clm_0144` passed as written (live, 2026-10-27). An update with only `allow_internet_access(true)` clears the create-time `deny_out`, and each update took effect by the first probe after the 204.
+> - **`clm_0144` checks "closed" on two probes in a row** (`live_support::no_http_reply_twice`), both before the first update and in the "egress to close" poll, so one transient failure doesn't pass for a deny rule (review of PR #78).
+> - **Hosted E2B behaves as planned:** `clm_0144` passed (live, 2026-10-27). An update with only `allow_internet_access(true)` clears the create-time `deny_out`, and each update took effect by the first probe after the 204.
 
 - [ ] **Step 1: Write the failing mock tests**
 
