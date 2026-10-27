@@ -25,9 +25,17 @@ test-live target:
     export E2B_TEST_RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)-{{target}}-$$"
     mkdir -p target/live-logs
     log="target/live-logs/${E2B_TEST_RUN_ID}.log"
+    # The first two lines say exactly which code produced this log.
+    # Outside a git checkout, or without git, both say `unknown` rather than lying.
+    {
+        echo "commit: $(git rev-parse --verify -q HEAD 2>/dev/null || echo unknown)"
+        if ! porcelain="$(git status --porcelain 2>/dev/null)"; then echo "dirty: unknown"
+        elif [ -n "$porcelain" ]; then echo "dirty: yes"
+        else echo "dirty: no"; fi
+    } | tee "$log"
     # --no-fail-fast: a failing binary must not stop the others from running.
     cargo test --no-fail-fast --test live_lifecycle --test live_commands --test live_files \
-        -- --ignored --test-threads=4 --show-output 2>&1 | tee "$log"
+        -- --ignored --test-threads=4 --show-output 2>&1 | tee -a "$log"
     status=${PIPESTATUS[0]}
     cargo test --test live_sweep -- --ignored --show-output 2>&1 | tee -a "$log"
     sweep_status=${PIPESTATUS[0]}
