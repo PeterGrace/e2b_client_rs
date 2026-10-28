@@ -216,7 +216,7 @@ async fn a_zero_request_timeout_in_the_config_means_no_limit() {
         .mount(&server)
         .await;
 
-    // Act: `list(path, 1, None)` until Task 5 changes the signature.
+    // Act: list with the default options (depth 1, configured timeout).
     let entries = sandbox.files().list("/w", &ListOptions::default()).await;
 
     // Assert: neither a deadline header nor a client-side timeout applied.
