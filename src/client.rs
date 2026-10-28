@@ -32,6 +32,10 @@ const HEADER_NEXT_TOKEN: &str = "x-next-token";
 /// (`e2b/api/client/api/sandboxes/post_v2_sandboxes.py:21`; JS
 /// `dist/index.js:5568`).
 const HEADER_IDEMPOTENCY_KEY: &str = "Idempotency-Key";
+/// What hosted E2B's 409 for a pause says when the sandbox is already paused
+/// (`Error pausing sandbox - sandbox '<id>' is already paused`, live
+/// 2026-10-28). Used only for a pause that asked for a mode (issue #81).
+const ALREADY_PAUSED: &str = "already paused";
 
 /// The `User-Agent` sent on every request.
 fn user_agent() -> String {
@@ -436,7 +440,8 @@ impl Client {
     ///
     /// # Returns
     ///
-    /// `true` if it was paused, `false` if it was already paused (HTTP 409).
+    /// `true` if it was paused, `false` if it was already paused (any HTTP
+    /// 409, as in the SDK).
     ///
     /// # Errors
     ///
@@ -460,16 +465,20 @@ impl Client {
     ///
     /// # Returns
     ///
-    /// `true` if it was paused, `false` if it was already paused (HTTP 409).
+    /// `true` if it was paused, `false` if it was already paused. Without a
+    /// mode any HTTP 409 means already paused, as in the SDK. With a mode,
+    /// only a 409 whose message says the sandbox "is already paused" does.
     ///
     /// # Errors
     ///
-    /// As [`Client::pause_sandbox`]. The API may refuse a filesystem-only
-    /// pause where the feature is unavailable; for filesystem-only snapshots
-    /// the SDK documents HTTP 400 (not enabled for the team) and 409 (the
-    /// node is too old). A 400 is an [`Error::Api`]. A 409 is read as
-    /// "already paused" and returns `Ok(false)`, because the SDK reads every
-    /// 409 from this route that way.
+    /// As [`Client::pause_sandbox`], and with a mode: an [`Error::Api`] with
+    /// status 409 for any other 409, which is the API refusing that mode
+    /// (for example `snapshot_filesystem_only_unsupported_node`, the node
+    /// predates filesystem-only snapshots). SDK 2.61 returns `false` for
+    /// every 409 (`e2b/sandbox_async/sandbox_api.py:421-423`); the crate
+    /// departs from it here so a refusal is not mistaken for a pause. A
+    /// filesystem-only pause refused for the team is an [`Error::Api`] with
+    /// status 400.
     ///
     /// [`SnapshotMode::Full`]: crate::SnapshotMode::Full
     /// [`SnapshotMode::Filesystem`]: crate::SnapshotMode::Filesystem
@@ -486,7 +495,14 @@ impl Client {
             .await?;
         match response.status() {
             StatusCode::NOT_FOUND => Err(Error::SandboxNotFound(sandbox_id.to_owned())),
-            StatusCode::CONFLICT => Ok(false),
+            // No mode: every 409 is "already paused", as in the SDK.
+            StatusCode::CONFLICT if body.memory.is_none() => Ok(false),
+            // A mode was asked: only the "already paused" message is; any
+            // other 409 is the API refusing that mode (issue #81).
+            StatusCode::CONFLICT => match api_error(response).await {
+                Error::Api { ref message, .. } if message.contains(ALREADY_PAUSED) => Ok(false),
+                error => Err(error),
+            },
             _ => ensure_success(response).await.map(|_| true),
         }
     }

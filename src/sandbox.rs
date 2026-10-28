@@ -611,7 +611,9 @@ impl Sandbox {
     ///
     /// # Returns
     ///
-    /// `true` if it was paused, `false` if it was already paused.
+    /// `true` if it was paused, `false` if it was already paused (see
+    /// [`Client::pause_sandbox_with`] for how a 409 is read when a mode is
+    /// set).
     ///
     /// # Errors
     ///

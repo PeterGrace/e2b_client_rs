@@ -419,18 +419,44 @@ async fn pause_sends_memory_from_the_mode() {
     assert!(client.pause_sandbox(SANDBOX_ID).await.expect("default"));
 }
 
+/// Hosted E2B's 409 for pausing a sandbox that is already paused (live,
+/// 2026-10-28), with the sandbox id it names.
+fn already_paused_body(id: &str) -> Value {
+    json!({
+        "code": 409,
+        "message": format!("Error pausing sandbox - sandbox '{id}' is already paused"),
+    })
+}
+
 #[tokio::test]
-async fn pause_with_maps_status_codes_as_pause_does() {
-    // Arrange: 409 is "already paused" for every mode, as in the SDK; 400
-    // (a refused filesystem-only pause) is an API error; 404 is not found.
+async fn a_moded_pause_reads_only_an_already_paused_409_as_false() {
+    // Arrange: per sandbox id, the answer the API gives.
     let server = MockServer::start().await;
-    for (id, status) in [("already", 409), ("refused", 400), ("missing", 404)] {
+    let answers = [
+        (
+            "already",
+            ResponseTemplate::new(409).set_body_json(already_paused_body("already")),
+        ),
+        (
+            "refused",
+            ResponseTemplate::new(409).set_body_json(json!({
+                "code": 409,
+                "message": "snapshot_filesystem_only_unsupported_node",
+            })),
+        ),
+        ("empty", ResponseTemplate::new(409)),
+        (
+            "disabled",
+            ResponseTemplate::new(400).set_body_json(
+                json!({"code": 400, "message": "snapshot_filesystem_only_disabled"}),
+            ),
+        ),
+        ("missing", ResponseTemplate::new(404)),
+    ];
+    for (id, template) in answers {
         Mock::given(method("POST"))
             .and(path(format!("/sandboxes/{id}/pause")))
-            .respond_with(
-                ResponseTemplate::new(status)
-                    .set_body_json(json!({"code": status, "message": "nope"})),
-            )
+            .respond_with(template)
             .expect(1)
             .mount(&server)
             .await;
@@ -441,18 +467,89 @@ async fn pause_with_maps_status_codes_as_pause_does() {
     // Act
     let already = client.pause_sandbox_with("already", &filesystem).await;
     let refused = client.pause_sandbox_with("refused", &filesystem).await;
+    let empty = client.pause_sandbox_with("empty", &filesystem).await;
+    let disabled = client.pause_sandbox_with("disabled", &filesystem).await;
     let missing = client.pause_sandbox_with("missing", &filesystem).await;
 
     // Assert
-    assert!(!already.expect("409 is already paused"));
+    assert!(!already.expect("an already-paused 409 is Ok(false)"));
     assert!(
-        matches!(refused, Err(Error::Api { status: 400, ref message, .. }) if message == "nope"),
+        matches!(refused, Err(Error::Api { status: 409, ref message, .. })
+            if message == "snapshot_filesystem_only_unsupported_node"),
         "{refused:?}"
+    );
+    assert!(
+        matches!(empty, Err(Error::Api { status: 409, .. })),
+        "a 409 without the message is a refusal: {empty:?}"
+    );
+    assert!(
+        matches!(disabled, Err(Error::Api { status: 400, .. })),
+        "{disabled:?}"
     );
     assert!(
         matches!(missing, Err(Error::SandboxNotFound(ref id)) if id == "missing"),
         "{missing:?}"
     );
+}
+
+#[tokio::test]
+async fn a_full_pause_also_reads_the_409_body() {
+    // Arrange: `Full` is a mode too, so it gets the same check.
+    let server = MockServer::start().await;
+    for (id, template) in [
+        (
+            "already",
+            ResponseTemplate::new(409).set_body_json(already_paused_body("already")),
+        ),
+        (
+            "refused",
+            ResponseTemplate::new(409).set_body_json(json!({"code": 409, "message": "busy"})),
+        ),
+    ] {
+        Mock::given(method("POST"))
+            .and(path(format!("/sandboxes/{id}/pause")))
+            .and(body_json(json!({"memory": true})))
+            .respond_with(template)
+            .expect(1)
+            .mount(&server)
+            .await;
+    }
+    let client = client_for(&server);
+    let full = PauseOptions::new().mode(SnapshotMode::Full);
+
+    // Act
+    let already = client.pause_sandbox_with("already", &full).await;
+    let refused = client.pause_sandbox_with("refused", &full).await;
+
+    // Assert
+    assert!(!already.expect("already paused"));
+    assert!(
+        matches!(refused, Err(Error::Api { status: 409, ref message, .. }) if message == "busy"),
+        "{refused:?}"
+    );
+}
+
+#[tokio::test]
+async fn a_pause_without_a_mode_reads_every_409_as_already_paused() {
+    // Arrange: SDK parity. Any 409, whatever its message, is `Ok(false)`.
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path(format!("/sandboxes/{SANDBOX_ID}/pause")))
+        .and(body_json(json!({})))
+        .respond_with(
+            ResponseTemplate::new(409).set_body_json(json!({"code": 409, "message": "busy"})),
+        )
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    // Act
+    let paused = client_for(&server)
+        .pause_sandbox_with(SANDBOX_ID, &PauseOptions::new())
+        .await;
+
+    // Assert
+    assert!(!paused.expect("SDK parity: 409 is already paused"));
 }
 
 #[tokio::test]

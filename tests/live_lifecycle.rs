@@ -527,6 +527,28 @@ async fn clm_0024_pause_paused_sandbox_is_false() {
 
 #[tokio::test]
 #[ignore = "live: run with `just test-live <target>`"]
+async fn clm_0171_moded_pause_of_a_paused_sandbox_is_false() {
+    // Arrange
+    let sandbox = LiveSandbox::create(&params().timeout(Duration::from_secs(120))).await;
+    assert!(sandbox.pause().await.expect("first pause"));
+
+    // Act: with a mode, the 409 body is read; hosted E2B's says "already
+    // paused", which must still be `false` rather than an error.
+    let second = sandbox
+        .client()
+        .pause_sandbox_with(
+            sandbox.sandbox_id(),
+            &PauseOptions::new().mode(SnapshotMode::Filesystem),
+        )
+        .await
+        .expect("a moded pause of a paused sandbox");
+
+    // Assert
+    assert!(!second);
+}
+
+#[tokio::test]
+#[ignore = "live: run with `just test-live <target>`"]
 async fn clm_0025_set_timeout_moves_end_at() {
     // Arrange: `Instant` is a monotonic clock, so the elapsed time below does
     // not depend on the local wall clock agreeing with the server's.
@@ -946,14 +968,13 @@ async fn clm_0146_filesystem_pause_cold_boots() {
     let sandbox = LiveSandbox::create(&params().timeout(Duration::from_secs(180))).await;
     write_markers(&sandbox).await;
 
-    // Act: hosted E2B may refuse a filesystem-only pause for the team (400,
-    // an error here) or the node (409, which reads as "already paused", so
-    // `false` on this running sandbox); that is an environment limit, to be
-    // recorded as such, not worked around.
+    // Act: hosted E2B may refuse a filesystem-only pause for the team (400)
+    // or the node (409, an error since issue #81); either is an environment
+    // limit, to be recorded as such, not worked around.
     let paused = sandbox
         .pause_with(&PauseOptions::new().mode(SnapshotMode::Filesystem))
         .await
-        .expect("filesystem pause (HTTP 400 means the team lacks it)");
+        .expect("filesystem pause (HTTP 400 or 409 means the team or node lacks it)");
     let resumed = sandbox
         .client()
         .connect_sandbox(sandbox.sandbox_id(), Some(Duration::from_secs(120)))
@@ -963,7 +984,7 @@ async fn clm_0146_filesystem_pause_cold_boots() {
     // Assert
     assert!(
         paused,
-        "a running sandbox's pause answered 409: the node refused a filesystem-only pause"
+        "a running sandbox's filesystem pause returned false"
     );
     assert!(
         !exists(&resumed, IN_MEMORY_MARKER).await,
