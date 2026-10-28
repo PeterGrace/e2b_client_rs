@@ -198,6 +198,7 @@ type's example. `missing_docs` (Task 12) keeps every public item documented.
 
 Before M4 the plan session counted 13 of 72 async functions. The examples
 that need a sandbox or the API are `no_run` (compiled by `cargo test`, never
-run); the pure-value ones (options, `ConnectionConfig`, `EnvdVersion`,
-`ConnectCode`, `CreateSandboxParams`, `OnTimeout`, `SortOrder`) run as
-doctests.
+run); the pure-value ones run as doctests. Task 14 added five of those
+(`ConnectionConfig`, `EnvdVersion`, `ConnectCode`, `OnTimeout`,
+`SortOrder`); the options types' and `CreateSandboxParams`'s running
+examples came with earlier tasks.
