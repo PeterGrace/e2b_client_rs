@@ -2,9 +2,9 @@
 
 Which tests prove each S4 wire claim (CLM-0067 to CLM-0116), CLM-0122
 (Debug redaction), CLM-0130 to CLM-0142, CLM-0152 (an S1 claim verified by
-tests), and CLM-0154 to CLM-0167, and CLM-0168, CLM-0169 and CLM-0172 (M4). The coordinator records each test in a row as `test`
-evidence in the claims ledger (Task 8): stance `supports`, or `refutes` for a
-test marked `#[ignore = "refutes CLM-NNNN: ..."]`.
+tests), CLM-0154 to CLM-0167, and, from M4, CLM-0168. The coordinator
+records each test in a row as `test` evidence in the claims ledger (Task 8):
+stance `supports`, or `refutes` for a test marked `#[ignore = "refutes CLM-NNNN: ..."]`.
 
 How to read it:
 
