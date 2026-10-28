@@ -23,14 +23,15 @@ live test of its own; the probe run is the evidence.
 ## What changed
 
 - `Pty::connect` rustdoc, `# Errors`: `not_found` when envd no longer knows
-  the process; a shell that has only just exited can still be attached, and
-  the stream's first event is its `PtyEvent::Exit`, as with the SDKs'
-  `pty.connect`, with the hosted window (attachable at 20 s, `not_found` by
-  30 s).
-- `Commands::connect` rustdoc, `# Errors`: the same correction, citing
-  the probe run (a `true` connected straight after its exit attached and
-  replayed `CommandEvent::Exit`) and pointing to `Pty::connect` for the
-  window.
+  the process; envd keeps an exited shell attachable for a short time
+  (tens of seconds on hosted E2B), and the stream's first event is its
+  `PtyEvent::Exit`, as with the Python SDK's `pty.connect`. The exact
+  window (attachable at 20 s, `not_found` by 30 s, one probe run) is in
+  `docs/protocol-notes.md`, not the rustdoc, because it is envd behaviour
+  rather than a crate guarantee (review on PR #111).
+- `Commands::connect` rustdoc, `# Errors`: the same correction, citing the
+  probe run (a `true` connected straight after its exit attached and
+  replayed `CommandEvent::Exit`).
 - Live test `clm_0178_pty_connect_to_exited_pid` in `tests/live_commands.rs`
   (and `PtyConnectOptions` added to that file's import). It pins the
   observed behaviour: the shell exits with code 3, then `connect` at once
