@@ -6,7 +6,7 @@ use std::collections::HashSet;
 use std::time::{Duration, Instant};
 
 use e2b_client::{
-    ALL_TRAFFIC, CommandOptions, ConnectOptions, EnvdVersion, Error, Lifecycle,
+    ALL_TRAFFIC, CommandOptions, ConnectOptions, EnvdVersion, Error, ForkOptions, Lifecycle,
     ListSandboxesParams, ListSnapshotsParams, MetricsParams, NetworkConfig, NetworkRule,
     NetworkUpdate, OnResume, OnTimeout, PauseOptions, Sandbox, SandboxInfo, SandboxState,
     SnapshotMode, SnapshotOptions, SnapshotPage, SortOrder, TimeoutAction,
@@ -1056,4 +1056,52 @@ async fn clm_0147_list_and_delete_snapshots() {
     assert!(listed(&by_name), "not listed by its name: {by_name:?}");
     assert!(deleted);
     assert!(!deleted_again);
+}
+
+#[tokio::test]
+#[ignore = "live: run with `just test-live <target>`"]
+async fn clm_0030_fork_starts_running_copies() {
+    // Arrange: a fork restores the source's memory, so `/tmp`, which the
+    // `base` template empties at every boot, keeps its file.
+    let source = LiveSandbox::new().await;
+    source
+        .files()
+        .write("/tmp/fork.txt", "from the source", None)
+        .await
+        .expect("write");
+    let options = ForkOptions::new().count(2).timeout(Duration::from_secs(60));
+
+    // Act: adopt every fork that started before asserting anything, so each
+    // is killed on drop even if another failed.
+    let results = source.fork(&options).await.expect("fork");
+    let (started, failed): (Vec<_>, Vec<_>) = results.into_iter().partition(Result::is_ok);
+    let forks: Vec<LiveSandbox> = started
+        .into_iter()
+        .map(|result| LiveSandbox::adopt(result.expect("partitioned as Ok")))
+        .collect();
+
+    // Assert
+    assert!(failed.is_empty(), "forks that failed to start: {failed:?}");
+    assert_eq!(forks.len(), 2);
+    for fork in &forks {
+        assert_ne!(fork.sandbox_id(), source.sandbox_id());
+        let text = fork
+            .files()
+            .read_to_string("/tmp/fork.txt", None)
+            .await
+            .expect("read in the fork");
+        assert_eq!(text, "from the source");
+        let info = fork.get_info().await.expect("fork info");
+        assert_eq!(info.state, SandboxState::Running);
+        // A fork inherits the source's metadata (hosted E2B, 2026-10-28), so
+        // the sandbox sweep finds a leaked fork by the run id too.
+        assert_eq!(
+            info.metadata.get(RUN_METADATA_KEY).map(String::as_str),
+            Some(run_id())
+        );
+    }
+    assert_eq!(
+        source.get_info().await.expect("source info").state,
+        SandboxState::Running
+    );
 }

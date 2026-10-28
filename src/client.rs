@@ -1,12 +1,12 @@
 //! The REST control-plane client: create, connect (resume), inspect, list,
-//! pause, kill, and extend sandboxes.
+//! pause, kill, extend, snapshot and fork sandboxes.
 
 use std::sync::Arc;
 use std::time::Duration;
 
 use reqwest::header::{HeaderMap, HeaderValue};
 use reqwest::{Method, RequestBuilder, StatusCode};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::config::ConnectionConfig;
 use crate::envd::json_message_or_text;
@@ -14,8 +14,8 @@ use crate::error::{Error, Result};
 use crate::lifecycle::{ConnectOptions, PauseOptions};
 use crate::metrics::{MetricsParams, SandboxMetrics};
 use crate::models::{
-    ConnectBody, CreateSandboxParams, ListSandboxesParams, PauseBody, RefreshBody, SandboxCreated,
-    SandboxInfo, SandboxPage, TimeoutBody,
+    ConnectBody, CreateSandboxParams, ForkOptions, ForkResultWire, ListSandboxesParams, PauseBody,
+    RefreshBody, SandboxCreated, SandboxInfo, SandboxPage, TimeoutBody,
 };
 use crate::network::NetworkUpdate;
 use crate::sandbox::Sandbox;
@@ -696,6 +696,127 @@ impl Client {
             return Ok(false);
         }
         ensure_success(response).await.map(|_| true)
+    }
+
+    /// Forks a running sandbox (`POST /sandboxes/{id}/fork`). The source is
+    /// briefly paused, snapshotted with its memory and resumed, keeping its
+    /// ID and expiry; every fork boots from that one snapshot, so each starts
+    /// from the source's memory and filesystem.
+    ///
+    /// # Arguments
+    ///
+    /// * `sandbox_id` - the sandbox to fork.
+    /// * `options` - the forks' timeout and count.
+    ///
+    /// # Returns
+    ///
+    /// One result per fork the API reports, in its order: a handle to a
+    /// running fork, or why that fork failed. Forks succeed or fail
+    /// independently. A per-fork error is [`Error::Api`] with the code and
+    /// message the API gave for that fork. A per-fork 404 stays an
+    /// [`Error::Api`], not [`Error::SandboxNotFound`]: it is about something
+    /// that fork needed, not the source. [`Error::is_not_found`] is still
+    /// `true` for it, as for any API 404, so check the source's existence
+    /// by the call's own `Err`, not by a fork's. An entry with neither a
+    /// sandbox nor an error is [`Error::Protocol`]. An entry that cannot be
+    /// decoded is [`Error::Decode`], or [`Error::Protocol`] naming the
+    /// sandbox when it has a `sandbox.sandboxID`, so a fork that may have
+    /// started can still be killed; either way the other entries are
+    /// unaffected. Every `Ok` fork is a billed sandbox: kill it when done.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::InvalidArgument`] for a count outside 1 to
+    /// [`MAX_FORK_COUNT`](crate::MAX_FORK_COUNT), before any request;
+    /// [`Error::SandboxNotFound`] for HTTP 404; [`Error::Api`] for other
+    /// non-2xx answers; [`Error::Decode`] for a body that is not a JSON
+    /// array; [`Error::Transport`] for connection failures.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use e2b_client::{Client, ForkOptions};
+    ///
+    /// # async fn demo(client: Client) -> e2b_client::Result<()> {
+    /// let forks = client
+    ///     .fork_sandbox("sandbox-id", &ForkOptions::new().count(2))
+    ///     .await?;
+    /// for fork in forks {
+    ///     match fork {
+    ///         Ok(sandbox) => println!("fork {}", sandbox.sandbox_id()),
+    ///         Err(error) => eprintln!("a fork failed to start: {error}"),
+    ///     }
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn fork_sandbox(
+        &self,
+        sandbox_id: &str,
+        options: &ForkOptions,
+    ) -> Result<Vec<Result<Sandbox>>> {
+        let body = options.body()?;
+        let response = self
+            .send_json(Method::POST, &["sandboxes", sandbox_id, "fork"], &body)
+            .await?;
+        // Each entry is decoded on its own, so one malformed entry does not
+        // hide the forks that did start (each a running, billed sandbox).
+        let entries: Vec<serde_json::Value> = parse_sandbox_response(response, sandbox_id).await?;
+        Ok(entries
+            .into_iter()
+            .map(|entry| self.fork_result(entry))
+            .collect())
+    }
+
+    /// One fork's outcome. An error wins over a sandbox, and an entry with
+    /// neither is an error, as in the SDK
+    /// (`e2b/sandbox_async/sandbox_api.py:474-493`).
+    ///
+    /// # Arguments
+    ///
+    /// * `entry` - one element of the fork response's array.
+    ///
+    /// # Returns
+    ///
+    /// The fork's handle.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::Protocol`] naming the sandbox for an entry that cannot be
+    /// decoded but has a `sandbox.sandboxID`, [`Error::Decode`] for any other
+    /// entry that is not a `SandboxForkResult`, [`Error::Api`] for a per-fork
+    /// error, [`Error::Protocol`] for an entry with neither field.
+    fn fork_result(&self, entry: serde_json::Value) -> Result<Sandbox> {
+        // `deserialize(&entry)` decodes from a borrow, so `entry` is still
+        // there to read the sandbox ID from when decoding fails.
+        let result = match ForkResultWire::deserialize(&entry) {
+            Ok(result) => result,
+            Err(error) => {
+                let started = entry
+                    .get("sandbox")
+                    .and_then(|sandbox| sandbox.get("sandboxID"))
+                    .and_then(serde_json::Value::as_str);
+                return Err(match started {
+                    // The fork may be running and billed: keep its ID so
+                    // the caller can kill it.
+                    Some(sandbox_id) => Error::Protocol(format!(
+                        "the fork result for sandbox {sandbox_id} could not be decoded \
+                         ({error}); if it started, kill it with `kill_sandbox`"
+                    )),
+                    None => Error::Decode(error),
+                });
+            }
+        };
+        match (result.sandbox, result.error) {
+            (_, Some(error)) => Err(Error::Api {
+                status: error.code,
+                message: error.message,
+            }),
+            (Some(created), None) => Sandbox::from_created(self.clone(), created),
+            (None, None) => Err(Error::Protocol(
+                "a fork result has neither a sandbox nor an error".into(),
+            )),
+        }
     }
 
     /// Builds a request to `api_url` plus the given path segments, each

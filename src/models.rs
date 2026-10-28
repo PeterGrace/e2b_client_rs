@@ -366,6 +366,131 @@ pub(crate) struct ConnectBody {
     pub(crate) memory: Option<bool>,
 }
 
+/// The most forks one request may ask for (`MAX_FORK_COUNT`,
+/// `e2b/sandbox/sandbox_api.py:81`).
+pub const MAX_FORK_COUNT: u32 = 20;
+
+/// Options for [`crate::Client::fork_sandbox`]: the forks' lifetime and how
+/// many to start. Unset fields are left out of the request, so the API's
+/// defaults apply (one fork, living 15 seconds, per
+/// `e2b/api/client/models/sandbox_fork_request.py:16-19`).
+///
+/// # Examples
+///
+/// ```
+/// use std::time::Duration;
+/// use e2b_client::ForkOptions;
+///
+/// let options = ForkOptions::new().count(2).timeout(Duration::from_secs(300));
+/// # let _ = options;
+/// ```
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct ForkOptions {
+    timeout: Option<Duration>,
+    count: Option<u32>,
+}
+
+impl ForkOptions {
+    /// Options with nothing set: the API's default count and timeout.
+    ///
+    /// # Returns
+    ///
+    /// Empty options.
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// The forks' lifetime, sent in whole seconds (any fraction is dropped,
+    /// as for the crate's other REST timeouts). A timeout under one second
+    /// is sent as `0`, as the SDK sends whatever integer it is given; what
+    /// the API does with `0` is not documented.
+    ///
+    /// # Arguments
+    ///
+    /// * `timeout` - the lifetime of each fork.
+    ///
+    /// # Returns
+    ///
+    /// The options, for chaining.
+    #[must_use]
+    pub fn timeout(mut self, timeout: Duration) -> Self {
+        self.timeout = Some(timeout);
+        self
+    }
+
+    /// How many forks to start, 1 to [`MAX_FORK_COUNT`]. All boot from one
+    /// snapshot of the source, taken once whatever the count. Checked by
+    /// [`crate::Client::fork_sandbox`], before any request.
+    ///
+    /// # Arguments
+    ///
+    /// * `count` - the number of forks.
+    ///
+    /// # Returns
+    ///
+    /// The options, for chaining.
+    #[must_use]
+    pub fn count(mut self, count: u32) -> Self {
+        self.count = Some(count);
+        self
+    }
+
+    /// The request body, after the SDK's count check
+    /// (`validate_fork_count`, `e2b/sandbox/sandbox_api.py:103-118`).
+    ///
+    /// # Returns
+    ///
+    /// The body, `{}` when nothing is set.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::InvalidArgument`] for a count outside 1 to [`MAX_FORK_COUNT`].
+    pub(crate) fn body(&self) -> Result<ForkBody> {
+        // A let chain: the block runs only when a count is set *and* it is
+        // out of range (`if count is not None and not 1 <= count <= 20`).
+        if let Some(count) = self.count
+            && !(1..=MAX_FORK_COUNT).contains(&count)
+        {
+            return Err(Error::InvalidArgument(format!(
+                "fork count must be between 1 and {MAX_FORK_COUNT} (got {count})"
+            )));
+        }
+        Ok(ForkBody {
+            timeout: self.timeout.map(|timeout| timeout.as_secs()),
+            count: self.count,
+        })
+    }
+}
+
+/// `SandboxForkRequest` body: `{timeout?, count?}`
+/// (`e2b/api/client/models/sandbox_fork_request.py:22-39`).
+#[derive(Debug, Serialize)]
+pub(crate) struct ForkBody {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    timeout: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    count: Option<u32>,
+}
+
+/// `SandboxForkResult`: one fork that started, or why it failed
+/// (`e2b/api/client/models/sandbox_fork_result.py:17-28`).
+#[derive(Debug, Deserialize)]
+pub(crate) struct ForkResultWire {
+    #[serde(default)]
+    pub(crate) sandbox: Option<SandboxCreated>,
+    #[serde(default)]
+    pub(crate) error: Option<ErrorBody>,
+}
+
+/// The E2B error object, `{code, message}`; other fields such as
+/// `error_code` are ignored (`e2b/api/client/models/error.py:26-28`).
+#[derive(Debug, Deserialize)]
+pub(crate) struct ErrorBody {
+    pub(crate) code: u16,
+    pub(crate) message: String,
+}
+
 /// The `Sandbox` model returned by create and connect.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -1010,6 +1135,47 @@ mod tests {
         assert!(minimal.envd_access_token.is_none());
         assert!(minimal.traffic_access_token.is_none());
         assert!(minimal.domain.is_none());
+    }
+
+    #[test]
+    fn fork_body_sends_only_what_is_set_in_whole_seconds() {
+        // Arrange
+        let cases = [
+            (ForkOptions::new(), serde_json::json!({})),
+            (ForkOptions::new().count(1), serde_json::json!({"count": 1})),
+            (
+                ForkOptions::new().count(MAX_FORK_COUNT),
+                serde_json::json!({"count": 20}),
+            ),
+            (
+                ForkOptions::new().timeout(Duration::from_millis(90_900)),
+                serde_json::json!({"timeout": 90}),
+            ),
+        ];
+
+        for (options, expected) in cases {
+            // Act
+            let body = serde_json::to_value(options.body().expect("valid")).expect("ser");
+
+            // Assert: 1 and 20 are the inclusive bounds, and a fraction of a
+            // second is dropped.
+            assert_eq!(body, expected, "{options:?}");
+        }
+    }
+
+    #[test]
+    fn fork_body_refuses_counts_outside_1_to_20_with_the_count() {
+        for count in [0, 21, u32::MAX] {
+            let error = ForkOptions::new()
+                .count(count)
+                .body()
+                .expect_err("invalid count");
+            assert!(
+                matches!(&error, Error::InvalidArgument(message)
+                    if message.contains("between 1 and 20") && message.contains(&count.to_string())),
+                "{count}: {error:?}"
+            );
+        }
     }
 
     #[test]

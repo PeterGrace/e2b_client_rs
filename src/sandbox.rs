@@ -18,7 +18,7 @@ use crate::error::{Error, Result};
 use crate::filesystem::{FILES_ROUTE, Filesystem};
 use crate::lifecycle::PauseOptions;
 use crate::metrics::{MetricsParams, SandboxMetrics};
-use crate::models::{SandboxCreated, SandboxInfo};
+use crate::models::{ForkOptions, SandboxCreated, SandboxInfo};
 use crate::network::NetworkUpdate;
 use crate::pty::Pty;
 use crate::snapshots::{ListSnapshotsParams, SnapshotInfo, SnapshotOptions, SnapshotPage};
@@ -644,6 +644,23 @@ impl Sandbox {
         // methods take `self` by value and `params` is only borrowed.
         let params = params.clone().sandbox_id(self.sandbox_id.as_str());
         self.client.list_snapshots(&params).await
+    }
+
+    /// Forks this sandbox. See [`Client::fork_sandbox`].
+    ///
+    /// # Arguments
+    ///
+    /// * `options` - the forks' timeout and count.
+    ///
+    /// # Returns
+    ///
+    /// One result per fork: a handle, or why that fork failed.
+    ///
+    /// # Errors
+    ///
+    /// As [`Client::fork_sandbox`].
+    pub async fn fork(&self, options: &ForkOptions) -> Result<Vec<Result<Sandbox>>> {
+        self.client.fork_sandbox(&self.sandbox_id, options).await
     }
 }
 
