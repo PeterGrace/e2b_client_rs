@@ -48,6 +48,7 @@ pub struct CommandOptions {
     user: Option<String>,
     stdin: bool,
     timeout: Option<Duration>,
+    request_timeout: RequestTimeout,
 }
 
 impl Default for CommandOptions {
@@ -58,6 +59,7 @@ impl Default for CommandOptions {
             user: None,
             stdin: false,
             timeout: Some(DEFAULT_COMMAND_TIMEOUT),
+            request_timeout: RequestTimeout::default(),
         }
     }
 }
@@ -138,6 +140,106 @@ impl CommandOptions {
     #[must_use]
     pub fn timeout(mut self, timeout: Option<Duration>) -> Self {
         self.timeout = no_limit_if_zero(timeout);
+        self
+    }
+
+    /// Bounds the wait until envd confirms the command started, for this
+    /// call only; `None` or zero for no limit. When it is not set, the
+    /// configured [`crate::ConnectionConfig::request_timeout`] applies. It
+    /// matches the SDKs' `request_timeout`
+    /// (`e2b/sandbox_async/commands/command.py:335-344`). After the start
+    /// event only [`CommandOptions::timeout`] bounds the stream.
+    ///
+    /// # Arguments
+    ///
+    /// * `timeout` - the bound on opening the stream.
+    ///
+    /// # Returns
+    ///
+    /// The options, for chaining.
+    #[must_use]
+    pub fn request_timeout(mut self, timeout: Option<Duration>) -> Self {
+        self.request_timeout = RequestTimeout::set(timeout);
+        self
+    }
+}
+
+/// Options for [`Commands::connect`]: the deadline of the attached stream,
+/// and the request timeout for the wait until envd confirms the attach. They
+/// match the SDKs' `commands.connect(pid, timeout=60, request_timeout=None)`
+/// (`e2b/sandbox_async/commands/command.py:346-350`).
+///
+/// # Examples
+///
+/// ```
+/// use std::time::Duration;
+/// use e2b_client::CommandConnectOptions;
+///
+/// // Follow a long-running process with no deadline, but give up if envd
+/// // does not confirm the attach within 10 s.
+/// let options = CommandConnectOptions::new()
+///     .timeout(None)
+///     .request_timeout(Some(Duration::from_secs(10)));
+/// # let _ = options;
+/// ```
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CommandConnectOptions {
+    timeout: Option<Duration>,
+    request_timeout: RequestTimeout,
+}
+
+impl Default for CommandConnectOptions {
+    fn default() -> Self {
+        Self {
+            timeout: Some(DEFAULT_COMMAND_TIMEOUT),
+            request_timeout: RequestTimeout::default(),
+        }
+    }
+}
+
+impl CommandConnectOptions {
+    /// The SDKs' defaults: a 60 s stream deadline
+    /// ([`DEFAULT_COMMAND_TIMEOUT`]) and the configured request timeout.
+    ///
+    /// # Returns
+    ///
+    /// The default options.
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Bounds how long the attached stream may stay open; `None` or zero for
+    /// no limit (the SDKs' `timeout=0`). Defaults to
+    /// [`DEFAULT_COMMAND_TIMEOUT`]. The deadline counts from the attach.
+    ///
+    /// # Arguments
+    ///
+    /// * `timeout` - the stream deadline.
+    ///
+    /// # Returns
+    ///
+    /// The options, for chaining.
+    #[must_use]
+    pub fn timeout(mut self, timeout: Option<Duration>) -> Self {
+        self.timeout = no_limit_if_zero(timeout);
+        self
+    }
+
+    /// Bounds the wait until envd confirms the attach, for this call only;
+    /// `None` or zero for no limit. When it is not set, the configured
+    /// [`crate::ConnectionConfig::request_timeout`] applies.
+    ///
+    /// # Arguments
+    ///
+    /// * `timeout` - the bound on opening the stream.
+    ///
+    /// # Returns
+    ///
+    /// The options, for chaining.
+    #[must_use]
+    pub fn request_timeout(mut self, timeout: Option<Duration>) -> Self {
+        self.request_timeout = RequestTimeout::set(timeout);
         self
     }
 }
@@ -288,7 +390,11 @@ impl Commands {
         };
         let mut headers = self.envd.user_headers(options.user.as_deref())?;
         headers.extend(keepalive_headers());
-        self.open("Start", &request, headers, options.timeout).await
+        let timeouts = StreamTimeouts {
+            stream: options.timeout,
+            request: options.request_timeout,
+        };
+        self.open("Start", &request, headers, timeouts).await
     }
 
     /// Starts `cmd` and waits for it to finish, collecting its output.
@@ -317,8 +423,8 @@ impl Commands {
     /// # Arguments
     ///
     /// * `pid` - the process ID.
-    /// * `timeout` - the stream deadline, or `None` (or a zero duration, the
-    ///   SDK's `timeout=0`) for no limit.
+    /// * `options` - the stream deadline (60 s by default, as in the SDKs)
+    ///   and the request timeout for the attach.
     ///
     /// # Returns
     ///
@@ -328,17 +434,41 @@ impl Commands {
     ///
     /// [`Error::Rpc`] with [`ConnectCode::NotFound`] if no such process, plus
     /// the errors of [`Commands::start`].
-    pub async fn connect(&self, pid: u32, timeout: Option<Duration>) -> Result<CommandHandle> {
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use e2b_client::{CommandConnectOptions, CommandOptions, Sandbox};
+    ///
+    /// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
+    /// let started = sandbox
+    ///     .commands()
+    ///     .start("sleep 5; echo done", &CommandOptions::default())
+    ///     .await?;
+    /// let pid = started.pid();
+    /// drop(started); // the process keeps running
+    /// let attached = sandbox
+    ///     .commands()
+    ///     .connect(pid, &CommandConnectOptions::default())
+    ///     .await?;
+    /// assert_eq!(attached.wait().await?.stdout, "done\n");
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn connect(
+        &self,
+        pid: u32,
+        options: &CommandConnectOptions,
+    ) -> Result<CommandHandle> {
         let request = ConnectRequest {
             process: ProcessSelector::Pid(pid),
         };
-        self.open(
-            "Connect",
-            &request,
-            keepalive_headers(),
-            no_limit_if_zero(timeout),
-        )
-        .await
+        let timeouts = StreamTimeouts {
+            stream: options.timeout,
+            request: options.request_timeout,
+        };
+        self.open("Connect", &request, keepalive_headers(), timeouts)
+            .await
     }
 
     /// Opens a `Start`/`Connect` stream and wraps it in a [`CommandHandle`].
@@ -347,10 +477,10 @@ impl Commands {
         method: &'static str,
         request: &Req,
         headers: HeaderMap,
-        timeout: Option<Duration>,
+        timeouts: StreamTimeouts,
     ) -> Result<CommandHandle> {
         let (pid, stream) =
-            open_process_stream(&self.envd, method, request, headers, timeout).await?;
+            open_process_stream(&self.envd, method, request, headers, timeouts).await?;
         Ok(CommandHandle {
             pid,
             stream,
@@ -566,6 +696,19 @@ impl Commands {
     }
 }
 
+/// The two bounds on a process stream: its own deadline, and the request
+/// timeout for the wait until envd confirms it with a start event. They are
+/// kept together so `open_process_stream` stays within five parameters.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct StreamTimeouts {
+    /// The stream deadline (`Connect-Timeout-Ms`), or `None` for no limit.
+    pub(crate) stream: Option<Duration>,
+    /// The bound on opening the stream: the call's override, or
+    /// `RequestTimeout::default()` for the configured one. `EnvdClient`
+    /// resolves it (`timeout_for`).
+    pub(crate) request: RequestTimeout,
+}
+
 /// Opens a `Start`/`Connect` stream and waits, within the request timeout,
 /// for the start event that carries the PID
 /// (`e2b/sandbox_async/commands/command.py:382-411`). Commands and PTY
@@ -577,7 +720,7 @@ impl Commands {
 /// * `method` - `"Start"` or `"Connect"`.
 /// * `request` - the request message.
 /// * `headers` - extra headers (user, keepalive).
-/// * `timeout` - the stream deadline, or `None` for no limit.
+/// * `timeouts` - the stream deadline and the bound on opening the stream.
 ///
 /// # Returns
 ///
@@ -593,13 +736,19 @@ pub(crate) async fn open_process_stream<Req: serde::Serialize>(
     method: &'static str,
     request: &Req,
     headers: HeaderMap,
-    timeout: Option<Duration>,
+    timeouts: StreamTimeouts,
 ) -> Result<(u32, ConnectStream<EventResponse>)> {
     // The async block's error type is inferred from `within_request_timeout`,
     // whose argument must yield the crate's `Result`.
-    envd.within_request_timeout(RequestTimeout::default(), async {
+    envd.within_request_timeout(timeouts.request, async {
         let mut stream: ConnectStream<EventResponse> = envd
-            .server_stream(process_pb::SERVICE, method, request, headers, timeout)
+            .server_stream(
+                process_pb::SERVICE,
+                method,
+                request,
+                headers,
+                timeouts.stream,
+            )
             .await?;
         let pid = stream
             .next()
@@ -734,5 +883,34 @@ impl CommandHandle {
     /// As [`Commands::kill`].
     pub async fn kill(&self) -> Result<bool> {
         self.commands.kill(self.pid).await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn connect_options_default_to_the_sdk_deadline() {
+        assert_eq!(
+            CommandConnectOptions::default().timeout,
+            Some(DEFAULT_COMMAND_TIMEOUT)
+        );
+        assert_eq!(
+            CommandConnectOptions::new(),
+            CommandConnectOptions::default()
+        );
+        assert_eq!(
+            CommandConnectOptions::default().request_timeout,
+            RequestTimeout::default(),
+            "unset: the configured request timeout applies"
+        );
+    }
+
+    #[test]
+    fn a_zero_connect_deadline_means_no_limit() {
+        let options = CommandConnectOptions::new().timeout(Some(Duration::ZERO));
+
+        assert_eq!(options.timeout, None);
     }
 }

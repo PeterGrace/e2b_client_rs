@@ -95,8 +95,8 @@ struct ReadmeDoctests;
 
 pub use client::Client;
 pub use commands::{
-    CommandEvent, CommandExit, CommandHandle, CommandOptions, CommandResult, Commands,
-    DEFAULT_COMMAND_TIMEOUT, ProcessInfo, Signal,
+    CommandConnectOptions, CommandEvent, CommandExit, CommandHandle, CommandOptions, CommandResult,
+    Commands, DEFAULT_COMMAND_TIMEOUT, ProcessInfo, Signal,
 };
 pub use config::{
     ConnectionConfig, ConnectionConfigBuilder, DEFAULT_DOMAIN, DEFAULT_REQUEST_TIMEOUT, ENVD_PORT,
@@ -119,7 +119,9 @@ pub use models::{
     SandboxInfo, SandboxPage, SandboxState, SortOrder,
 };
 pub use network::{ALL_TRAFFIC, NetworkConfig, NetworkInfo, NetworkRule, NetworkUpdate};
-pub use pty::{DEFAULT_PTY_TIMEOUT, Pty, PtyEvent, PtyHandle, PtyOptions, PtySize};
+pub use pty::{
+    DEFAULT_PTY_TIMEOUT, Pty, PtyConnectOptions, PtyEvent, PtyHandle, PtyOptions, PtySize,
+};
 pub use sandbox::{FileUrlOptions, Sandbox};
 pub use snapshots::{ListSnapshotsParams, SnapshotInfo, SnapshotOptions, SnapshotPage};
 pub use stream_input::{DEFAULT_STREAM_INPUT_TIMEOUT, InputStream, StreamInputOptions};

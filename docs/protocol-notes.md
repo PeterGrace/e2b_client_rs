@@ -234,7 +234,8 @@ Behaviour:
 |---|---|
 | Commands run as `/bin/bash -l -c <cmd>` with `envs`, `cwd`, `stdin` (default `false`) | `py: sandbox_async/commands/command.py:291-292, 320-330` |
 | Command stream default timeout 60 s, sent as the stream deadline | `py: sandbox_async/commands/command.py:218, 335-338` |
-| Opening the stream waits for the first event within the request timeout; it must be `start` and carries the pid | `py: sandbox_async/commands/command.py:382-411`; `py: envd/utils.py:27-41` |
+| Opening the stream waits for the first event within the call's request timeout (`CommandOptions::request_timeout` / `CommandConnectOptions::request_timeout`, else the configured one; `None` or zero for no limit); it must be `start` and carries the pid | `py: sandbox_async/commands/command.py:335-344, 382-411`; `py: envd/client_async/__init__.py:113-149`; `py: envd/utils.py:27-41` |
+| `connect(pid, timeout=60, request_timeout)`: the attach defaults to a 60 s stream deadline (`CommandConnectOptions::default()`) | `py: sandbox_async/commands/command.py:346-380` |
 | Output is accumulated from `data.stdout`/`data.stderr`; `end` gives `exit_code` and `error` | `py: sandbox_async/commands/command_handle.py:154-183` |
 | A stream that ends without an `end` event is an error | `py: sandbox_async/commands/command_handle.py:252-253` |
 | `kill(pid)` is `SendSignal(SIGKILL)`; `not_found` → `false` | `py: envd/rpc.py:208-231` |
@@ -275,9 +276,9 @@ through the same `open_process_stream` (`src/commands.rs`).
 | `PTY {size: PTY.Size {cols: uint32 = 1, rows: uint32 = 2}}`; `StartRequest.pty` is optional field 2, `stdin` optional field 4 | `py: envd/process/process_pb.py:18-80, 212-260` |
 | `create` sends `Start` with `cmd "/bin/bash"`, `args ["-i", "-l"]`, `envs`, `cwd`, `pty.size {cols, rows}` and no `stdin` field | `py: sandbox_async/commands/pty.py:166-185`; `js: 4682-4712` |
 | `TERM=xterm-256color`, `LANG=C.UTF-8` and `LC_ALL=C.UTF-8` are added to `envs` only when the caller did not set them | `py: sandbox_async/commands/pty.py:162-165` |
-| `create` sends the user header and `Keepalive-Ping-Interval: 50`; `connect` sends `Connect {process: {pid}}` with the keepalive header only; in the SDKs both default to a 60 s stream deadline (here `PtyOptions` defaults to it, and `Pty::connect` takes the deadline directly, so callers pass `Some(DEFAULT_PTY_TIMEOUT)` for the SDK value) | `py: sandbox_async/commands/pty.py:139-185, 207-234` |
+| `create` sends the user header and `Keepalive-Ping-Interval: 50`; `connect` sends `Connect {process: {pid}}` with the keepalive header only; in the SDKs both default to a 60 s stream deadline (here `PtyOptions` and `PtyConnectOptions` default to it) | `py: sandbox_async/commands/pty.py:139-185, 207-234` |
 | The deadline counts from when the stream opens. When a `Start` stream's deadline passes, the stream ends with `deadline_exceeded` and envd ends the shell: the pid leaves `List`, and `SendInput` answers `not_found` | observed on hosted E2B, 2026-10-27 (a 3 s PTY, checked 2 s after the deadline) |
-| Both wait for the opening `start` event within the request timeout, as commands do | `py: sandbox_async/commands/pty.py:187-199, 236-248` |
+| Both wait for the opening `start` event within the request timeout, the call's own when `PtyOptions`/`PtyConnectOptions::request_timeout` is set, as commands do | `py: sandbox_async/commands/pty.py:187-199, 236-248` |
 | Output arrives as `DataEvent.pty` bytes, next to `stdout`/`stderr` in the same oneof | `py: envd/process/process_pb.py:369-394`; `py: sandbox_async/commands/command_handle.py:169, 221-231` |
 | `send_stdin` is `SendInput` with `input.pty` bytes | `py: sandbox_async/commands/pty.py:85-111` |
 | `stream_input` is the `StreamInput` handle with the `pty` member | `py: sandbox_async/commands/pty.py:113-137` |

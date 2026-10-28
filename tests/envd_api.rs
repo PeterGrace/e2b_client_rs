@@ -10,8 +10,8 @@ use common::{
     sandbox_from_json, sandbox_json, sandbox_with_version, stream_response,
 };
 use e2b_client::{
-    CommandEvent, CommandOptions, ConnectCode, Error, FileOptions, FileType, ListOptions, Sandbox,
-    Signal, WriteOptions,
+    CommandConnectOptions, CommandEvent, CommandOptions, ConnectCode, Error, FileOptions, FileType,
+    ListOptions, Sandbox, Signal, WriteOptions,
 };
 use serde_json::{Value, json};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -499,7 +499,10 @@ async fn connect_to_running_process_by_pid() {
 
     let handle = sandbox
         .commands()
-        .connect(42, Some(Duration::from_secs(5)))
+        .connect(
+            42,
+            &CommandConnectOptions::new().timeout(Some(Duration::from_secs(5))),
+        )
         .await
         .expect("connect");
     let result = handle.wait().await.expect("wait");
@@ -1048,7 +1051,7 @@ async fn envd_requests_for_every_route(server: &MockServer, sandbox: &Sandbox) -
     let files = sandbox.files();
     // `let _ =` discards each call's result on purpose.
     let _ = commands.run("true", &CommandOptions::default()).await;
-    let _ = commands.connect(1, None).await;
+    let _ = commands.connect(1, &CommandConnectOptions::default()).await;
     let _ = commands.list().await;
     let _ = files.read("/a", &FileOptions::default()).await;
     let _ = files.write("/a", "x", &WriteOptions::default()).await;

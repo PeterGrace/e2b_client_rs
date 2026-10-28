@@ -8,7 +8,7 @@ use std::time::Duration;
 use bytes::Bytes;
 use reqwest::header::HeaderMap;
 
-use crate::commands::{CommandExit, Commands, open_process_stream};
+use crate::commands::{CommandExit, Commands, StreamTimeouts, open_process_stream};
 use crate::config::{RequestTimeout, no_limit_if_zero};
 use crate::envd::connect::{ConnectStream, Empty};
 use crate::envd::process_pb::{
@@ -106,6 +106,7 @@ pub struct PtyOptions {
     cwd: Option<String>,
     user: Option<String>,
     timeout: Option<Duration>,
+    request_timeout: RequestTimeout,
 }
 
 impl Default for PtyOptions {
@@ -115,6 +116,7 @@ impl Default for PtyOptions {
             cwd: None,
             user: None,
             timeout: Some(DEFAULT_PTY_TIMEOUT),
+            request_timeout: RequestTimeout::default(),
         }
     }
 }
@@ -190,6 +192,24 @@ impl PtyOptions {
         self
     }
 
+    /// Bounds the wait until envd confirms the shell started, for this call
+    /// only; `None` or zero for no limit. When it is not set, the configured
+    /// [`crate::ConnectionConfig::request_timeout`] applies. It matches the
+    /// SDKs' `request_timeout` (`e2b/sandbox_async/commands/pty.py:139-147`).
+    ///
+    /// # Arguments
+    ///
+    /// * `timeout` - the bound on opening the stream.
+    ///
+    /// # Returns
+    ///
+    /// The options, for chaining.
+    #[must_use]
+    pub fn request_timeout(mut self, timeout: Option<Duration>) -> Self {
+        self.request_timeout = RequestTimeout::set(timeout);
+        self
+    }
+
     /// The caller's environment plus the terminal defaults it did not set.
     fn envs_with_terminal_defaults(&self) -> HashMap<String, String> {
         let mut envs = self.envs.clone();
@@ -213,6 +233,83 @@ pub enum PtyEvent {
     Data(Bytes),
     /// The shell exited. No further events follow.
     Exit(CommandExit),
+}
+
+/// Options for [`Pty::connect`]: the deadline of the reattached session, and
+/// the request timeout for the wait until envd confirms the attach. They match
+/// the SDKs' `pty.connect(pid, timeout=60, request_timeout=None)`
+/// (`e2b/sandbox_async/commands/pty.py:207-212`).
+///
+/// # Examples
+///
+/// ```
+/// use std::time::Duration;
+/// use e2b_client::PtyConnectOptions;
+///
+/// let options = PtyConnectOptions::new()
+///     .timeout(Some(Duration::from_secs(600)))
+///     .request_timeout(Some(Duration::from_secs(10)));
+/// # let _ = options;
+/// ```
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PtyConnectOptions {
+    timeout: Option<Duration>,
+    request_timeout: RequestTimeout,
+}
+
+impl Default for PtyConnectOptions {
+    fn default() -> Self {
+        Self {
+            timeout: Some(DEFAULT_PTY_TIMEOUT),
+            request_timeout: RequestTimeout::default(),
+        }
+    }
+}
+
+impl PtyConnectOptions {
+    /// The default options: a stream deadline of [`DEFAULT_PTY_TIMEOUT`] and
+    /// the configured request timeout.
+    ///
+    /// # Returns
+    ///
+    /// The default options.
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Bounds the reattached session; `None` or zero for no limit. The
+    /// deadline counts from the attach.
+    ///
+    /// # Arguments
+    ///
+    /// * `timeout` - the stream deadline.
+    ///
+    /// # Returns
+    ///
+    /// The options, for chaining.
+    #[must_use]
+    pub fn timeout(mut self, timeout: Option<Duration>) -> Self {
+        self.timeout = no_limit_if_zero(timeout);
+        self
+    }
+
+    /// Bounds the wait until envd confirms the attach, for this call only;
+    /// `None` or zero for no limit. When it is not set, the configured
+    /// [`crate::ConnectionConfig::request_timeout`] applies.
+    ///
+    /// # Arguments
+    ///
+    /// * `timeout` - the bound on opening the stream.
+    ///
+    /// # Returns
+    ///
+    /// The options, for chaining.
+    #[must_use]
+    pub fn request_timeout(mut self, timeout: Option<Duration>) -> Self {
+        self.request_timeout = RequestTimeout::set(timeout);
+        self
+    }
 }
 
 /// The PTY service of one sandbox. Get it from [`crate::Sandbox::pty`].
@@ -286,7 +383,11 @@ impl Pty {
         };
         let mut headers = self.envd.user_headers(options.user.as_deref())?;
         headers.extend(keepalive_headers());
-        self.open("Start", &request, headers, options.timeout).await
+        let timeouts = StreamTimeouts {
+            stream: options.timeout,
+            request: options.request_timeout,
+        };
+        self.open("Start", &request, headers, timeouts).await
     }
 
     /// Attaches to a PTY session that is already running.
@@ -294,12 +395,8 @@ impl Pty {
     /// # Arguments
     ///
     /// * `pid` - the shell's process ID.
-    /// * `timeout` - the stream deadline, or `None` (or a zero duration, the
-    ///   SDK's `timeout=0`) for no limit. Unlike
-    ///   [`Pty::create`], there is no default here: pass
-    ///   `Some(DEFAULT_PTY_TIMEOUT)` for the SDKs' 60 s, as their
-    ///   `pty.connect` uses. Like [`crate::Commands::connect`], it takes the
-    ///   deadline directly rather than an options struct.
+    /// * `options` - the stream deadline and the request timeout for the
+    ///   attach.
     ///
     /// # Returns
     ///
@@ -309,17 +406,39 @@ impl Pty {
     ///
     /// [`Error::Rpc`] with [`crate::ConnectCode::NotFound`] if no such
     /// process, plus the errors of [`Pty::create`].
-    pub async fn connect(&self, pid: u32, timeout: Option<Duration>) -> Result<PtyHandle> {
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use e2b_client::{PtyConnectOptions, PtyOptions, PtySize, Sandbox};
+    ///
+    /// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
+    /// let first = sandbox
+    ///     .pty()
+    ///     .create(PtySize::new(80, 24), &PtyOptions::default())
+    ///     .await?;
+    /// let pid = first.pid();
+    /// drop(first); // the shell keeps running
+    /// let mut again = sandbox
+    ///     .pty()
+    ///     .connect(pid, &PtyConnectOptions::default())
+    ///     .await?;
+    /// again.send_stdin("exit\n").await?;
+    /// let exit = again.wait().await?;
+    /// assert_eq!(exit.exit_code, 0);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn connect(&self, pid: u32, options: &PtyConnectOptions) -> Result<PtyHandle> {
         let request = ConnectRequest {
             process: ProcessSelector::Pid(pid),
         };
-        self.open(
-            "Connect",
-            &request,
-            keepalive_headers(),
-            no_limit_if_zero(timeout),
-        )
-        .await
+        let timeouts = StreamTimeouts {
+            stream: options.timeout,
+            request: options.request_timeout,
+        };
+        self.open("Connect", &request, keepalive_headers(), timeouts)
+            .await
     }
 
     /// Opens a `Start`/`Connect` stream and wraps it in a [`PtyHandle`].
@@ -328,10 +447,10 @@ impl Pty {
         method: &'static str,
         request: &Req,
         headers: HeaderMap,
-        timeout: Option<Duration>,
+        timeouts: StreamTimeouts,
     ) -> Result<PtyHandle> {
         let (pid, stream) =
-            open_process_stream(&self.envd, method, request, headers, timeout).await?;
+            open_process_stream(&self.envd, method, request, headers, timeouts).await?;
         Ok(PtyHandle {
             pid,
             stream,
@@ -567,6 +686,20 @@ mod tests {
     fn options_default_to_the_sdk_deadline() {
         assert_eq!(PtyOptions::default().timeout, Some(DEFAULT_PTY_TIMEOUT));
         assert_eq!(DEFAULT_PTY_TIMEOUT, Duration::from_secs(60));
+    }
+
+    #[test]
+    fn connect_options_default_to_the_sdk_deadline() {
+        assert_eq!(
+            PtyConnectOptions::default().timeout,
+            Some(DEFAULT_PTY_TIMEOUT)
+        );
+        assert_eq!(PtyConnectOptions::new(), PtyConnectOptions::default());
+        assert_eq!(
+            PtyConnectOptions::default().request_timeout,
+            RequestTimeout::default(),
+            "unset: the configured request timeout applies"
+        );
     }
 
     #[test]

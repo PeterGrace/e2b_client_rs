@@ -11,7 +11,8 @@ use common::{
     stream_response,
 };
 use e2b_client::{
-    CommandOptions, ListOptions, PtyOptions, PtySize, StreamInputOptions, WatchOptions,
+    CommandConnectOptions, CommandOptions, ListOptions, PtyConnectOptions, PtyOptions, PtySize,
+    StreamInputOptions, WatchOptions,
 };
 use serde_json::json;
 use wiremock::matchers::{method, path};
@@ -104,7 +105,10 @@ async fn a_zero_command_connect_timeout_sends_no_deadline() {
     // Act
     let handle = sandbox
         .commands()
-        .connect(7, Some(Duration::ZERO))
+        .connect(
+            7,
+            &CommandConnectOptions::new().timeout(Some(Duration::ZERO)),
+        )
         .await
         .expect("connect");
     let result = handle.wait().await;
@@ -130,7 +134,7 @@ async fn a_zero_pty_connect_timeout_sends_no_deadline() {
     // Act
     let handle = sandbox
         .pty()
-        .connect(7, Some(Duration::ZERO))
+        .connect(7, &PtyConnectOptions::new().timeout(Some(Duration::ZERO)))
         .await
         .expect("connect");
     let exit = handle.wait().await;
