@@ -695,6 +695,11 @@ mod tests {
             Some(DEFAULT_PTY_TIMEOUT)
         );
         assert_eq!(PtyConnectOptions::new(), PtyConnectOptions::default());
+        assert_eq!(
+            PtyConnectOptions::default().request_timeout,
+            RequestTimeout::default(),
+            "unset: the configured request timeout applies"
+        );
     }
 
     #[test]

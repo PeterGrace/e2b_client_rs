@@ -3725,6 +3725,11 @@ In the `tests` module of `src/pty.rs`, add:
     fn connect_options_default_to_the_sdk_deadline() {
         assert_eq!(PtyConnectOptions::default().timeout, Some(DEFAULT_PTY_TIMEOUT));
         assert_eq!(PtyConnectOptions::new(), PtyConnectOptions::default());
+        assert_eq!(
+            PtyConnectOptions::default().request_timeout,
+            RequestTimeout::default(),
+            "unset: the configured request timeout applies"
+        );
     }
 ```
 
@@ -4243,6 +4248,11 @@ In `src/pty.rs`, the `tests` module: replace `options_default_to_the_sdk_deadlin
         assert_eq!(PtyOptions::default().timeout, None);
         assert_eq!(PtyConnectOptions::default().timeout, None);
         assert_eq!(PtyConnectOptions::new(), PtyConnectOptions::default());
+        assert_eq!(
+            PtyConnectOptions::default().request_timeout,
+            RequestTimeout::default(),
+            "unset: the configured request timeout applies"
+        );
         // The SDKs' value stays available for callers who want parity.
         assert_eq!(DEFAULT_PTY_TIMEOUT, Duration::from_secs(60));
     }
