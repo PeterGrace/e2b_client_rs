@@ -31,7 +31,8 @@ Plan: `docs/superpowers/plans/2026-10-27-milestone-3-lifecycle-parity.md`, Task 
   #667 to #671), CLM-0028 on #678, CLM-0150 on #680 (probably no
   `mcp-gateway` template), and 3 on new defects: N1, the template has no
   `/home/user` (both CLM-0146 tests), and N2, `GET /v2/sandboxes` ignores
-  `order`, `template` and `startedAfter` (CLM-0151).
+  `order`, `template` and `startedAfter` (CLM-0151). The coordinator filed
+  them as gfd/sandbawks #688 and #689, and the results link them.
 - Sweeps: 0 leftover sandboxes for every run id, the aborted first attempt's
   included; the snapshot and volume sweeps fail with 404 (routes missing),
   noted, not leaks.

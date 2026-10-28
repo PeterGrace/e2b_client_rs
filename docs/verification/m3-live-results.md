@@ -179,7 +179,14 @@ while the issue is open. These are CLM-0011, 0018, 0019, 0020, 0023, 0024,
 0027, 0043, 0046, 0049, 0055, 0062, 0066, 0129, 0144, 0145, the three volume
 tests, and `clm_0153_get_info_reports_lifecycle` and `_network`. M2 saw the
 same 14 M1 and M2 failures in at least two rounds. Every other failure was
-rerun until it passed or failed on something other than readiness.
+rerun until it passed or failed on something other than readiness. That
+includes CLM-0029 and CLM-0147, although their routes are missing (#668,
+#669): they failed with `SandboxNotFound`, which a missing route and a
+sandbox that really vanished both produce (a 404 on a sandbox route), so they
+were rerun once to rule out a sandbox lost under capacity pressure. R1 failed
+the same way, and a direct probe after R1 got a bare 404 from
+`GET /sandboxes/{id}/metrics` and `GET /snapshots` while the same sandbox's
+detail answered 200 (see "Known missing routes and fields").
 
 **Capacity.** As in M2, at `--test-threads=4` the run of record drained the
 two-sandbox warm pool at once, and the cold creates that followed could not
@@ -260,7 +267,7 @@ wrong. The last column quotes the last attempt.
 | clm_0058_make_dir_reports_creation | CLM-0058 | fail | R1 fail, R2 fail, R3 fail | pass | sandbawks ([sandbawks#678](https://git.gfpd.us/gfd/sandbawks/issues/678)); run of record, R1 and R2: capacity | `make_dir of an existing directory returned true` |
 | clm_0059_rename_moves_entry | CLM-0059 | pass | | pass | pass | |
 | clm_0060_remove_deletes_file_and_directory | CLM-0060 | fail | R1 fail, R2 fail | pass | sandbawks ([sandbawks#678](https://git.gfpd.us/gfd/sandbawks/issues/678)); run of record and R1: capacity | `write file: Envd { status: 404, message: "No such file or directory (os error 2)" }` |
-| clm_0061_user_selects_file_owner | CLM-0061 | fail | R1 fail | pass | sandbawks ([sandbawks#687](https://git.gfpd.us/gfd/sandbawks/issues/687), also [sandbawks#682](https://git.gfpd.us/gfd/sandbawks/issues/682) and N1); run of record: capacity | `left: ""` `right: "root"` |
+| clm_0061_user_selects_file_owner | CLM-0061 | fail | R1 fail | pass | sandbawks ([sandbawks#687](https://git.gfpd.us/gfd/sandbawks/issues/687), also [sandbawks#682](https://git.gfpd.us/gfd/sandbawks/issues/682) and N1, [sandbawks#688](https://git.gfpd.us/gfd/sandbawks/issues/688)); run of record: capacity | `left: ""` `right: "root"` |
 | clm_0062_write_files_writes_every_file | CLM-0062 | fail | | pass | sandbawks ([sandbawks#684](https://git.gfpd.us/gfd/sandbawks/issues/684), reached through [sandbawks#675](https://git.gfpd.us/gfd/sandbawks/issues/675)) | ``write_files: Envd { status: 400, message: "Failed to deserialize query string: missing field `path`" }`` |
 | clm_0063_watch_dir_reports_a_created_file | CLM-0063 | fail | R1 fail | pass | sandbawks ([sandbawks#664](https://git.gfpd.us/gfd/sandbawks/issues/664)); run of record: capacity | `watch_dir: Rpc { code: NotFound, message: "HTTP 404" }` |
 | clm_0064_upload_url_accepts_a_multipart_post | CLM-0064 | fail | R1 pass | pass | pass, but unsigned ([sandbawks#683](https://git.gfpd.us/gfd/sandbawks/issues/683)); run of record: capacity | |
@@ -271,14 +278,14 @@ wrong. The last column quotes the last attempt.
 | clm_0143_create_network_allow_and_deny_lists_are_enforced | CLM-0143 | fail | R1 fail | pass | missing feature ([sandbawks#667](https://git.gfpd.us/gfd/sandbawks/issues/667)); run of record: capacity | `1.0.0.1 is denied by ALL_TRAFFIC but replied` |
 | clm_0144_update_network_replaces_egress_without_restart | CLM-0144 | fail | | pass | missing feature and route ([sandbawks#667](https://git.gfpd.us/gfd/sandbawks/issues/667)) | `egress was open before any update` |
 | clm_0145_lifecycle_pause_with_full_snapshot_pauses_at_timeout | CLM-0145 | fail | | pass | missing feature ([sandbawks#665](https://git.gfpd.us/gfd/sandbawks/issues/665), also [sandbawks#679](https://git.gfpd.us/gfd/sandbawks/issues/679)) | `timed out after 120s waiting for lifecycle pause at timeout, with its pause mode` |
-| clm_0146_resume_restores_memory_or_reboots | CLM-0146 | fail | R1 fail, R2 fail | pass | sandbawks N1, before the pause is reached (behind it [sandbawks#679](https://git.gfpd.us/gfd/sandbawks/issues/679), [sandbawks#666](https://git.gfpd.us/gfd/sandbawks/issues/666)); run of record and R1: capacity | `touch: cannot touch '/home/user/on-disk': No such file or directory` (exit code 1) |
-| clm_0146_filesystem_pause_cold_boots | CLM-0146 | fail | R1 fail | pass | sandbawks N1, before the pause is reached (behind it [sandbawks#679](https://git.gfpd.us/gfd/sandbawks/issues/679)); run of record: capacity | `touch: cannot touch '/home/user/on-disk': No such file or directory` (exit code 1) |
+| clm_0146_resume_restores_memory_or_reboots | CLM-0146 | fail | R1 fail, R2 fail | pass | sandbawks N1, [sandbawks#688](https://git.gfpd.us/gfd/sandbawks/issues/688), before the pause is reached (behind it [sandbawks#679](https://git.gfpd.us/gfd/sandbawks/issues/679), [sandbawks#666](https://git.gfpd.us/gfd/sandbawks/issues/666)); run of record and R1: capacity | `touch: cannot touch '/home/user/on-disk': No such file or directory` (exit code 1) |
+| clm_0146_filesystem_pause_cold_boots | CLM-0146 | fail | R1 fail | pass | sandbawks N1, [sandbawks#688](https://git.gfpd.us/gfd/sandbawks/issues/688), before the pause is reached (behind it [sandbawks#679](https://git.gfpd.us/gfd/sandbawks/issues/679)); run of record: capacity | `touch: cannot touch '/home/user/on-disk': No such file or directory` (exit code 1) |
 | clm_0147_list_and_delete_snapshots | CLM-0147 | fail | R1 fail | pass | missing route ([sandbawks#669](https://git.gfpd.us/gfd/sandbawks/issues/669)) | `snapshot: SandboxNotFound("sbx-compound-pool-pc7rd")` |
 | clm_0148_volume_create_get_list_destroy | CLM-0148 | fail | | fail (environment limit, 403) | missing route ([sandbawks#671](https://git.gfpd.us/gfd/sandbawks/issues/671)) | `create: Api { status: 404, message: "HTTP 404" }` |
 | clm_0148_missing_volume_is_not_found_and_not_destroyed | CLM-0148 | pass | | pass | pass, but only because the whole route answers 404 ([sandbawks#671](https://git.gfpd.us/gfd/sandbawks/issues/671)) | |
 | clm_0149_volume_mount_persists_across_sandboxes | CLM-0149 | fail | | fail (environment limit, 403) | missing route ([sandbawks#671](https://git.gfpd.us/gfd/sandbawks/issues/671)) | `create volume: Api { status: 404, message: "HTTP 404" }` |
 | clm_0150_mcp_gateway_starts_and_exposes_url_and_token | CLM-0150 | fail | R1 fail | pass | sandbawks ([sandbawks#680](https://git.gfpd.us/gfd/sandbawks/issues/680), probably: no `mcp-gateway` template); the `mcp` create field is out of #673's scope and goes with [sandbawks#672](https://git.gfpd.us/gfd/sandbawks/issues/672) | `create sandbox: McpGateway("ERROR: sandbox will not become ready without intervention: the sandbox failed (action_failure)\n")` |
-| clm_0151_list_filters_by_template_and_start_time_and_orders | CLM-0151 | fail | R1 fail | pass | sandbawks N2 (with [sandbawks#676](https://git.gfpd.us/gfd/sandbawks/issues/676)) | `["sbx-91d5e81e4a28", "sbx-compound-pool-5g966", "sbx-compound-pool-sw4nn"]` (desc order assertion, `tests/live_lifecycle.rs:718`) |
+| clm_0151_list_filters_by_template_and_start_time_and_orders | CLM-0151 | fail | R1 fail | pass | sandbawks N2, [sandbawks#689](https://git.gfpd.us/gfd/sandbawks/issues/689) (with [sandbawks#676](https://git.gfpd.us/gfd/sandbawks/issues/676)) | `["sbx-91d5e81e4a28", "sbx-compound-pool-5g966", "sbx-compound-pool-sw4nn"]` (the ascending-order check, `tests/live_lifecycle.rs:718`); the run of record failed the descending-order check (`:714`) on `["sbx-8d6c8351e225", "sbx-8d790a089e63", "sbx-8d80e6cd0b92", "sbx-8d818c52d0df", "sbx-compound-pool-4mt6r", "sbx-compound-pool-5ssfx"]`, after both of the test's sandboxes were listed (the presence check at `:707` passed), so that was N2 too, not capacity |
 | clm_0153_get_info_reports_network | CLM-0153 | fail | | pass | missing feature ([sandbawks#667](https://git.gfpd.us/gfd/sandbawks/issues/667)) | `left: None` `right: Some(false)` (`allow_internet_access`) |
 | clm_0153_get_info_reports_lifecycle | CLM-0153 | fail | | pass | missing feature ([sandbawks#665](https://git.gfpd.us/gfd/sandbawks/issues/665)) | `lifecycle in the detail` (the detail has no `lifecycle`) |
 | clm_0153_get_info_reports_volume_mounts | CLM-0153 | fail | | fail (environment limit, 403) | missing route ([sandbawks#671](https://git.gfpd.us/gfd/sandbawks/issues/671)) | `create volume: Api { status: 404, message: "HTTP 404" }` |
@@ -302,7 +309,7 @@ capacity-masked test then failed on a defect.
   for the wrong reason: every volume route answers 404) and 17 fail. 12 hit a
   known missing route or ignored field (#665, #667 to #671), 2 more
   (CLM-0028, CLM-0150) an M1-era issue (#678, #680), and 3 are new:
-  CLM-0146 (2 tests, N1) and CLM-0151 (N2).
+  CLM-0146 (2 tests, N1, [sandbawks#688](https://git.gfpd.us/gfd/sandbawks/issues/688)) and CLM-0151 (N2, [sandbawks#689](https://git.gfpd.us/gfd/sandbawks/issues/689)).
 
 **Sweeps.** For the run of record and for each of R1, R2 and R3:
 
@@ -379,16 +386,17 @@ Every M3 failure in this group shows what its sub-issue describes:
   #673 puts the `mcp` create field out of its scope, with #672's secrets
   decision.
 
-### New sandbawks defects, for issues on gfd/sandbawks
+### New sandbawks defects, filed on gfd/sandbawks
 
 Seen through the crate on 2026-10-28. envd requests go to
 `https://49983-<id>.sb-ghlw.gfd.dev` with the `E2b-Sandbox-Id` and
 `E2b-Sandbox-Port` routing headers; API requests go to
 `https://api.sb-ghlw.gfd.dev` with `X-API-Key`. The requests are the ones
 the crate sends, as `docs/protocol-notes.md` describes them with their SDK
-citations (e2b 2.61.0); N2 was also probed directly.
+citations (e2b 2.61.0); N2 was also probed directly. The coordinator filed
+both under epic #673, as #688 and #689.
 
-**N1. The `compound-sandbox` template has no `/home/user`** (CLM-0146, both tests; also part of CLM-0061's failure).
+**N1. The `compound-sandbox` template has no `/home/user`** (CLM-0146, both tests; also part of CLM-0061's failure). Filed: [sandbawks#688](https://git.gfpd.us/gfd/sandbawks/issues/688), noting that it may belong to the template build rather than the gateway.
 - Client call: `create_sandbox(...)` on `compound-sandbox`, then
   `commands().run("touch /dev/shm/in-memory /home/user/on-disk && sync", &CommandOptions::default())`.
 - Request: `POST /process.Process/Start` with `cmd: "/bin/bash", args: ["-l",
@@ -411,15 +419,18 @@ citations (e2b 2.61.0); N2 was also probed directly.
   [sandbawks#666](https://git.gfpd.us/gfd/sandbawks/issues/666) for
   `memory: false` on connect) stay unseen.
 
-**N2. `GET /v2/sandboxes` ignores `order`, `template` and `startedAfter`** (CLM-0151).
+**N2. `GET /v2/sandboxes` ignores `order`, `template` and `startedAfter`** (CLM-0151). Filed: [sandbawks#689](https://git.gfpd.us/gfd/sandbawks/issues/689).
 - Client call: `list_sandboxes` with `.metadata(RUN_METADATA_KEY, run_id())`,
   `.template("compound-sandbox")` and `.order(SortOrder::Descending)`, then
   the same with `Ascending`, then with `.started_after(<second sandbox's
   startedAt>)`.
 - Request: `GET /v2/sandboxes?metadata=...&template=compound-sandbox&order=desc`
   (then `order=asc`, then `startedAfter=<isoformat time>`).
-- Response: the same list in the same order for `desc` and `asc`, so the
-  test's descending check fails (`tests/live_lifecycle.rs:718`, R1). A direct
+- Response: the same list in the same order for `desc` and `asc`, so one
+  of the test's two order checks fails, whichever way the server sorts: the
+  descending check (`tests/live_lifecycle.rs:714`) in the run of record, the
+  ascending check (`:718`) in R1. Both of the test's sandboxes were listed
+  each time (the presence check at `:707` passed). A direct
   probe after R1 (read-only) confirmed it with nothing of ours running:
   `order=asc`, `order=desc`, `template=compound-sandbox&order=desc`,
   `startedAfter=2030-01-01T00:00:00+00:00` and `template=nonexistent` each
