@@ -46,8 +46,10 @@ test-live-paced target gap="120" filter="":
     set -uo pipefail
     export E2B_TEST_TARGET="{{target}}"
     export E2B_TEST_RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)-{{target}}-paced-$$"
-    gap="{{gap}}"
-    filter="{{filter}}"
+    # quote() makes each a single-quoted shell word, so a `$(` or backtick in
+    # the filter is matched literally rather than run.
+    gap={{quote(gap)}}
+    filter={{quote(filter)}}
     mkdir -p target/live-logs
     log="target/live-logs/${E2B_TEST_RUN_ID}.log"
     {{just_executable()}} --justfile {{justfile()}} _stamp "$log"
@@ -99,7 +101,7 @@ test-live-paced target gap="120" filter="":
     cargo test --test live_sweep -- --ignored --show-output 2>&1 | tee -a "$log"
     sweep_status=${PIPESTATUS[0]}
     echo "summary: $(grep -c '^RESULT .* PASS$' "$log") pass, $(grep -c 'PASS-ON-RERUN' "$log") pass on rerun, $(grep -c '^RESULT .* FAIL$' "$log") fail, $(grep -c '^RESULT .* FAIL-READINESS (rerun)$' "$log") still not ready" | tee -a "$log"
-    echo "run log: $log"
+    echo "run log: $log" | tee -a "$log"
     # A failed sweep means leaked sandboxes, so it fails the run too.
     if [ "$status" -ne 0 ]; then exit "$status"; fi
     exit "$sweep_status"

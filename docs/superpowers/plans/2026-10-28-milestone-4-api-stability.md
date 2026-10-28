@@ -8144,6 +8144,11 @@ git commit -m "docs: an example on every public type and async method, enforced 
 > second commit; the log's `commit:` line names the recipe commit. The validation run is
 > `docs/verification/runs/20261028T152320Z-sandbawks-paced-608823.log` (three `PASS`; the snapshot and
 > volume sweeps fail with 404, so the recipe exits non-zero, as Task 17 expects).
+>
+> **Corrected (issue #57 review, 2026-10-28).** Step 2's code is fixed inline: `gap` and `filter` are
+> assigned with `{{quote(..)}}`, so a `$(` or backtick in a filter is matched literally rather than run,
+> and the `run log:` line is also written to the log (`| tee -a "$log"`), so Task 17 can wait for it in
+> the log file. `just test-live` is unchanged and still prints `run log:` to the terminal only.
 
 sandbawks' two-sandbox warm pool needs about 120 s to refill. `just test-live` runs four tests at a time with no gap, so on sandbawks most tests fail on readiness and M2 and M3 needed hand-paced rerun rounds (`docs/verification/m2-live-results.md:120-145`, `m3-live-results.md:167-203`). The new recipe does those rounds itself. Hosted runs keep `just test-live`.
 
@@ -8193,8 +8198,8 @@ test-live-paced target gap="120" filter="":
     set -uo pipefail
     export E2B_TEST_TARGET="{{target}}"
     export E2B_TEST_RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)-{{target}}-paced-$$"
-    gap="{{gap}}"
-    filter="{{filter}}"
+    gap={{quote(gap)}}
+    filter={{quote(filter)}}
     mkdir -p target/live-logs
     log="target/live-logs/${E2B_TEST_RUN_ID}.log"
     {{just_executable()}} --justfile {{justfile()}} _stamp "$log"
@@ -8246,7 +8251,7 @@ test-live-paced target gap="120" filter="":
     cargo test --test live_sweep -- --ignored --show-output 2>&1 | tee -a "$log"
     sweep_status=${PIPESTATUS[0]}
     echo "summary: $(grep -c '^RESULT .* PASS$' "$log") pass, $(grep -c 'PASS-ON-RERUN' "$log") pass on rerun, $(grep -c '^RESULT .* FAIL$' "$log") fail, $(grep -c '^RESULT .* FAIL-READINESS (rerun)$' "$log") still not ready" | tee -a "$log"
-    echo "run log: $log"
+    echo "run log: $log" | tee -a "$log"
     # A failed sweep means leaked sandboxes, so it fails the run too.
     if [ "$status" -ne 0 ]; then exit "$status"; fi
     exit "$sweep_status"

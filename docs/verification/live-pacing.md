@@ -35,8 +35,10 @@ Hosted E2B has no such limit and keeps `just test-live`.
    left as `FAIL` for a person to classify. A test that failed and was rerun
    has two lines: `FAIL-READINESS`, then the rerun's result.
 5. Reruns each readiness failure once, after another gap.
-6. Runs `live_sweep` for the run id and prints a summary line that counts the
-   final results.
+6. Runs `live_sweep` for the run id, then writes a summary line that counts
+   the final results and a last `run log: <path>` line. Both go to the
+   terminal and to the log, so a background run is finished when its log
+   prints `run log:`.
 
 The log is `target/live-logs/<run id>.log`, with each test's full output above
 its `RESULT` line. The run fails if any test ends `FAIL` or
