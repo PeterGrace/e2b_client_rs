@@ -3219,12 +3219,17 @@ Delete `connect_sandbox` (lines 204-240 after Task 1) and rename `connect_sandbo
     ///
     /// ```no_run
     /// use std::time::Duration;
-    /// use e2b_client::{Client, ConnectOptions};
+    /// use e2b_client::{Client, ConnectOptions, OnResume};
     ///
     /// # async fn demo(client: &Client) -> e2b_client::Result<()> {
+    /// // Resume from the memory snapshot, with ten minutes to live.
     /// let options = ConnectOptions::new().timeout(Duration::from_secs(600));
     /// let sandbox = client.connect_sandbox("sbx-1", &options).await?;
     /// println!("connected to {}", sandbox.sandbox_id());
+    /// // Or boot it cold from its filesystem.
+    /// let reboot = ConnectOptions::new().on_resume(OnResume::Reboot);
+    /// let rebooted = client.connect_sandbox("sbx-2", &reboot).await?;
+    /// println!("rebooted {}", rebooted.sandbox_id());
     /// # Ok(())
     /// # }
     /// ```
