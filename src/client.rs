@@ -1,5 +1,5 @@
 //! The REST control-plane client: create, connect (resume), inspect, list,
-//! pause, kill, extend, snapshot and fork sandboxes.
+//! pause, kill, extend, snapshot and fork sandboxes, and manage volumes.
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -20,6 +20,7 @@ use crate::models::{
 use crate::network::NetworkUpdate;
 use crate::sandbox::Sandbox;
 use crate::snapshots::{ListSnapshotsParams, SnapshotInfo, SnapshotOptions, SnapshotPage};
+use crate::volumes::{NewVolumeBody, Volume, VolumeInfo, VolumeWire};
 
 /// The header carrying the team API key (`e2b/api/__init__.py:251`; JS
 /// `dist/index.js:1528`).
@@ -817,6 +818,127 @@ impl Client {
                 "a fork result has neither a sandbox nor an error".into(),
             )),
         }
+    }
+
+    /// Creates a volume (`POST /volumes`), the SDK's `Volume.create`.
+    /// Volumes are persistent and billed: they outlive every sandbox that
+    /// mounts them until [`Client::destroy_volume`] removes them.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - the volume name, which
+    ///   [`CreateSandboxParams::volume_mount`] takes. The crate sends it as
+    ///   given; the API decides which names it accepts.
+    ///
+    /// # Returns
+    ///
+    /// The volume, with its content token.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::Api`] for a non-2xx answer: for example a name the API
+    /// refuses, or HTTP 403 `use of volumes is not enabled` from hosted E2B
+    /// for a team without volumes. [`Error::Decode`] for an unexpected body,
+    /// [`Error::Transport`] for connection failures.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use e2b_client::{Client, CreateSandboxParams};
+    ///
+    /// # async fn demo(client: Client) -> e2b_client::Result<()> {
+    /// let volume = client.create_volume("data").await?;
+    /// let params = CreateSandboxParams::new("base").volume_mount(volume.name(), "/mnt/data");
+    /// let sandbox = client.create_sandbox(&params).await?;
+    /// sandbox.files().write("/mnt/data/kept.txt", "outlives the sandbox", None).await?;
+    /// sandbox.kill().await?;
+    /// client.destroy_volume(volume.volume_id()).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn create_volume(&self, name: &str) -> Result<Volume> {
+        let response = self
+            .send_json(Method::POST, &["volumes"], &NewVolumeBody { name })
+            .await?;
+        let wire: VolumeWire = parse_success(response).await?;
+        Ok(wire.into())
+    }
+
+    /// Looks up a volume (`GET /volumes/{id}`), the SDK's `Volume.get_info`
+    /// and `Volume.connect`.
+    ///
+    /// # Arguments
+    ///
+    /// * `volume_id` - the volume ID ([`Volume::volume_id`]).
+    ///
+    /// # Returns
+    ///
+    /// The volume, with its content token.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::VolumeNotFound`] for HTTP 404, [`Error::Api`] for other
+    /// non-2xx answers (hosted E2B's volume IDs are UUIDs, and it answers
+    /// 400 `Invalid volume ID` for an ID of another shape),
+    /// [`Error::Decode`] for an unexpected body, [`Error::Transport`] for
+    /// connection failures.
+    pub async fn get_volume(&self, volume_id: &str) -> Result<Volume> {
+        let response = self
+            .request(Method::GET, &["volumes", volume_id])?
+            .send()
+            .await?;
+        if response.status() == StatusCode::NOT_FOUND {
+            return Err(Error::VolumeNotFound(volume_id.to_owned()));
+        }
+        let wire: VolumeWire = parse_success(response).await?;
+        Ok(wire.into())
+    }
+
+    /// Lists the team's volumes (`GET /volumes`), the SDK's `Volume.list`.
+    /// The API returns them in one response, without paging.
+    ///
+    /// # Returns
+    ///
+    /// Every volume's ID and name (no tokens); a `null` body reads as none,
+    /// as in the SDK.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::Api`] for a non-2xx answer, [`Error::Decode`] for an
+    /// unexpected body, [`Error::Transport`] for connection failures.
+    pub async fn list_volumes(&self) -> Result<Vec<VolumeInfo>> {
+        let response = self.request(Method::GET, &["volumes"])?.send().await?;
+        // `Option` so a `null` body decodes to `None` (`if res.parsed is
+        // None: return []`) instead of failing.
+        let volumes: Option<Vec<VolumeInfo>> = parse_success(response).await?;
+        Ok(volumes.unwrap_or_default())
+    }
+
+    /// Destroys a volume and its data (`DELETE /volumes/{id}`), the SDK's
+    /// `Volume.destroy`.
+    ///
+    /// # Arguments
+    ///
+    /// * `volume_id` - the volume ID ([`Volume::volume_id`]).
+    ///
+    /// # Returns
+    ///
+    /// `true` if it was destroyed, `false` if it did not exist (HTTP 404).
+    ///
+    /// # Errors
+    ///
+    /// [`Error::Api`] for a non-2xx answer other than 404 (hosted E2B answers
+    /// 400 `Invalid volume ID` for an ID that is not a UUID),
+    /// [`Error::Transport`] for connection failures.
+    pub async fn destroy_volume(&self, volume_id: &str) -> Result<bool> {
+        let response = self
+            .request(Method::DELETE, &["volumes", volume_id])?
+            .send()
+            .await?;
+        if response.status() == StatusCode::NOT_FOUND {
+            return Ok(false);
+        }
+        ensure_success(response).await.map(|_| true)
     }
 
     /// Builds a request to `api_url` plus the given path segments, each

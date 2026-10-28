@@ -18,6 +18,8 @@ use live_support::{
 
 /// A sandbox id that cannot exist.
 const MISSING_ID: &str = "i0000000000000000000z";
+/// A volume id that cannot exist, in the UUID shape hosted E2B requires.
+const MISSING_VOLUME_ID: &str = "00000000-0000-4000-8000-000000000000";
 
 /// Every sandbox listed for `params`, following every page.
 async fn list_all(params: &ListSandboxesParams) -> Vec<SandboxInfo> {
@@ -1103,5 +1105,132 @@ async fn clm_0030_fork_starts_running_copies() {
     assert_eq!(
         source.get_info().await.expect("source info").state,
         SandboxState::Running
+    );
+}
+
+#[tokio::test]
+#[ignore = "live: run with `just test-live <target>`"]
+async fn clm_0148_volume_create_get_list_destroy() {
+    // Arrange
+    let client = client();
+    let name = resource_name("managed");
+
+    // Act
+    let created = client.create_volume(&name).await.expect("create");
+    let fetched = client.get_volume(created.volume_id()).await.expect("get");
+    let listed = client.list_volumes().await.expect("list");
+    let destroyed = client
+        .destroy_volume(created.volume_id())
+        .await
+        .expect("destroy");
+    let after = client.get_volume(created.volume_id()).await;
+    let destroyed_again = client
+        .destroy_volume(created.volume_id())
+        .await
+        .expect("destroy again");
+
+    // Assert
+    assert_eq!(created.name(), name);
+    assert_eq!(fetched.volume_id(), created.volume_id());
+    assert_eq!(fetched.name(), name);
+    assert!(
+        listed
+            .iter()
+            .any(|volume| volume.volume_id == created.volume_id() && volume.name == name),
+        "{listed:?}"
+    );
+    assert!(destroyed);
+    assert!(matches!(after, Err(Error::VolumeNotFound(_))), "{after:?}");
+    assert!(!destroyed_again);
+}
+
+#[tokio::test]
+#[ignore = "live: run with `just test-live <target>`"]
+async fn clm_0148_missing_volume_is_not_found_and_not_destroyed() {
+    // Arrange: hosted E2B's volume IDs are UUIDs, and it answers 400
+    // `Invalid volume ID` for an ID of another shape, so the missing ID
+    // must be a well-formed UUID to reach the 404.
+    let client = client();
+
+    // Act
+    let fetched = client.get_volume(MISSING_VOLUME_ID).await;
+    let destroyed = client
+        .destroy_volume(MISSING_VOLUME_ID)
+        .await
+        .expect("destroy missing");
+
+    // Assert
+    assert!(
+        matches!(&fetched, Err(Error::VolumeNotFound(id)) if id == MISSING_VOLUME_ID),
+        "{fetched:?}"
+    );
+    assert!(!destroyed);
+}
+
+#[tokio::test]
+#[ignore = "live: run with `just test-live <target>`"]
+async fn clm_0149_volume_mount_persists_across_sandboxes() {
+    // Arrange: write through the mount in one sandbox, then kill it.
+    let client = client();
+    let volume = client
+        .create_volume(&resource_name("mounted"))
+        .await
+        .expect("create volume");
+    let mount = params().volume_mount(volume.name(), "/mnt/data");
+    {
+        let writer = LiveSandbox::create(&mount).await;
+        writer
+            .files()
+            .write("/mnt/data/kept.txt", "on the volume", None)
+            .await
+            .expect("write through the mount");
+        // Dropping `writer` at the end of this block kills it.
+    }
+
+    // Act
+    let reader = LiveSandbox::create(&mount).await;
+    let text = reader
+        .files()
+        .read_to_string("/mnt/data/kept.txt", None)
+        .await
+        .expect("read through the mount");
+
+    // Assert
+    assert_eq!(text, "on the volume");
+    drop(reader);
+    assert!(
+        client
+            .destroy_volume(volume.volume_id())
+            .await
+            .expect("destroy volume")
+    );
+}
+
+#[tokio::test]
+#[ignore = "live: run with `just test-live <target>`"]
+async fn clm_0153_get_info_reports_volume_mounts() {
+    // Arrange
+    let client = client();
+    let volume = client
+        .create_volume(&resource_name("info"))
+        .await
+        .expect("create volume");
+    let sandbox = LiveSandbox::create(&params().volume_mount(volume.name(), "/mnt/info")).await;
+
+    // Act
+    let info = sandbox.get_info().await.expect("info");
+
+    // Assert
+    let mounted = info
+        .volume_mounts
+        .iter()
+        .any(|mount| mount.name == volume.name() && mount.path == "/mnt/info");
+    assert!(mounted, "{:?}", info.volume_mounts);
+    drop(sandbox);
+    assert!(
+        client
+            .destroy_volume(volume.volume_id())
+            .await
+            .expect("destroy volume")
     );
 }

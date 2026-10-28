@@ -15,6 +15,9 @@
 //!   sandbox ([`SnapshotOptions`]), list ([`ListSnapshotsParams`]) and
 //!   delete snapshots, and start new sandboxes from one. Fork a running
 //!   sandbox into up to [`MAX_FORK_COUNT`] copies ([`ForkOptions`]).
+//!   Create, look up, list and destroy persistent volumes ([`Volume`],
+//!   [`VolumeInfo`]) and mount them into new sandboxes
+//!   ([`CreateSandboxParams::volume_mount`]).
 //! - **envd process service** ([`Commands`]): start commands, stream their
 //!   stdout and stderr to an exit code, send stdin (one write at a time or
 //!   as an ordered [`InputStream`]), signal, list processes.
@@ -73,6 +76,7 @@ mod pty;
 mod sandbox;
 mod snapshots;
 mod stream_input;
+mod volumes;
 mod wire;
 
 // Compiles the README's examples as doctests under `cargo test`, so they
@@ -110,3 +114,4 @@ pub use pty::{DEFAULT_PTY_TIMEOUT, Pty, PtyEvent, PtyHandle, PtyOptions, PtySize
 pub use sandbox::{FileUrlOptions, Sandbox};
 pub use snapshots::{ListSnapshotsParams, SnapshotInfo, SnapshotOptions, SnapshotPage};
 pub use stream_input::{DEFAULT_STREAM_INPUT_TIMEOUT, InputStream, StreamInputOptions};
+pub use volumes::{Volume, VolumeInfo, VolumeMount};

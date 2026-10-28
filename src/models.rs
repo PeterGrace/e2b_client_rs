@@ -15,6 +15,8 @@ use crate::lifecycle::{
     AutoResume, Lifecycle, LifecycleInfo, OnTimeout, SnapshotMode, deserialize_known_mode,
 };
 use crate::network::{NetworkConfig, NetworkInfo};
+use crate::volumes::VolumeMount;
+use crate::wire::deserialize_null_as_default;
 
 /// The template the SDKs use when none is given (`e2b/sandbox/main.py:32`).
 pub const DEFAULT_TEMPLATE: &str = "base";
@@ -43,6 +45,7 @@ pub struct CreateSandboxParams {
     allow_internet_access: Option<bool>,
     network: Option<NetworkConfig>,
     idempotency_key: Option<String>,
+    volume_mounts: Vec<VolumeMount>,
 }
 
 impl Default for CreateSandboxParams {
@@ -73,6 +76,7 @@ impl CreateSandboxParams {
             allow_internet_access: None,
             network: None,
             idempotency_key: None,
+            volume_mounts: Vec::new(),
         }
     }
 
@@ -249,6 +253,49 @@ impl CreateSandboxParams {
         self
     }
 
+    /// Mounts volume `name` at `path` in the sandbox; call again for more
+    /// mounts. The SDK takes the mounts as a dict keyed by path
+    /// (`e2b/sandbox_async/main.py:203, 218-227`), so a second mount at the
+    /// same path replaces the first, in the first one's place; this does the
+    /// same. Mounts are sent as `volumeMounts`, in order, and left out of
+    /// the body when there are none.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - the volume name ([`crate::Volume::name`]).
+    /// * `path` - where to mount it inside the sandbox. The crate sends it
+    ///   as given; the API decides which paths it accepts.
+    ///
+    /// # Returns
+    ///
+    /// The parameters, for chaining.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use e2b_client::CreateSandboxParams;
+    ///
+    /// let params = CreateSandboxParams::new("base")
+    ///     .volume_mount("data", "/mnt/data")
+    ///     .volume_mount("cache", "/mnt/cache");
+    /// # let _ = params;
+    /// ```
+    #[must_use]
+    pub fn volume_mount(mut self, name: impl Into<String>, path: impl Into<String>) -> Self {
+        let mount = VolumeMount::new(name, path);
+        // `iter_mut().find(..)` borrows the existing entry for that path, if
+        // any, so it can be overwritten in place (a Python dict assignment).
+        match self
+            .volume_mounts
+            .iter_mut()
+            .find(|existing| existing.path == mount.path)
+        {
+            Some(existing) => *existing = mount,
+            None => self.volume_mounts.push(mount),
+        }
+        self
+    }
+
     /// The idempotency key, if set and valid (`resolve_idempotency_key`,
     /// `e2b/retry.py:29-44`).
     ///
@@ -305,6 +352,7 @@ impl CreateSandboxParams {
             // `Option::filter` keeps the settings only when something is set,
             // so an empty `NetworkConfig` leaves `network` out of the body.
             network: self.network.as_ref().filter(|network| !network.is_empty()),
+            volume_mounts: &self.volume_mounts,
         })
     }
 }
@@ -331,6 +379,11 @@ pub(crate) struct NewSandboxBody<'a> {
     allow_internet_access: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     network: Option<&'a NetworkConfig>,
+    // `<[_]>::is_empty` is the slice method, so an empty list is left out,
+    // as the SDK does (`volume_mounts if volume_mounts else UNSET`,
+    // `e2b/sandbox_async/sandbox_api.py:252`).
+    #[serde(rename = "volumeMounts", skip_serializing_if = "<[_]>::is_empty")]
+    volume_mounts: &'a [VolumeMount],
 }
 
 /// `SandboxTimeoutRequest` body: the timeout in seconds.
@@ -591,6 +644,11 @@ pub struct SandboxInfo {
     /// only); a mode this crate does not know reads as `None`.
     #[serde(default, deserialize_with = "deserialize_known_mode")]
     pub pause_mode: Option<SnapshotMode>,
+    /// The volumes mounted into the sandbox, in detail and list entries
+    /// alike; missing or `null` reads as none, as the SDK's
+    /// `d.pop("volumeMounts", UNSET) or []`.
+    #[serde(default, deserialize_with = "deserialize_null_as_default")]
+    pub volume_mounts: Vec<VolumeMount>,
 }
 
 /// Sort order for [`ListSandboxesParams::order`]: by start time, across the
@@ -893,6 +951,39 @@ mod tests {
             json,
             serde_json::json!({"templateID": "base", "metadata": {}, "envVars": {}})
         );
+    }
+
+    #[test]
+    fn volume_mounts_keep_their_order_and_a_second_mount_at_a_path_replaces_the_first() {
+        // Arrange
+        let params = CreateSandboxParams::default()
+            .volume_mount("data", "/mnt/data")
+            .volume_mount("cache", "/mnt/cache")
+            .volume_mount("other", "/mnt/data");
+
+        // Act
+        let json = serde_json::to_value(params.body().expect("body")).expect("ser");
+
+        // Assert: like assigning a Python dict key again, the replacement
+        // keeps the first mount's position.
+        assert_eq!(
+            json["volumeMounts"],
+            serde_json::json!([
+                {"name": "other", "path": "/mnt/data"},
+                {"name": "cache", "path": "/mnt/cache"}
+            ])
+        );
+    }
+
+    #[test]
+    fn sandbox_info_reads_missing_or_null_volume_mounts_as_empty() {
+        let base = r#""templateID":"t","sandboxID":"s","startedAt":"2026-01-01T00:00:00Z",
+            "endAt":"2026-01-01T00:05:00Z","state":"running""#;
+        for extra in ["", r#","volumeMounts":null"#] {
+            let info: SandboxInfo =
+                serde_json::from_str(&format!("{{{base}{extra}}}")).expect("deserialize");
+            assert!(info.volume_mounts.is_empty(), "{extra}");
+        }
     }
 
     #[test]

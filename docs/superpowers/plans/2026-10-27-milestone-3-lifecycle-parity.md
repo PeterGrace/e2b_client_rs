@@ -4039,6 +4039,14 @@ git commit -m "feat: fork a sandbox"
 - Modify: `tests/live_sweep.rs` (destroy the run's volumes), `tests/live_lifecycle.rs`
 - Modify: `docs/protocol-notes.md` (new section "Volumes"), `docs/verification/s4-evidence-map.md`
 
+> **Corrected (issue #69, 2026-10-27).** What shipped differs from the steps below in these ways; the sweep code is fixed inline.
+> - **Hosted E2B has volumes disabled for the team.** `POST /volumes` answers 403 `use of volumes is not enabled` (live, 2026-10-28 UTC, run `dev-20261028T005114Z-2457940`), so `clm_0148_volume_create_get_list_destroy`, `clm_0149_volume_mount_persists_across_sandboxes` and `clm_0153_get_info_reports_volume_mounts` fail at their first call, before any sandbox or volume exists. As Step 5 says, the task finished with the mock tests, and CLM-0148, CLM-0149 and the mounts part of CLM-0153 stay `not_enough_info` until volumes are enabled. Task 12 records the three as an environment limit. `GET /volumes` still answers 200 `[]`, so the volume sweep runs and reports 0.
+> - **Hosted E2B's volume IDs are UUIDs.** A missing volume with a UUID-shaped ID is 404 `Volume not found` on get and destroy; an ID of another shape is 400 `Invalid volume ID`, an `Error::Api` (the SDK also only maps 404 to `VolumeNotFoundException`). An extra live test, `clm_0148_missing_volume_is_not_found_and_not_destroyed`, passes on hosted with `00000000-0000-4000-8000-000000000000`; it needs no volume. The rustdoc of `get_volume` and `destroy_volume` names the 400, and `create_volume`'s the 403.
+> - **Whether hosted E2B refuses to destroy a mounted volume is still unknown**, since no volume could be created. The live tests drop the sandbox before `destroy_volume` as planned, and the volume sweep calls `kill_leftover_sandboxes(&client)` first, as the snapshot sweep does (no retry loop: add one, like `delete_when_unused`, if a live run shows the destroy refused).
+> - **A second `volume_mount` at the same path replaces the first, in its place.** The SDK takes the mounts as a dict keyed by path (`py: sandbox_async/main.py:203, 218-227`), so one path holds one mount; the plan's `push` would have sent both.
+> - `SandboxInfo::volume_mounts` reads `null` as empty (`deserialize_null_as_default`, from `src/wire.rs`), as the SDK's `d.pop("volumeMounts", UNSET) or []`. The mock tests use `common::detail_json` for the detail and list entries.
+> - Extra tests beyond the plan: `create_volume_refused_is_an_api_error`, `get_volume_refused_is_an_api_error_not_not_found`, `list_volumes_reads_a_null_body_as_none_and_maps_errors` and `get_info_without_volume_mounts_reads_none` in `tests/rest_volumes.rs`; three `src/volumes.rs` unit tests; `volume_mounts_keep_their_order_and_a_second_mount_at_a_path_replaces_the_first` and `sandbox_info_reads_missing_or_null_volume_mounts_as_empty` in `src/models.rs`; `VolumeNotFound` in `is_not_found_covers_each_family`. `create_sends_volume_mounts_and_info_reads_them` sends two mounts, to pin their order. Read `src/volumes.rs`, `tests/rest_volumes.rs`, `tests/live_sweep.rs` and `tests/live_lifecycle.rs` for the shipped code.
+
 - [ ] **Step 1: Write the failing mock tests**
 
 `tests/rest_volumes.rs`:
@@ -4522,6 +4530,7 @@ Expected: PASS.
 #[ignore = "live: run with `just test-live <target>`"]
 async fn sweep_leftover_volumes_of_this_run() {
     let client = client();
+    kill_leftover_sandboxes(&client).await;
     let marker = resource_name("");
     let leftovers: Vec<String> = client
         .list_volumes()
@@ -5108,7 +5117,7 @@ git commit -m "feat: MCP gateway at sandbox create, mcp_url and mcp_token"
 - [ ] **Step 1: Run the full suite on the merged main**
 
 Run: `just test-live hosted`
-Expected: the log starts with `commit:` and `dirty: no`, then one result line per `clm_*` test. That is 57 from M1 and M2, plus M3's 17 (74 in all): `clm_0028`, `0029`, `0030` (snapshot and fork, 2), `0143`, `0144`, `0145`, `0146` (2), `0147`, `0148`, `0149`, `0150`, `0151` and `0153` (3: network, lifecycle, mounts). Then come the three sweep lines (sandboxes, snapshots, volumes). The earlier milestones' tests rerun as a regression check.
+Expected: the log starts with `commit:` and `dirty: no`, then one result line per `clm_*` test. That is 57 from M1 and M2, plus M3's 18 (75 in all): `clm_0028`, `0029`, `0030` (snapshot and fork, 2), `0143`, `0144`, `0145`, `0146` (2), `0147`, `0148` (2: managed, missing; corrected, issue #69), `0149`, `0150`, `0151` and `0153` (3: network, lifecycle, mounts). Then come the three sweep lines (sandboxes, snapshots, volumes). The earlier milestones' tests rerun as a regression check.
 
 - [ ] **Step 2: Check for leaks, secrets and the stamp**
 
