@@ -1822,10 +1822,11 @@ git commit -m "feat: update_network on a running sandbox"
 - Create: `tests/rest_lifecycle.rs`
 - Modify: `tests/live_lifecycle.rs`, `docs/protocol-notes.md` ("REST endpoints": "Create body", "Create lifecycle", "Idempotency key", "Detail fields"), `docs/verification/s4-evidence-map.md`
 
-> **Corrected (issue #65, 2026-10-27).** What shipped differs from the steps below in four ways; the code blocks are fixed inline where they are copied from.
+> **Corrected (issue #65, 2026-10-27).** What shipped differs from the steps below in five ways; the code blocks are fixed inline where they are copied from.
 > - `create_sandbox` checks the idempotency key **before** the lifecycle, as the SDK does (`py: sandbox_async/sandbox_api.py:228, 232`), so a request with both wrong reports the key.
 > - `checked_idempotency_key` counts the length in characters (`chars().count()`, as Python's `len`) and checks it before the character set, with one message for each, as `py: retry.py:37-44` does.
 > - Hosted E2B leaves `pauseMode` out of the detail while the sandbox runs and adds it only once the pause has finished, which can be a poll after `state` turns `paused` (live, 2026-10-27; `py: api/client/models/sandbox_detail.py:44-47` says the same). `clm_0145` therefore polls until the state is paused **and** `pause_mode` is set; the first version, polling on the state alone, failed with `pause_mode: None`.
+> - `TimeoutAction` derives `Default` (`Unknown`), and `LifecycleInfo::on_timeout` has `#[serde(default, deserialize_with = "deserialize_action_or_unknown")]`, so a `lifecycle` whose `onTimeout` is missing or `null` reads as `Unknown` instead of failing `get_info` (PR #79 review).
 > - The `SandboxDetail` helper is `common::detail_json(extra)` (moved from `tests/rest_network.rs` into `tests/common/mod.rs`), and `tests/rest_lifecycle.rs` uses it instead of the inline `detail` closure. Later tasks that need a detail should use it too.
 >
 > Extra tests beyond the plan: `pause_with_a_full_snapshot_sends_auto_pause_memory_true`, `the_idempotency_key_is_checked_before_the_lifecycle`, `get_info_without_lifecycle_fields_reads_none`, and in `src/models.rs` `auto_pause_is_shorthand_for_the_lifecycle_on_timeout` and the two `idempotency_key_*` unit tests. Read `src/lifecycle.rs`, `src/models.rs` and `tests/rest_lifecycle.rs` for the shipped code.

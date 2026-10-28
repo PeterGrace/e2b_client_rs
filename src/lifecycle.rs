@@ -203,7 +203,10 @@ pub(crate) struct AutoResume {
 
 /// The timeout action a sandbox reports (`SandboxLifecycle.onTimeout`,
 /// `e2b/api/client/models/sandbox_lifecycle.py:44-46`).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+///
+/// The default is [`TimeoutAction::Unknown`], which is what a missing or
+/// `null` `onTimeout` reads as.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Deserialize)]
 #[serde(rename_all = "lowercase")]
 #[non_exhaustive]
 pub enum TimeoutAction {
@@ -211,9 +214,11 @@ pub enum TimeoutAction {
     Kill,
     /// Paused at the timeout.
     Pause,
-    /// An action this version of the crate does not know.
-    // `serde(other)` maps any other string here instead of failing.
+    /// An action this version of the crate does not know, or none reported.
+    // `serde(other)` maps any other string here instead of failing, and
+    // `#[default]` makes this the value `Default::default()` returns.
     #[serde(other)]
+    #[default]
     Unknown,
 }
 
@@ -225,11 +230,35 @@ pub enum TimeoutAction {
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
 pub struct LifecycleInfo {
-    /// What happens at the timeout.
+    /// What happens at the timeout; [`TimeoutAction::Unknown`] when the API
+    /// leaves it out or sends `null`.
+    #[serde(default, deserialize_with = "deserialize_action_or_unknown")]
     pub on_timeout: TimeoutAction,
     /// Whether activity resumes the paused sandbox.
     #[serde(default)]
     pub auto_resume: bool,
+}
+
+/// Reads `onTimeout`, treating `null` as [`TimeoutAction::Unknown`], so a
+/// lifecycle without an action does not fail the whole detail. (A missing
+/// field never reaches this function: `#[serde(default)]` covers it.)
+///
+/// # Arguments
+///
+/// * `deserializer` - serde's source for the field.
+///
+/// # Returns
+///
+/// The action, or [`TimeoutAction::Unknown`] for `null`.
+///
+/// # Errors
+///
+/// The deserializer's error when the value is neither a string nor `null`.
+fn deserialize_action_or_unknown<'de, D: Deserializer<'de>>(
+    deserializer: D,
+) -> std::result::Result<TimeoutAction, D::Error> {
+    // `unwrap_or_default` turns `None` (JSON `null`) into `TimeoutAction::Unknown`.
+    Ok(Option::<TimeoutAction>::deserialize(deserializer)?.unwrap_or_default())
 }
 
 /// Reads `pauseMode`, treating `null` and values this crate does not know as
@@ -367,6 +396,22 @@ mod tests {
 
         assert_eq!(lifecycle.body().expect("body").auto_pause, Some(false));
         assert_eq!(lifecycle.body().expect("body").auto_pause_memory, None);
+    }
+
+    #[test]
+    fn lifecycle_info_reads_a_missing_or_null_action_as_unknown() {
+        for json in [
+            r#"{"autoResume": true}"#,
+            r#"{"onTimeout": null, "autoResume": true}"#,
+            r#"{"onTimeout": "hibernate", "autoResume": true}"#,
+        ] {
+            let info: LifecycleInfo = serde_json::from_str(json).expect(json);
+            assert_eq!(info.on_timeout, TimeoutAction::Unknown, "{json}");
+            assert!(info.auto_resume, "{json}");
+        }
+        let info: LifecycleInfo = serde_json::from_str(r#"{"onTimeout": "pause"}"#).expect("pause");
+        assert_eq!(info.on_timeout, TimeoutAction::Pause);
+        assert!(!info.auto_resume);
     }
 
     #[test]
