@@ -161,7 +161,7 @@ From the plan's Scope ("Deferred") table and this review:
   calls) and the pid-only envd calls (`send_stdin`, `close_stdin`,
   `send_signal`, `kill`, `resize`, `Commands::list`) use the configured
   request timeout. Adding options to them later is a breaking change, so it
-  is planned only with a minor release. Unscheduled.
+  waits for a semver-breaking release (a 0.x minor bump). Unscheduled.
 - **The REST models are hand-written**, cited row by row in
   `docs/protocol-notes.md` and live-verified; regenerating them from the
   OpenAPI spec is not planned.
