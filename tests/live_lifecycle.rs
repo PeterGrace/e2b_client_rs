@@ -7,13 +7,13 @@ use std::time::{Duration, Instant};
 
 use e2b_client::{
     ALL_TRAFFIC, CommandOptions, ConnectOptions, EnvdVersion, Error, Lifecycle,
-    ListSandboxesParams, MetricsParams, NetworkConfig, NetworkRule, NetworkUpdate, OnResume,
-    OnTimeout, PauseOptions, Sandbox, SandboxInfo, SandboxState, SnapshotMode, SortOrder,
-    TimeoutAction,
+    ListSandboxesParams, ListSnapshotsParams, MetricsParams, NetworkConfig, NetworkRule,
+    NetworkUpdate, OnResume, OnTimeout, PauseOptions, Sandbox, SandboxInfo, SandboxState,
+    SnapshotMode, SnapshotOptions, SnapshotPage, SortOrder, TimeoutAction,
 };
 use live_support::{
-    LiveSandbox, RUN_METADATA_KEY, client, http_reply, no_http_reply_twice, params, poll_until,
-    run_id,
+    LiveSandbox, RUN_METADATA_KEY, client, http_reply, no_http_reply_twice, params, params_from,
+    poll_until, resource_name, run_id,
 };
 
 /// A sandbox id that cannot exist.
@@ -970,4 +970,90 @@ async fn clm_0146_filesystem_pause_cold_boots() {
         exists(&resumed, ON_DISK_MARKER).await,
         "a filesystem pause lost the disk"
     );
+}
+
+#[tokio::test]
+#[ignore = "live: run with `just test-live <target>`"]
+async fn clm_0030_snapshot_starts_sandboxes_with_its_files() {
+    // Arrange: a full snapshot (the default) restores memory, so `/tmp`,
+    // which the `base` template empties at every boot, keeps its file.
+    let source = LiveSandbox::new().await;
+    source
+        .files()
+        .write("/tmp/snapshot.txt", "from the snapshot", None)
+        .await
+        .expect("write");
+    let options = SnapshotOptions::new().name(resource_name("starts"));
+    let snapshot = source.create_snapshot(&options).await.expect("snapshot");
+
+    // Act
+    let copy = LiveSandbox::create(&params_from(&snapshot.snapshot_id)).await;
+    let text = copy
+        .files()
+        .read_to_string("/tmp/snapshot.txt", None)
+        .await
+        .expect("read in the copy");
+
+    // Assert
+    assert_eq!(text, "from the snapshot");
+    assert_eq!(
+        source.get_info().await.expect("source info").state,
+        SandboxState::Running
+    );
+    // Hosted E2B refuses to delete a snapshot while a sandbox made from it
+    // runs (400 "cannot delete template ... because there are running
+    // sandboxes using it"), so the copy goes first.
+    assert!(copy.kill().await.expect("kill the copy"));
+    assert!(
+        source
+            .client()
+            .delete_snapshot(&snapshot.snapshot_id)
+            .await
+            .expect("delete")
+    );
+}
+
+#[tokio::test]
+#[ignore = "live: run with `just test-live <target>`"]
+async fn clm_0147_list_and_delete_snapshots() {
+    // Arrange
+    let source = LiveSandbox::new().await;
+    let name = resource_name("listed");
+    let snapshot = source
+        .create_snapshot(&SnapshotOptions::new().name(name.clone()))
+        .await
+        .expect("snapshot");
+    let client = source.client();
+    let listed = |page: &SnapshotPage| {
+        page.snapshots
+            .iter()
+            .any(|each| each.snapshot_id == snapshot.snapshot_id)
+    };
+
+    // Act
+    let by_sandbox = source
+        .list_snapshots(&ListSnapshotsParams::new())
+        .await
+        .expect("by sandbox");
+    let by_name = client
+        .list_snapshots(&ListSnapshotsParams::new().name(name))
+        .await
+        .expect("by name");
+    let deleted = client
+        .delete_snapshot(&snapshot.snapshot_id)
+        .await
+        .expect("delete");
+    let deleted_again = client
+        .delete_snapshot(&snapshot.snapshot_id)
+        .await
+        .expect("delete again");
+
+    // Assert
+    assert!(
+        listed(&by_sandbox),
+        "not listed for its source sandbox: {by_sandbox:?}"
+    );
+    assert!(listed(&by_name), "not listed by its name: {by_name:?}");
+    assert!(deleted);
+    assert!(!deleted_again);
 }

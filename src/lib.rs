@@ -11,7 +11,9 @@
 //!   ([`Lifecycle`]: kill, or pause with a [`SnapshotMode`]) and make the
 //!   request idempotent ([`CreateSandboxParams::idempotency_key`]). Choose
 //!   what a pause keeps ([`PauseOptions`]) and whether a resume restores the
-//!   memory or reboots ([`ConnectOptions`], [`OnResume`]).
+//!   memory or reboots ([`ConnectOptions`], [`OnResume`]). Snapshot a
+//!   sandbox ([`SnapshotOptions`]), list ([`ListSnapshotsParams`]) and
+//!   delete snapshots, and start new sandboxes from one.
 //! - **envd process service** ([`Commands`]): start commands, stream their
 //!   stdout and stderr to an exit code, send stdin (one write at a time or
 //!   as an ordered [`InputStream`]), signal, list processes.
@@ -68,6 +70,7 @@ mod models;
 mod network;
 mod pty;
 mod sandbox;
+mod snapshots;
 mod stream_input;
 mod wire;
 
@@ -104,4 +107,5 @@ pub use models::{
 pub use network::{ALL_TRAFFIC, NetworkConfig, NetworkInfo, NetworkRule, NetworkUpdate};
 pub use pty::{DEFAULT_PTY_TIMEOUT, Pty, PtyEvent, PtyHandle, PtyOptions, PtySize};
 pub use sandbox::{FileUrlOptions, Sandbox};
+pub use snapshots::{ListSnapshotsParams, SnapshotInfo, SnapshotOptions, SnapshotPage};
 pub use stream_input::{DEFAULT_STREAM_INPUT_TIMEOUT, InputStream, StreamInputOptions};

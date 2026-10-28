@@ -109,6 +109,24 @@ back. The crate builds them with `NetworkConfig`, `NetworkUpdate` and
 | The update replaces the whole egress configuration: a field it leaves out is cleared, so `dnsServers` goes back to `8.8.8.8` and an omitted `rules` or `egressProxy` is dropped. The sandbox is not restarted | `py: sandbox/sandbox_api.py:515-561` |
 | Hosted E2B applies an update at once, without a restart: an update with only `allow_internet_access: true` clears a create-time `denyOut: ["0.0.0.0/0"]`, and `denyOut: ["0.0.0.0/0"]` closes egress again, each seen by the first probe after the 204, with a tmpfs file kept | live, hosted E2B, 2026-10-27 (`clm_0144`) |
 
+## Snapshots and fork
+
+Snapshots are persistent copies of a sandbox that new sandboxes start from.
+The crate builds the requests with `SnapshotOptions` and
+`ListSnapshotsParams` (`src/snapshots.rs`).
+
+| Fact | Citation |
+|---|---|
+| Create: `POST /sandboxes/{id}/snapshots`, body `{name?, memory?}`; `name` is left out when unset or empty (`name if name else UNSET`), `memory` is `true` for `full`, `false` for `filesystem`, left out when no mode is set (the API default is full); 201 → `{snapshotID, names}`; 404 → not found; other statuses are errors | `py: api/client/api/sandboxes/post_sandboxes_sandbox_id_snapshots.py:22-57`; `py: api/client/models/sandbox_snapshot_request.py:24-48`; `py: sandbox_async/sandbox_api.py:339-374`; `js: 5484` |
+| The source sandbox pauses while the snapshot is taken and keeps running afterwards; a snapshot outlives the sandbox. Naming a snapshot that exists adds a new build to it | `py: sandbox_async/main.py:886-906` |
+| A filesystem-only snapshot can be refused: 400 `snapshot_filesystem_only_disabled` (not enabled for the team) or 409 `snapshot_filesystem_only_unsupported_node` (the node predates it; pause, resume and retry). The crate returns both as `Error::Api` | `py: sandbox_async/main.py:905` |
+| `SnapshotInfo`: `snapshotID` (a template ID or namespaced name, with a tag) and `names` (full names, `team-slug/name:tag`); `names` missing or `null` reads as empty, as the SDK's `list(names) if names else []` | `py: api/client/models/snapshot_info.py:11-55`; `py: sandbox/sandbox_api.py:1364-1370`; `py: sandbox_async/sandbox_api.py:371-374` |
+| A sandbox is created from a snapshot by passing its `snapshotID` as the template | `py: sandbox_async/main.py:886-900`; `py: sandbox/sandbox_api.py:1364-1370` |
+| List: `GET /snapshots?sandboxID&name&limit&nextToken` → `SnapshotInfo[]`, a `null` body read as an empty page; each parameter is left out when unset, empty or (for `limit`) zero, as the paginator passes `x if x else UNSET`; the next page token is in `x-next-token`. The instance method fills `sandboxID` with the sandbox's own ID. `name` matches a name or ID, optionally tag-qualified | `py: api/client/api/snapshots/get_snapshots.py:14-34`; `py: sandbox_async/paginator.py:103-160`; `py: paginator.py:48-50`; `py: sandbox_async/main.py:965-1044`; `js: 5721` |
+| Delete: `DELETE /templates/{id}` (a snapshot is a template), 204 → `true`, 404 → `false`, other statuses are errors. The id is one path segment: `/` is sent as `%2F`. The SDKs also encode `:` (`quote(value, safe="")`, `encodeURIComponent`) where the crate's URL builder leaves it as is; `:` is a legal path character with the same meaning either way, and hosted E2B deleted `<id>:<tag>` snapshots sent this way | `py: api/client/api/templates/delete_templates_template_id.py:16-37`; `py: sandbox_async/sandbox_api.py:377-396`; `py: api/__init__.py:32-40`; `js: 5520-5528`; live, hosted E2B, 2026-10-28 |
+| Hosted E2B refuses to delete a snapshot while a sandbox created from it runs: 400 `cannot delete template '<id>' because there are running sandboxes using it`. Once that sandbox is killed, the delete succeeds at once | live, hosted E2B, 2026-10-28 (`clm_0030`) |
+| Hosted E2B's names for a snapshot named `<name>` contain `<name>` as given (lowercase), and listing by that bare name, without the team prefix, finds it | live, hosted E2B, 2026-10-28 (`clm_0147`, the snapshot sweep) |
+
 ## Connect-RPC framing
 
 envd's process and filesystem services are Connect-RPC.
@@ -360,8 +378,8 @@ the download URL with its `signature` pair removed with a 4xx.
 - **`wait()` does not replay consumed output.** The SDK handle buffers all
   output; here `next_event()` hands chunks to the caller and `wait()` only
   collects what is left, so output is held once.
-- **Not implemented yet.** Milestone 3: snapshots and fork, and the
-  remaining SDK 2.61 create fields (volume mounts and the MCP gateway).
+- **Not implemented yet.** Milestone 3: fork, and the remaining SDK 2.61
+  create fields (volume mounts and the MCP gateway).
   Milestone 4: the `is_symlink` file type (#30) and dropping the v1 connect
   fallback.
   Unscheduled: sandbox health probing on transport errors. Out of scope by
