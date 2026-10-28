@@ -342,7 +342,7 @@ async fn kill_sandbox_server_error_is_api_error() {
 }
 
 #[tokio::test]
-async fn pause_sandbox_maps_status_codes() {
+async fn pause_sandbox_without_a_mode_maps_status_codes() {
     let server = MockServer::start().await;
     for (id, status) in [("ok", 204), ("already", 409), ("missing", 404)] {
         Mock::given(method("POST"))

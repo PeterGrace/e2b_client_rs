@@ -81,7 +81,7 @@ All JSON. Request/response models are the generated OpenAPI models under
 | List `state` | comma-joined | `py: api/client/api/sandboxes/get_v2_sandboxes.py:31-38`; `js: 1529-1532` (`explode: false`) |
 | List `metadata` | each key and value `encodeURIComponent`-ed, then form-encoded into one string | `py: sandbox_async/paginator.py:50-57`; `js: 5656-5658` |
 | Kill | `DELETE /sandboxes/{id}`, 204; 404 → `false` | `py: sandbox_async/sandbox_api.py:138-161`; `js: 5267` |
-| Pause | `POST /sandboxes/{id}/pause`, body `{memory?}` from the mode: `true` for `full`, `false` for `filesystem` (only the filesystem is kept, and resuming cold-boots), `{}` when no mode is set (the API default is full); 204; 404 → not found; 409 → already paused (`false`), for every mode. The SDK documents a 400 or 409 refusal of filesystem-only for snapshots, not for pause; hosted E2B took a filesystem pause on 2026-10-28 | `py: sandbox_async/sandbox_api.py:399-432`; `py: sandbox/sandbox_api.py:639-662`; `py: api/client/models/sandbox_pause_request.py:13-34`; `py: sandbox_async/main.py:791-829`; `js: 5442-5450` |
+| Pause | `POST /sandboxes/{id}/pause`, body `{memory?}` from the mode: `true` for `full`, `false` for `filesystem` (only the filesystem is kept, and resuming cold-boots), `{}` when no mode is set (the API default is full); 204; 404 → not found; 409 without a mode → already paused (`false`), as in the SDK; 409 with a mode → `false` only when the message says the sandbox "is already paused" (hosted E2B: `Error pausing sandbox - sandbox '<id>' is already paused`, live 2026-10-28; matched case-sensitively; sandbawks's wording not yet checked, see M4 Task 17), else `Error::Api` 409 (issue #81). The SDK documents a 400 or 409 refusal of filesystem-only for snapshots, not for pause; hosted E2B took a filesystem pause on 2026-10-28 | `py: sandbox_async/sandbox_api.py:399-432`; `py: sandbox/sandbox_api.py:639-662`; `py: api/client/models/sandbox_pause_request.py:13-34`; `py: sandbox_async/main.py:791-829`; `js: 5442-5450`; live probe, hosted E2B, 2026-10-28 |
 | Set timeout | `POST /sandboxes/{id}/timeout` body `{timeout}` (seconds); 404 → not found | `py: api/client/models/sandbox_timeout_request.py:17`; `py: sandbox_async/sandbox_api.py:164-187`; `js: 5396-5398` |
 | Refresh | `POST /sandboxes/{id}/refreshes` body `{duration?}` (seconds), 204 | `py: api/client/api/sandboxes/post_sandboxes_sandbox_id_refreshes.py:21-38`; `py: api/client/models/sandbox_refresh_request.py:19` |
 | Error body | `{code: int, message: string}`; the SDK surfaces `message` | `py: api/client/models/error.py:26-28`; `py: api/__init__.py:191-213` |
@@ -440,8 +440,12 @@ the SDKs' exception classes with methods on `Error`.
 - **`wait()` does not replay consumed output.** The SDK handle buffers all
   output; here `next_event()` hands chunks to the caller and `wait()` only
   collects what is left, so output is held once.
-- **Not implemented yet.** Milestone 4: the `is_symlink` file type (#30), a
-  refused filesystem-only pause (409) that reads as "already paused" (#81),
+- **A refused moded pause is an error.** SDK 2.61 returns `False` for every
+  pause 409. With a `SnapshotMode`, this crate returns `false` only for the
+  409 that says the sandbox "is already paused", and `Error::Api` 409 for any
+  other, so a refused filesystem-only pause is not mistaken for a pause
+  (issue #81). Without a mode it matches the SDK.
+- **Not implemented yet.** Milestone 4: the `is_symlink` file type (#30)
   and the API review (#52 to #57).
   Deferred from milestone 3 and unscheduled: the SOCKS5 egress proxy, IAM
   workload identity (`iam.tokens` and identity placeholders in rule

@@ -1405,7 +1405,9 @@ git commit -m "feat!: classify errors as the SDK does and keep reqwest private"
 - Modify: `docs/protocol-notes.md` (the "Pause" row, line 85; the "Not implemented yet" bullet, lines 430-432; a "Deliberate differences" bullet)
 - Create: `changelog/<ts>-m4-task-03-refused-moded-pause.md`
 
-Decision 2. SDK 2.61 reads every pause 409 as "already paused" (`py: sandbox_async/sandbox_api.py:420-422`), so a refused filesystem-only pause looks like success. Hosted E2B's "already paused" 409 says so in its message (Verified facts: `Error pausing sandbox - sandbox '<id>' is already paused`, with or without `memory: false`). So when a mode was asked, the crate reads the 409 body: that message is `Ok(false)`, and anything else is `Error::Api { status: 409, .. }`. A pause without a mode keeps SDK parity.
+> **Corrected (issue #81, 2026-10-28).** SDK 2.61 reads the pause 409 at `py: sandbox_async/sandbox_api.py:421-423`, not 420-422; this task and Task 6 now cite 421-423. In `docs/protocol-notes.md` the "Pause" row is line 84 and the "Not implemented yet" bullet lines 443-445. `docs/verification/s4-evidence-map.md` row CLM-0095 also names `pause_sandbox_maps_status_codes`, so it takes the new name too. The new `clm_0171` sits after `clm_0024` and shifts `tests/live_lifecycle.rs` below it by 22 lines (21 from `clm_0146`'s Act comment down); Task 6's line numbers there, and in `src/client.rs` and `src/sandbox.rs`, are corrected to the post-Task-3 file.
+
+Decision 2. SDK 2.61 reads every pause 409 as "already paused" (`py: sandbox_async/sandbox_api.py:421-423`), so a refused filesystem-only pause looks like success. Hosted E2B's "already paused" 409 says so in its message (Verified facts: `Error pausing sandbox - sandbox '<id>' is already paused`, with or without `memory: false`). So when a mode was asked, the crate reads the 409 body: that message is `Ok(false)`, and anything else is `Error::Api { status: 409, .. }`. A pause without a mode keeps SDK parity.
 
 - [ ] **Step 1: Write the failing mock tests**
 
@@ -1611,7 +1613,7 @@ Replace the `# Returns` and `# Errors` of `pause_sandbox_with` (lines 485-497) w
     /// status 409 for any other 409, which is the API refusing that mode
     /// (for example `snapshot_filesystem_only_unsupported_node`, the node
     /// predates filesystem-only snapshots). SDK 2.61 returns `false` for
-    /// every 409 (`e2b/sandbox_async/sandbox_api.py:420-422`); the crate
+    /// every 409 (`e2b/sandbox_async/sandbox_api.py:421-423`); the crate
     /// departs from it here so a refusal is not mistaken for a pause. A
     /// filesystem-only pause refused for the team is an [`Error::Api`] with
     /// status 400.
@@ -1645,7 +1647,11 @@ In `tests/live_lifecycle.rs`, `clm_0146_filesystem_pause_cold_boots`: replace th
 and the first assertion (lines 963-966) with:
 
 ```rust
-    assert!(paused, "a running sandbox's filesystem pause returned false");
+    assert!(
+        paused,
+        "a freshly created, running sandbox's filesystem pause returned false: since issue \
+         #81 that means the server answered 409 \"already paused\", contradicting itself"
+    );
 ```
 
 Change the `.expect` message on the pause (line 956) to `"filesystem pause (HTTP 400 or 409 means the team or node lacks it)"`.
@@ -3119,10 +3125,10 @@ git commit -m "feat!: filesystem options structs with a per-call request timeout
 ### Task 6: One connect and one pause method (connect_sandbox, pause_sandbox, Sandbox::pause)
 
 **Files:**
-- Modify: `src/client.rs` (`connect_sandbox` takes `&ConnectOptions`, `pause_sandbox` takes `&PauseOptions`; `connect_sandbox_with` and `pause_sandbox_with` are removed; rustdoc links at lines 206 and 456)
-- Modify: `src/sandbox.rs` (`pause` takes `&PauseOptions`; `pause_with` is removed, lines 591-622)
+- Modify: `src/client.rs` (`connect_sandbox` takes `&ConnectOptions`, `pause_sandbox` takes `&PauseOptions`; `connect_sandbox_with` and `pause_sandbox_with` are removed; rustdoc links at lines 210 and 435, after Task 3)
+- Modify: `src/sandbox.rs` (`pause` takes `&PauseOptions`; `pause_with` is removed, lines 591-625, after Task 3)
 - Modify: `src/lifecycle.rs` (rustdoc links at lines 294-295, 325 and 370)
-- Modify: `tests/rest_api.rs` (lines 139, 158, 181, 200, 346-353, 452, 472, 476), `tests/rest_lifecycle.rs` (every `pause_sandbox`, `pause_sandbox_with`, `pause_with` and `connect_sandbox_with` call), `tests/rest_mcp.rs` (lines 277, 323), `tests/live_lifecycle.rs` (lines 225, 248, 258, 288, 376, 498, 515, 520, 916-926, 954, 959, 1298, and Task 3's `clm_0171`)
+- Modify: `tests/rest_api.rs` (lines 139, 158, 181, 200, 346-353, 452, 472, 476), `tests/rest_lifecycle.rs` (every `pause_sandbox`, `pause_sandbox_with`, `pause_with` and `connect_sandbox_with` call), `tests/rest_mcp.rs` (lines 277, 323), `tests/live_lifecycle.rs` (lines 225, 248, 258, 288, 376, 498, 515, 520, 533, 539, 938-948, 975, 980, 1319; 533 and 539 are Task 3's `clm_0171`; corrected in issue #81)
 - Modify: `README.md` (quick start, lines 20 and 39-40; rows at lines 52 and 55)
 - Create: `changelog/<ts>-m4-task-06-one-connect-and-pause.md`
 
@@ -3147,7 +3153,7 @@ The sites (`grep -rn "connect_sandbox_with\|pause_sandbox_with\|\.pause_with(\|\
 - `tests/rest_api.rs:139, 158, 181, 200, 472` (`connect_sandbox`); `:346, 349, 353, 476` (`pause_sandbox`); `:452` (`sandbox.pause()`). Add `ConnectOptions, PauseOptions` to its `use e2b_client::{...}` (line 8).
 - `tests/rest_lifecycle.rs`: every `pause_sandbox_with` (`pause_sends_memory_from_the_mode` and Task 3's two moded-pause tests), `pause_sandbox(SANDBOX_ID)` (line 419), `.pause_with(` (`sandbox_pause_with_sends_the_mode`, renamed to `sandbox_pause_sends_the_mode`), `connect_sandbox_with` (`connect_sends_memory_false_only_for_a_reboot`). In `pause_sends_memory_from_the_mode`, change the comment on line 386 from ``which `pause_sandbox_with` reports as not found`` to ``which `pause_sandbox` reports as not found``.
 - `tests/rest_mcp.rs:277, 323` (`connect_sandbox(SANDBOX_ID, None)`). Add `ConnectOptions` to its imports.
-- `tests/live_lifecycle.rs:225, 258, 288, 959, 1298` (`connect_sandbox`); `:498, 520` and `clm_0171` (`pause_sandbox`/`pause_sandbox_with`); `:248, 376, 515` (`.pause()`); `:916, 924, 954` (`.pause_with(`); `:918, 926` (`connect_sandbox_with`).
+- `tests/live_lifecycle.rs:225, 258, 288, 980, 1319` (`connect_sandbox`); `:498, 520, 539` (`pause_sandbox`/`pause_sandbox_with`, 539 in `clm_0171`); `:248, 376, 515, 533` (`.pause()`, 533 in `clm_0171`); `:938, 946, 975` (`.pause_with(`); `:940, 948` (`connect_sandbox_with`). (Line numbers after Task 3, corrected in issue #81.)
 
 For example, `tests/live_lifecycle.rs:256-260` becomes:
 
@@ -3253,7 +3259,7 @@ Delete `pause_sandbox` (the v0.1 form) and rename `pause_sandbox_with` to `pause
     /// including, with a mode, any 409 that is not "already paused": the
     /// API refusing that mode (for example
     /// `snapshot_filesystem_only_unsupported_node`). SDK 2.61 returns
-    /// `false` for every 409 (`e2b/sandbox_async/sandbox_api.py:420-422`);
+    /// `false` for every 409 (`e2b/sandbox_async/sandbox_api.py:421-423`);
     /// the crate departs from it here so a refusal is not mistaken for a
     /// pause. A filesystem-only pause refused for the team is a 400.
     ///
@@ -3278,11 +3284,11 @@ Delete `pause_sandbox` (the v0.1 form) and rename `pause_sandbox_with` to `pause
 
 Keep the body from Task 3, Step 3.
 
-Search `src/client.rs` for `pause_sandbox_with` and `connect_sandbox_with`. The intra-doc links at the old lines 206 and 456 went with the deleted methods, and any left in other rustdoc become `pause_sandbox` / `connect_sandbox`. `just doc` (`-D warnings`) flags a broken link.
+Search `src/client.rs` for `pause_sandbox_with` and `connect_sandbox_with`. The intra-doc links at the old lines 210 and 435 went with the deleted methods, and any left in other rustdoc become `pause_sandbox` / `connect_sandbox`. `just doc` (`-D warnings`) flags a broken link.
 
 - [ ] **Step 3: Fold `Sandbox::pause`**
 
-In `src/sandbox.rs`, replace `pause` and `pause_with` (lines 591-622) with:
+In `src/sandbox.rs`, replace `pause` and `pause_with` (lines 591-625) with:
 
 ```rust
     /// Pauses the sandbox, choosing what the pause keeps. See
@@ -8318,6 +8324,7 @@ As Task 16, with these differences:
 - **Classes:** pass; **sandbawks** (a sandbawks defect: name the filed issue, or list it as new); **capacity** (`FAIL-READINESS (rerun)`: says nothing about the feature).
   - Known missing routes or behaviour, recorded against their existing issues, not filed again: network update, metrics, snapshots, fork and volumes (gfd/sandbawks #664 to #672); no envd access token (#683); #674 to #682 and #684 to #687 from M1 and M2; the template's missing `/home/user` (#688); list filters ignored (#689).
   - Every other failure that passes on hosted is a new sandbawks defect. Write its request and response in the results, and list it for the coordinator to file on gfd/sandbawks under epic #673.
+- **The moded already-paused 409 (Task 3, added in issue #81):** record in the section the 409 body sandbawks sends to `clm_0171_moded_pause_of_a_paused_sandbox_is_false`, and correct the "Pause" row of `docs/protocol-notes.md` to say whether sandbawks's message contains `already paused` (case-sensitive). If `clm_0171` fails with `Error::Api` 409 there, the cause is the wording: it is a sandbawks defect (or, if the coordinator prefers, a reason to widen `ALREADY_PAUSED`), not capacity.
 - **Sweeps:** the sandbox sweep must report 0 leftovers. On a server without the snapshot or volume routes, those two sweeps fail with 404 on their list call and make the recipe exit non-zero (M3 Task 13's note); record that, it is not a leak.
 - **CLM-0118:** state in the section whether every v0.1 test (CLM-0007 to CLM-0027 and CLM-0033 to CLM-0063) now ends as pass or as a filed sandbawks defect with no capacity result. If so, the coordinator can decide CLM-0118 (open since M1 on capacity, #27).
 - **Secret check:** as Task 16 Step 3.
