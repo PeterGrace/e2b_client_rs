@@ -7,7 +7,8 @@ task, M3.01 to M3.11, PRs #74 to #85), template `base` (and `mcp-gateway`
 for CLM-0150, chosen by the crate). The log starts `commit:
 ebccc152316ba2c44fefd4548bb9afc44685a266` and `dirty: no`. Log:
 [`runs/20261028T012033Z-hosted-2696474.log`](runs/20261028T012033Z-hosted-2696474.log).
-M1's and M2's 57 tests were rerun on purpose, as a regression check.
+M1's and M2's 57 tests were rerun on purpose, as a regression check. Rows are
+sorted by claim number, and a claim's tests keep their source order.
 
 | Test | Claim | Result | Failure (first line) |
 |---|---|---|---|
@@ -34,22 +35,8 @@ M1's and M2's 57 tests were rerun on purpose, as a regression check.
 | clm_0027_is_running_tracks_kill | CLM-0027 | pass | |
 | clm_0028_get_host_reaches_a_port_in_the_sandbox | CLM-0028 | pass | |
 | clm_0029_get_metrics_reports_cpu_memory_and_disk | CLM-0029 | pass | |
-| clm_0151_list_filters_by_template_and_start_time_and_orders | CLM-0151 | pass | |
-| clm_0143_create_network_allow_and_deny_lists_are_enforced | CLM-0143 | pass | |
-| clm_0153_get_info_reports_network | CLM-0153 | pass | |
-| clm_0144_update_network_replaces_egress_without_restart | CLM-0144 | pass | |
-| clm_0145_lifecycle_pause_with_full_snapshot_pauses_at_timeout | CLM-0145 | pass | |
-| clm_0153_get_info_reports_lifecycle | CLM-0153 | pass | |
-| clm_0146_resume_restores_memory_or_reboots | CLM-0146 | pass | |
-| clm_0146_filesystem_pause_cold_boots | CLM-0146 | pass | |
 | clm_0030_snapshot_starts_sandboxes_with_its_files | CLM-0030 | pass | |
-| clm_0147_list_and_delete_snapshots | CLM-0147 | pass | |
 | clm_0030_fork_starts_running_copies | CLM-0030 | pass | |
-| clm_0148_volume_create_get_list_destroy | CLM-0148 | fail (environment limit) | `create: Api { status: 403, message: "use of volumes is not enabled" }` |
-| clm_0148_missing_volume_is_not_found_and_not_destroyed | CLM-0148 | pass | |
-| clm_0149_volume_mount_persists_across_sandboxes | CLM-0149 | fail (environment limit) | `create volume: Api { status: 403, message: "use of volumes is not enabled" }` |
-| clm_0153_get_info_reports_volume_mounts | CLM-0153 | fail (environment limit) | `create volume: Api { status: 403, message: "use of volumes is not enabled" }` |
-| clm_0150_mcp_gateway_starts_and_exposes_url_and_token | CLM-0150 | pass | |
 | clm_0033_run_returns_output_and_exit_code | CLM-0033 | pass | |
 | clm_0034_start_streams_chunks_then_exit | CLM-0034 | pass | |
 | clm_0035_run_delivers_large_output_in_order | CLM-0035 | pass | |
@@ -81,11 +68,25 @@ M1's and M2's 57 tests were rerun on purpose, as a regression check.
 | clm_0061_user_selects_file_owner | CLM-0061 | pass | |
 | clm_0062_write_files_writes_every_file | CLM-0062 | pass | |
 | clm_0063_watch_dir_reports_a_created_file | CLM-0063 | pass | |
+| clm_0064_upload_url_accepts_a_multipart_post | CLM-0064 | pass | |
+| clm_0065_download_url_fetches_without_credentials | CLM-0065 | pass | |
 | clm_0066_write_stream_uploads_more_than_it_buffers | CLM-0066 | pass | |
 | clm_0128_read_stream_downloads_in_chunks | CLM-0128 | pass | |
 | clm_0129_write_metadata_round_trips | CLM-0129 | pass | |
-| clm_0064_upload_url_accepts_a_multipart_post | CLM-0064 | pass | |
-| clm_0065_download_url_fetches_without_credentials | CLM-0065 | pass | |
+| clm_0143_create_network_allow_and_deny_lists_are_enforced | CLM-0143 | pass | |
+| clm_0144_update_network_replaces_egress_without_restart | CLM-0144 | pass | |
+| clm_0145_lifecycle_pause_with_full_snapshot_pauses_at_timeout | CLM-0145 | pass | |
+| clm_0146_resume_restores_memory_or_reboots | CLM-0146 | pass | |
+| clm_0146_filesystem_pause_cold_boots | CLM-0146 | pass | |
+| clm_0147_list_and_delete_snapshots | CLM-0147 | pass | |
+| clm_0148_volume_create_get_list_destroy | CLM-0148 | fail (environment limit) | `create: Api { status: 403, message: "use of volumes is not enabled" }` |
+| clm_0148_missing_volume_is_not_found_and_not_destroyed | CLM-0148 | pass | |
+| clm_0149_volume_mount_persists_across_sandboxes | CLM-0149 | fail (environment limit) | `create volume: Api { status: 403, message: "use of volumes is not enabled" }` |
+| clm_0150_mcp_gateway_starts_and_exposes_url_and_token | CLM-0150 | pass | |
+| clm_0151_list_filters_by_template_and_start_time_and_orders | CLM-0151 | pass | |
+| clm_0153_get_info_reports_network | CLM-0153 | pass | |
+| clm_0153_get_info_reports_lifecycle | CLM-0153 | pass | |
+| clm_0153_get_info_reports_volume_mounts | CLM-0153 | fail (environment limit) | `create volume: Api { status: 403, message: "use of volumes is not enabled" }` |
 
 **Totals:** 75 `clm_*` tests: 72 passed, 3 failed (commands 17/17, files 19/19,
 lifecycle 36/39). That is M1's and M2's 57 (all passed) plus M3's 18 (15
