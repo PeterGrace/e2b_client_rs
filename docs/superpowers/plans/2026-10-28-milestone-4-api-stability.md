@@ -3426,6 +3426,8 @@ git commit -m "feat!: fold the _with twins into connect_sandbox and pause"
 - Modify: `docs/protocol-notes.md`, the "Commands" and "PTY" rows.
 - Create: `changelog/<ts>-m4-task-07-connect-options.md`.
 
+> **Corrected (issue #54, 2026-10-28).** The test file's `wiremock` import is `{Mock, MockServer, Request}` (`ResponseTemplate` is unused there and would fail `-D warnings`), and its `common` import is wrapped by rustfmt. `command_options_request_timeout_bounds_start` and `pty_options_request_timeout_bounds_create` assert the exact limit, `Error::Timeout(limit) if limit == Duration::from_millis(200)`, as the connect test does, so they show the call's own value bounded the wait rather than any timeout. The "not evidence for CLM-0174" note sits on `the_stream_deadline_is_not_the_request_timeout` as its doc comment. `tests/live_commands.rs` imports only `CommandConnectOptions`: no live test there calls `Pty::connect`, so `PtyConnectOptions` would be an unused import; Task 11 adds it. The commit also stages `tests/zero_timeouts.rs` and `tests/envd_connect_options.rs`. The rustdoc examples of `Commands::connect` and `Pty::connect` are rustfmt-wrapped but otherwise as given, so Task 14 skips both methods and both connect options types.
+
 **What the SDK does.**
 - `commands.connect(pid, timeout=60, request_timeout=None)` sends `timeout_to_ms(timeout)` as the stream deadline. It then waits for the start event within `get_request_timeout(request_timeout)` (`py: sandbox_async/commands/command.py:346-380, 382-411`; `py: envd/client_async/__init__.py:113-149`).
 - `pty.create(..., timeout=60, request_timeout=None)` and `pty.connect(pid, timeout=60, request_timeout=None)` do the same (`py: sandbox_async/commands/pty.py:139-199, 207-248`).
@@ -3452,7 +3454,7 @@ use e2b_client::{
 };
 use serde_json::json;
 use wiremock::matchers::{method, path};
-use wiremock::{Mock, MockServer, Request, ResponseTemplate};
+use wiremock::{Mock, MockServer, Request};
 
 /// A process stream: start (pid 42), one stdout chunk, then the end event.
 fn frames() -> Vec<Vec<u8>> {
@@ -3634,7 +3636,7 @@ async fn command_options_request_timeout_bounds_start() {
         .expect_err("the per-call request timeout must expire");
 
     // Assert
-    assert!(matches!(error, Error::Timeout(_)), "{error:?}");
+    assert!(matches!(error, Error::Timeout(limit) if limit == Duration::from_millis(200)), "{error:?}");
 }
 
 #[tokio::test]
@@ -3653,7 +3655,7 @@ async fn pty_options_request_timeout_bounds_create() {
         .expect_err("the per-call request timeout must expire");
 
     // Assert
-    assert!(matches!(error, Error::Timeout(_)), "{error:?}");
+    assert!(matches!(error, Error::Timeout(limit) if limit == Duration::from_millis(200)), "{error:?}");
 }
 
 #[tokio::test]
@@ -4212,7 +4214,7 @@ Gates: `just lint`, `just test`, `just doc`.
 - It closes #54.
 
 ```bash
-git add src/commands.rs src/pty.rs src/lib.rs tests/envd_connect_options.rs tests/envd_pty.rs tests/envd_api.rs tests/live_commands.rs docs/protocol-notes.md changelog/
+git add src/commands.rs src/pty.rs src/lib.rs tests/envd_connect_options.rs tests/envd_pty.rs tests/envd_api.rs tests/live_commands.rs tests/zero_timeouts.rs docs/protocol-notes.md docs/superpowers/plans/ changelog/
 git commit -m "feat!: options structs for Commands::connect and Pty::connect, per-call request timeouts (#54)"
 ```
 
@@ -5055,7 +5057,7 @@ So an `Ok` means envd confirmed the attach. Candidates:
 
 - [ ] **Step 1: Write the repro as a live test of the documented behaviour**
 
-In `tests/live_commands.rs` (`ConnectCode`, `Error`, `PtyConnectOptions` and `PtyEvent` are already imported, or were added by Task 7), add:
+In `tests/live_commands.rs` (`ConnectCode`, `Error` and `PtyEvent` are already imported; add `PtyConnectOptions` to the `use e2b_client::{...}` list, since Task 7 imported only `CommandConnectOptions` there; corrected in issue #54, 2026-10-28), add:
 
 ```rust
 /// What a `Pty::connect` to the pid of an exited shell gave: the `connect`

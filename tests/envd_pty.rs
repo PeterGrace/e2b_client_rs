@@ -7,7 +7,10 @@ use common::{
     decode_request_envelope, decode_request_envelopes, end_stream, message, sandbox,
     stream_response,
 };
-use e2b_client::{CommandEvent, CommandOptions, PtyEvent, PtyOptions, PtySize, StreamInputOptions};
+use e2b_client::{
+    CommandEvent, CommandOptions, PtyConnectOptions, PtyEvent, PtyOptions, PtySize,
+    StreamInputOptions,
+};
 use serde_json::json;
 use wiremock::matchers::{body_json, header, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
@@ -149,7 +152,11 @@ async fn connect_attaches_by_pid_with_the_keepalive_header() {
         .mount(&server)
         .await;
 
-    let handle = sandbox.pty().connect(11, None).await.expect("connect");
+    let handle = sandbox
+        .pty()
+        .connect(11, &PtyConnectOptions::new().timeout(None))
+        .await
+        .expect("connect");
     let pid = handle.pid();
     let exit = handle.wait().await.expect("wait");
 

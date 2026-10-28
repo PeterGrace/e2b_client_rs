@@ -5,8 +5,8 @@ mod live_support;
 use std::time::Duration;
 
 use e2b_client::{
-    CommandEvent, CommandOptions, ConnectCode, Error, PtyEvent, PtyHandle, PtyOptions, PtySize,
-    Signal, StreamInputOptions,
+    CommandConnectOptions, CommandEvent, CommandOptions, ConnectCode, Error, PtyEvent, PtyHandle,
+    PtyOptions, PtySize, Signal, StreamInputOptions,
 };
 use live_support::LiveSandbox;
 
@@ -204,7 +204,7 @@ async fn clm_0040_connect_attaches_to_running_command() {
 
     let attached = sandbox
         .commands()
-        .connect(pid, None)
+        .connect(pid, &CommandConnectOptions::new().timeout(None))
         .await
         .expect("connect");
     let result = attached.wait().await.expect("wait");
