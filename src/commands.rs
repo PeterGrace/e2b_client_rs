@@ -65,6 +65,19 @@ impl Default for CommandOptions {
 }
 
 impl CommandOptions {
+    /// The default options: no extra environment, the sandbox's default
+    /// user and working directory, no stdin, the
+    /// [`DEFAULT_COMMAND_TIMEOUT`] deadline and the configured request
+    /// timeout. The same as [`CommandOptions::default`].
+    ///
+    /// # Returns
+    ///
+    /// The options.
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     /// Adds an environment variable for the command.
     ///
     /// # Arguments
@@ -245,7 +258,11 @@ impl CommandConnectOptions {
 }
 
 /// A signal to send to a process (`process.Signal`).
+///
+/// `#[non_exhaustive]`: envd's `process.Signal` may gain signals, so a
+/// `match` outside this crate needs a `_` arm.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum Signal {
     /// `SIGTERM`: ask the process to exit.
     Sigterm,
@@ -263,7 +280,12 @@ impl Signal {
 }
 
 /// One event from a running command.
+///
+/// `#[non_exhaustive]`: envd's `process.ProcessEvent` may gain event kinds,
+/// so a `match` outside this crate needs a catch-all arm (`_` or
+/// `other => ...`).
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum CommandEvent {
     /// A chunk of standard output.
     Stdout(Bytes),
@@ -371,6 +393,8 @@ impl Commands {
     ///         CommandEvent::Stdout(chunk) => print!("{}", String::from_utf8_lossy(&chunk)),
     ///         CommandEvent::Stderr(chunk) => eprint!("{}", String::from_utf8_lossy(&chunk)),
     ///         CommandEvent::Exit(exit) => println!("exit code {}", exit.exit_code),
+    ///         // `CommandEvent` is `#[non_exhaustive]`, so a `_` arm is required.
+    ///         _ => {}
     ///     }
     /// }
     /// # Ok(())

@@ -62,6 +62,17 @@ impl Default for StreamInputOptions {
 }
 
 impl StreamInputOptions {
+    /// The default options: the [`DEFAULT_STREAM_INPUT_TIMEOUT`] deadline.
+    /// The same as [`StreamInputOptions::default`].
+    ///
+    /// # Returns
+    ///
+    /// The options.
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     /// Bounds the whole input stream; `None`, or a zero duration (the SDK's
     /// `timeout=0`), for no limit. Defaults to
     /// [`DEFAULT_STREAM_INPUT_TIMEOUT`].

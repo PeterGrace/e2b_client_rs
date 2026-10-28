@@ -308,3 +308,32 @@ async fn a_refused_connection_is_retryable_and_keeps_its_cause() {
         "{source:?}"
     );
 }
+
+#[tokio::test]
+async fn a_decode_error_shows_its_detail_once() {
+    // Arrange: a 200 whose body is not JSON.
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path(format!("/sandboxes/{SANDBOX_ID}")))
+        .respond_with(ResponseTemplate::new(200).set_body_string("not json"))
+        .mount(&server)
+        .await;
+    let client = client_for(&server);
+
+    // Act
+    let err = client
+        .get_sandbox_info(SANDBOX_ID)
+        .await
+        .expect_err("undecodable body");
+
+    // Assert: the serde_json detail is in `source()`, not repeated in
+    // `Display`, so `{:#}` in anyhow prints it once (as for `Transport`).
+    assert!(matches!(err, Error::Decode(_)), "{err:?}");
+    assert_eq!(err.to_string(), "could not decode response");
+    let source = err.source().expect("a source");
+    assert!(!source.to_string().is_empty(), "{source:?}");
+    assert!(
+        source.downcast_ref::<serde_json::Error>().is_some(),
+        "{source:?}"
+    );
+}

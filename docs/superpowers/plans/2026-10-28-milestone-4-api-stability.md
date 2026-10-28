@@ -5305,6 +5305,8 @@ Use `docs:` instead of `fix:` in the message for branch (b), and `test:` for bra
 - Modify: `tests/live_commands.rs:55-65` (catch-all arm)
 - Create: `changelog/<ts>-m4-task-12-api-review.md`
 
+> **Corrected (issue #95, 2026-10-28).** Shipped as planned, plus three changes. (1) `Error::Decode`'s `Display` is now only `could not decode response`; the serde_json detail stays in `source()`, as `Error::Transport` does since Task 2, so a chain printer shows it once (brooke-reviews on PR #102). It is pinned by `a_decode_error_shows_its_detail_once` in `tests/error_taxonomy.rs`, and it is a breaking `Display` change. (2) `src/error.rs` (`ConnectCode`) and `src/pty.rs` (`PtySize`) say in their rustdoc why they stay exhaustive. (3) `docs/api-review.md` differs from the Step 6 draft: a Constants table (one row per constant), an "Error display" section with the `Decode` decision, every deferred item of the Scope table under "Known limits", and rows corrected against the source (manual `Default` impls, `CreateSandboxParams`'s unset template, `ConnectionConfigBuilder` reached through `ConnectionConfig::builder()`, `Sandbox::get_host` as a non-remote SDK name). Read `docs/api-review.md`, not the Step 6 draft. Tasks 13 and 14 need no change: Task 13's C-STABLE edit matches the row as shipped, and Task 14's `CommandEvent` example already has a `_` arm.
+
 This task runs after every API-changing task (1 to 11), so it reviews the surface 0.2.0 will ship. It adds no behaviour.
 
 - [ ] **Step 1: Write the failing trait test**
