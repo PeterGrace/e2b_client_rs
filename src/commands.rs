@@ -432,8 +432,13 @@ impl Commands {
     ///
     /// # Errors
     ///
-    /// [`Error::Rpc`] with [`ConnectCode::NotFound`] if no such process, plus
-    /// the errors of [`Commands::start`].
+    /// [`Error::Rpc`] with [`ConnectCode::NotFound`] if envd no longer knows
+    /// the process, plus the errors of [`Commands::start`]. envd keeps a
+    /// process that has exited attachable for a short time (tens of seconds
+    /// on hosted E2B; see `docs/protocol-notes.md`): the attach succeeds and
+    /// the stream then delivers the process's [`CommandEvent::Exit`] as its
+    /// first event, until envd forgets the pid (seen in a probe run on
+    /// hosted E2B, 2026-10-28, issue #56).
     ///
     /// # Examples
     ///

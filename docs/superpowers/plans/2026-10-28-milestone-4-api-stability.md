@@ -5071,6 +5071,8 @@ git commit -m "fix: report symlinks from envd's is_symlink (#30)"
   - `docs/protocol-notes.md`, the PTY section, in all branches.
 - Create: `changelog/<ts>-m4-task-11-pty-connect-exited-pid.md`.
 
+> **Corrected (issue #56, 2026-10-28).** Branch (b) applied: on hosted E2B and with SDK 2.61.0, `connect` to a just-exited pid succeeds and the first event is the shell's exit; by 30 s envd answers `not_found`. What shipped differs from Steps 1 and 4 (b) as follows. The enum is `PtyAttach` and the helper `attach(sandbox, pid)` is shared by `attach_after_exit`. The shell exits with code 3, so the replayed exit is identifiably its own. The test also connects to pid 999999, which never existed, and asserts `not_found`; this pins the rustdoc's first sentence and reads the `Refused` field, which would otherwise be a dead-code warning under `-D warnings`. The assertion checks both cases in one `assert!` whose message prints both outcomes, because Step 1's loop stops at the first failing case and hides the 5 s outcome. `Commands::connect` behaves the same (one probe run), so its `# Errors` got the matching correction, as Step 4 (b) asks, with no live test of its own. Read `tests/live_commands.rs` and `changelog/2026-10-28T14-41-37Z-m4-task-11-pty-connect-exited-pid.md`.
+
 **The finding.** During M2 Task 3 (#32, PR #43), `Pty::connect` with the pid of a shell that had already exited returned `Ok`. The rustdoc says a missing process gives `Error::Rpc` with `ConnectCode::NotFound`. Nothing was investigated.
 
 What the code does today:

@@ -236,6 +236,7 @@ Behaviour:
 | Command stream default timeout 60 s, sent as the stream deadline | `py: sandbox_async/commands/command.py:218, 335-338` |
 | Opening the stream waits for the first event within the call's request timeout (`CommandOptions::request_timeout` / `CommandConnectOptions::request_timeout`, else the configured one; `None` or zero for no limit); it must be `start` and carries the pid | `py: sandbox_async/commands/command.py:335-344, 382-411`; `py: envd/client_async/__init__.py:113-149`; `py: envd/utils.py:27-41` |
 | `connect(pid, timeout=60, request_timeout)`: the attach defaults to a 60 s stream deadline (`CommandConnectOptions::default()`) | `py: sandbox_async/commands/command.py:346-380` |
+| `Connect` to the pid of a process that has just exited (`true`, connected straight after its end event): `connect` returns `Ok` and the first `next_event` is `CommandEvent::Exit` with the process's exit code, as for a PTY (see the PTY section for the window) | observed on hosted E2B, 2026-10-28 (issue #56, one probe run) |
 | Output is accumulated from `data.stdout`/`data.stderr`; `end` gives `exit_code` and `error` | `py: sandbox_async/commands/command_handle.py:154-183` |
 | A stream that ends without an `end` event is an error | `py: sandbox_async/commands/command_handle.py:252-253` |
 | `kill(pid)` is `SendSignal(SIGKILL)`; `not_found` → `false` | `py: envd/rpc.py:208-231` |
@@ -284,6 +285,7 @@ through the same `open_process_stream` (`src/commands.rs`).
 | `stream_input` is the `StreamInput` handle with the `pty` member | `py: sandbox_async/commands/pty.py:113-137` |
 | `resize` is unary `/process.Process/Update {process: {pid}, pty: {size: {cols, rows}}}`, answered by an empty `UpdateResponse` | `py: sandbox_async/commands/pty.py:256-283`; `py: envd/process/process_connect.py:110-115`; `py: envd/process/process_pb.py:261-296` |
 | `kill` is the shared `SendSignal(SIGKILL)` with `not_found` → `false` | `py: sandbox_async/commands/pty.py:65-83`; `py: envd/rpc.py:208-248` |
+| `Connect` to the pid of an exited PTY: envd confirms the attach (`start` event), then sends the shell's end event, so `connect` returns `Ok` and the first `next_event` is `PtyEvent::Exit` with the shell's exit code, straight after the exit and after 5 s (in one probe run also after 8, 10, 12, 15 and 20 s, and `not_found` by 30 s, as for a pid that never existed). This retention is envd's, not a crate guarantee. `Commands::connect` to an exited `true` behaves the same. Python SDK 2.61.0: `pty.connect` succeeds and `wait()` returns the exit code, at once and after 5 s | observed on hosted E2B, 2026-10-28 (issue #56) |
 
 `PtySize` holds `u16` cells (as terminals report them), widened to the
 proto's `uint32` on the wire. The SDK's `on_data` callback is replaced by the
