@@ -1184,3 +1184,58 @@ async fn rpcs_post_uncompressed_connect_json_to_service_method_paths() {
         }
     }
 }
+
+#[tokio::test]
+async fn list_and_stat_report_symlinks_for_both_envd_shapes() {
+    // Arrange: newer envd sets `isSymlink` with the target's type; older envd
+    // puts FILE_TYPE_SYMLINK in `type`; a plain file has `isSymlink: false`.
+    let server = MockServer::start().await;
+    let sandbox = sandbox(&server).await;
+    let new_shape = json!({
+        "name": "link", "type": "FILE_TYPE_FILE", "path": "/w/link",
+        "isSymlink": true, "symlinkTarget": "/w/target"
+    });
+    Mock::given(method("POST"))
+        .and(path("/filesystem.Filesystem/ListDir"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({"entries": [
+            new_shape.clone(),
+            {"name": "old", "type": "FILE_TYPE_SYMLINK", "path": "/w/old"},
+            {"name": "target", "type": "FILE_TYPE_FILE", "path": "/w/target", "isSymlink": false},
+            {"name": "dirlink", "type": "FILE_TYPE_DIRECTORY", "path": "/w/dirlink", "isSymlink": true}
+        ]})))
+        .mount(&server)
+        .await;
+    Mock::given(method("POST"))
+        .and(path("/filesystem.Filesystem/Stat"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({"entry": new_shape})))
+        .mount(&server)
+        .await;
+    let files = sandbox.files();
+
+    // Act
+    let entries = files
+        .list("/w", &ListOptions::default())
+        .await
+        .expect("list");
+    let info = files
+        .get_info("/w/link", &FileOptions::default())
+        .await
+        .expect("stat");
+
+    // Assert
+    let types: Vec<(&str, FileType)> = entries
+        .iter()
+        .map(|entry| (entry.name.as_str(), entry.file_type))
+        .collect();
+    assert_eq!(
+        types,
+        [
+            ("link", FileType::Symlink),
+            ("old", FileType::Symlink),
+            ("target", FileType::File),
+            ("dirlink", FileType::Symlink),
+        ]
+    );
+    assert_eq!(info.file_type, FileType::Symlink);
+    assert_eq!(info.symlink_target.as_deref(), Some("/w/target"));
+}
