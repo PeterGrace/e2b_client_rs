@@ -284,6 +284,7 @@ through the same `open_process_stream` (`src/commands.rs`).
 | `stream_input` is the `StreamInput` handle with the `pty` member | `py: sandbox_async/commands/pty.py:113-137` |
 | `resize` is unary `/process.Process/Update {process: {pid}, pty: {size: {cols, rows}}}`, answered by an empty `UpdateResponse` | `py: sandbox_async/commands/pty.py:256-283`; `py: envd/process/process_connect.py:110-115`; `py: envd/process/process_pb.py:261-296` |
 | `kill` is the shared `SendSignal(SIGKILL)` with `not_found` → `false` | `py: sandbox_async/commands/pty.py:65-83`; `py: envd/rpc.py:208-248` |
+| `Connect` to the pid of an exited PTY: envd confirms the attach (`start` event), then sends the shell's end event, so `connect` returns `Ok` and the first `next_event` is `PtyEvent::Exit` with the shell's exit code, straight after the exit and after 5 s (also after 8, 10, 12, 15 and 20 s); by 30 s `connect` answers `not_found`, as it does for a pid that never existed. `Commands::connect` to an exited `true` behaves the same. SDK 2.61.0: `pty.connect` succeeds and `wait()` returns the exit code, at once and after 5 s | observed on hosted E2B, 2026-10-28 (issue #56) |
 
 `PtySize` holds `u16` cells (as terminals report them), widened to the
 proto's `uint32` on the wire. The SDK's `on_data` callback is replaced by the

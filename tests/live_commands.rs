@@ -5,8 +5,8 @@ mod live_support;
 use std::time::Duration;
 
 use e2b_client::{
-    CommandConnectOptions, CommandEvent, CommandOptions, ConnectCode, Error, PtyEvent, PtyHandle,
-    PtyOptions, PtySize, Signal, StreamInputOptions,
+    CommandConnectOptions, CommandEvent, CommandOptions, ConnectCode, Error, PtyConnectOptions,
+    PtyEvent, PtyHandle, PtyOptions, PtySize, Signal, StreamInputOptions,
 };
 use live_support::{LiveSandbox, params};
 
@@ -505,4 +505,80 @@ async fn clm_0175_pty_outlives_sixty_seconds() {
         "no alive-42 in {transcript:?}"
     );
     assert_eq!(exit_code, 0);
+}
+
+/// What a `Pty::connect` gave: the `connect` result, and the first event
+/// when it succeeded.
+#[derive(Debug)]
+enum PtyAttach {
+    /// `connect` failed.
+    Refused(Error),
+    /// `connect` succeeded; the first event (or error) on the stream.
+    Attached(Result<Option<PtyEvent>, Error>),
+}
+
+/// Connects to `pid` and, if that succeeds, reads the first event.
+async fn attach(sandbox: &LiveSandbox, pid: u32) -> PtyAttach {
+    match sandbox
+        .pty()
+        .connect(pid, &PtyConnectOptions::default())
+        .await
+    {
+        Err(error) => PtyAttach::Refused(error),
+        Ok(mut attached) => PtyAttach::Attached(attached.next_event().await),
+    }
+}
+
+/// Starts a PTY, makes its shell exit and waits for the exit event, then
+/// connects to the same pid after `delay`.
+async fn attach_after_exit(sandbox: &LiveSandbox, delay: Duration) -> PtyAttach {
+    let handle = sandbox
+        .pty()
+        .create(PtySize::new(80, 24), &PtyOptions::default())
+        .await
+        .expect("create pty");
+    let pid = handle.pid();
+    handle.send_stdin("exit 3\n").await.expect("send exit");
+    let exit = handle.wait().await.expect("wait for the shell to exit");
+    assert_eq!(exit.exit_code, 3);
+    tokio::time::sleep(delay).await;
+    attach(sandbox, pid).await
+}
+
+#[tokio::test]
+#[ignore = "live: run with `just test-live <target>`"]
+async fn clm_0178_pty_connect_to_exited_pid() {
+    // Arrange
+    let sandbox = LiveSandbox::new().await;
+
+    // Act: straight after the exit event, again after 5 s, and to a pid that
+    // never existed in the sandbox.
+    let at_once = attach_after_exit(&sandbox, Duration::ZERO).await;
+    let later = attach_after_exit(&sandbox, Duration::from_secs(5)).await;
+    let never_used = attach(&sandbox, 999_999).await;
+
+    // Assert: envd still attaches to a shell that has just exited, and the
+    // stream's first event replays its exit (observed on hosted E2B,
+    // 2026-10-28, issue #56; by 30 s envd answers `not_found`). A pid envd
+    // does not know is refused by `connect` itself.
+    let replays_exit = |outcome: &PtyAttach| {
+        matches!(
+            outcome,
+            PtyAttach::Attached(Ok(Some(PtyEvent::Exit(exit)))) if exit.exit_code == 3
+        )
+    };
+    assert!(
+        replays_exit(&at_once) && replays_exit(&later),
+        "connect to an exited pid gave, at once: {at_once:?}; after 5 s: {later:?}"
+    );
+    assert!(
+        matches!(
+            never_used,
+            PtyAttach::Refused(Error::Rpc {
+                code: ConnectCode::NotFound,
+                ..
+            })
+        ),
+        "connect to an unknown pid gave {never_used:?}"
+    );
 }

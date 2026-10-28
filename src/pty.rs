@@ -394,8 +394,13 @@ impl Pty {
     ///
     /// # Errors
     ///
-    /// [`Error::Rpc`] with [`crate::ConnectCode::NotFound`] if no such
-    /// process, plus the errors of [`Pty::create`].
+    /// [`Error::Rpc`] with [`crate::ConnectCode::NotFound`] if envd no longer
+    /// knows the process, plus the errors of [`Pty::create`]. A shell that
+    /// has only just exited can still be attached: envd confirms the attach
+    /// and the stream then delivers the shell's [`PtyEvent::Exit`] as its
+    /// first event, as with the SDKs' `pty.connect`. On hosted E2B the exited
+    /// pid was still attachable 20 s after the exit and answered `not_found`
+    /// by 30 s (observed 2026-10-28, issue #56).
     ///
     /// # Examples
     ///
