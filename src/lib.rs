@@ -4,8 +4,11 @@
 //! SDKs use, so it works against hosted E2B and any E2B-compatible server:
 //!
 //! - **REST control plane** ([`Client`]): create, connect/resume, inspect,
-//!   list, pause, kill and extend sandboxes, read their CPU, memory and
-//!   disk metrics ([`MetricsParams`]), and set their network egress rules
+//!   list (filtered by metadata, state, template or start time, and ordered,
+//!   see [`ListSandboxesParams`]), pause, kill and extend sandboxes, find the
+//!   host that reaches a port inside one ([`Sandbox::get_host`]), read their
+//!   CPU, memory and disk metrics ([`MetricsParams`]), and set their network
+//!   egress rules
 //!   at create ([`NetworkConfig`]) or on a running sandbox
 //!   ([`NetworkUpdate`]). At create, choose what happens at the timeout
 //!   ([`Lifecycle`]: kill, or pause with a [`SnapshotMode`]) and make the

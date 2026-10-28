@@ -49,16 +49,64 @@ async fn main() -> e2b_client::Result<()> {
 | Area | API |
 |---|---|
 | Configuration | `ConnectionConfig::builder()` / `from_env()`: API key, API URL, domain, sandbox URL, request timeout (`E2B_API_KEY`, `E2B_API_URL`, `E2B_DOMAIN`, `E2B_SANDBOX_URL`) |
-| Lifecycle (REST) | `Client::{create_sandbox, connect_sandbox, get_sandbox_info, list_sandboxes, pause_sandbox, kill_sandbox, set_sandbox_timeout, refresh_sandbox}` and the same on `Sandbox` |
+| Lifecycle (REST) | `Client::{create_sandbox, connect_sandbox, get_sandbox_info, list_sandboxes, pause_sandbox, kill_sandbox, set_sandbox_timeout, refresh_sandbox}` and the same on `Sandbox`; `ListSandboxesParams::{metadata, state, template, started_after, order}` |
+| Hosts and metrics | `Sandbox::get_host(port)` gives the host name that reaches a port inside the sandbox; `Sandbox::get_metrics` / `Client::get_sandbox_metrics` read CPU, memory and disk samples (`MetricsParams::{start, end}`) |
+| Network | `CreateSandboxParams::network(NetworkConfig)`: `allow_out`, `deny_out` (`ALL_TRAFFIC`), `dns_servers`, per-host header `rule`s, `allow_public_traffic`, `mask_request_host`, `https_ports`; `Sandbox::update_network(NetworkUpdate)` replaces a running sandbox's egress without a restart |
+| Lifecycle settings | `CreateSandboxParams::lifecycle(Lifecycle)`: `on_timeout` (`OnTimeout::Kill`, or a pause with a `SnapshotMode`) and `auto_resume`; `idempotency_key`; `Sandbox::pause_with(PauseOptions)` and `Client::connect_sandbox_with(ConnectOptions)` choose a full or filesystem-only snapshot and a restore or a reboot (`OnResume`) |
+| Snapshots and fork | `Sandbox::{create_snapshot, list_snapshots, fork}`, `Client::{list_snapshots, delete_snapshot, fork_sandbox}`; a snapshot ID is a template, so `CreateSandboxParams::new(snapshot_id)` starts a sandbox from it; `fork` returns one result per copy (up to `MAX_FORK_COUNT`) |
+| Volumes | `Client::{create_volume, get_volume, list_volumes, destroy_volume}` (the volume token stays a `SecretString`); `CreateSandboxParams::volume_mount(name, path)` |
+| MCP gateway | `CreateSandboxParams::mcp(config)` starts the gateway (on the `mcp-gateway` template unless one is given); `Sandbox::{mcp_url, mcp_token}` |
 | Processes (envd) | `Commands::{start, run, connect, list, send_stdin, close_stdin, stream_input, send_signal, kill}`; `CommandHandle::{next_event, wait}` streams stdout/stderr to an exit code; `InputStream::{send, close}` streams stdin in order over one call |
 | PTY sessions (envd) | `Pty::{create, connect, send_stdin, stream_input, resize, kill}`; `PtyHandle::{next_event, wait}` streams terminal output to an exit code |
 | Files (envd) | `Filesystem::{read, read_to_string, read_stream, write, write_files, write_stream, list, get_info, exists, make_dir, rename, remove, watch_dir}`; `WriteOptions` selects multipart, octet-stream or gzip uploads and attaches metadata; `FileStream::next_chunk` and `WatchHandle::next_event` stream downloads and directory events |
 | Signed URLs | `Sandbox::{upload_url, download_url}` with `FileUrlOptions::{user, expires_in}`: plain HTTP links signed with the sandbox's envd access token |
 | Errors | `Error` (`thiserror`): REST status + E2B message, Connect error codes, envd HTTP errors, protocol, timeout, transport, invalid argument |
 
-Out of scope for now: code interpreter, template building, and a blocking API.
-Sandbox-level `get_host`, metrics, snapshots and network updates come in
-milestone 3.
+Out of scope by design: code interpreter, template building, and a blocking
+API. Not implemented yet: the SOCKS5 egress proxy and IAM workload identity
+in network settings, the volume content API (files in a volume without a
+sandbox), sandbox logs, secrets and git.
+
+## Network, lifecycle and snapshots
+
+```rust,no_run
+use std::time::Duration;
+
+use e2b_client::{
+    ALL_TRAFFIC, Client, CreateSandboxParams, Lifecycle, NetworkConfig, OnTimeout,
+    SnapshotMode, SnapshotOptions,
+};
+
+async fn snapshot_tour(client: &Client) -> e2b_client::Result<()> {
+    // Deny all egress except one address, and pause (keeping memory) instead
+    // of being killed at the timeout; a later connect resumes it.
+    let network = NetworkConfig::new().deny_out([ALL_TRAFFIC]).allow_out(["1.1.1.1"]);
+    let lifecycle = Lifecycle::new()
+        .on_timeout(OnTimeout::pause_with(SnapshotMode::Full))
+        .auto_resume(true);
+    let params = CreateSandboxParams::new("base")
+        .timeout(Duration::from_secs(600))
+        .network(network)
+        .lifecycle(lifecycle);
+    let source = client.create_sandbox(&params).await?;
+    source.files().write("/tmp/state.txt", "warm", None).await?;
+
+    // A snapshot ID works as a template: start a second sandbox from it.
+    let snapshot = source
+        .create_snapshot(&SnapshotOptions::new().name("warm-start"))
+        .await?;
+    let copy = client
+        .create_sandbox(&CreateSandboxParams::new(snapshot.snapshot_id.clone()))
+        .await?;
+    assert_eq!(copy.files().read_to_string("/tmp/state.txt", None).await?, "warm");
+
+    // A snapshot cannot be deleted while a sandbox started from it runs.
+    copy.kill().await?;
+    client.delete_snapshot(&snapshot.snapshot_id).await?;
+    source.kill().await?;
+    Ok(())
+}
+```
 
 ## Streaming, PTYs, watching and signed URLs
 
@@ -150,17 +198,23 @@ Every wire detail, with citations into the official SDK sources, is in
 Every behaviour listed above is backed by a claim in `claims.json`, the claims
 ledger. Each claim has a recorded verdict and the evidence behind it.
 
-As of 2026-10-27 (milestone 2):
+As of 2026-10-28 (milestone 3):
 
-- **Hosted E2B:** all 57 behaviours above passed in a live run (46 from
-  milestone 1, 11 added in milestone 2).
-- **Wire-protocol claims:** all 63 are backed by passing mock and unit tests, as is CLM-0122 (`Debug` output never shows secrets).
+- **Hosted E2B:** 72 of the 75 live tests passed (46 from milestone 1, 11
+  from milestone 2, 18 from milestone 3). The 3 that did not are the volume
+  tests: volumes are not enabled for the test team (403), so those claims
+  stay `not_enough_info` rather than refuted.
+- **Wire-protocol claims:** all 77 are backed by passing mock and unit tests,
+  as are CLM-0122 (`Debug` output never shows secrets) and CLM-0152 (the
+  idempotency key).
 - **Refuted claims:** 0. Two were refuted during M1 and fixed: empty config
   values, and the envd version gate on `close_stdin`.
-- **Not yet implemented:** sandbox-level parity (milestone 3) and
-  publishability (milestones 4 and 5) are tracked as `not_enough_info` claims.
-- **E2B-compatible servers:** a self-hosted sandbawks server passes 29 of the
-  57; every failure there is a server defect, filed upstream.
+- **Not yet shown:** the egress proxy and IAM (unscheduled), volumes on a
+  team that has them, and publishability (milestones 4 and 5) are tracked as
+  `not_enough_info` claims.
+- **E2B-compatible servers:** a self-hosted sandbawks server passes 30 of the
+  75; every failure there is a server defect or a route it does not serve
+  yet, filed upstream.
 
 Live results are in `docs/verification/`. The road to a crates.io release is
 in `docs/superpowers/specs/2026-10-26-claims-audit-and-publishability-design.md`.

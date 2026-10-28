@@ -427,16 +427,21 @@ the download URL with its `signature` pair removed with a 4xx.
 - **`wait()` does not replay consumed output.** The SDK handle buffers all
   output; here `next_event()` hands chunks to the caller and `wait()` only
   collects what is left, so output is held once.
-- **Not implemented yet.** Milestone 4: the `is_symlink` file type (#30) and dropping the v1 connect
-  fallback.
-  Unscheduled: sandbox health probing on transport errors, and the volume
-  content API. Out of scope by
-  design: template builds and a sync API.
+- **Not implemented yet.** Milestone 4: the `is_symlink` file type (#30),
+  dropping the v1 connect fallback, a refused filesystem-only pause (409)
+  that reads as "already paused" (#81), and the API review (#52 to #57).
+  Deferred from milestone 3 and unscheduled: the SOCKS5 egress proxy, IAM
+  workload identity (`iam.tokens` and identity placeholders in rule
+  transforms), and the volume content API. Also unscheduled: sandbox health
+  probing on transport errors, sandbox logs, secrets and git. Not planned:
+  batch metrics, callable egress selectors and transforms, and the
+  deprecated `secure` and `keep_memory` flags. Out of scope by design:
+  template builds and a sync API.
 
 ## Verification against a live server
 
-Every v0.1 behaviour was verified live on 2026-10-26 by the M1 suite, and the
-M2 behaviours on 2026-10-27 (`tests/live_*.rs`, `just test-live <target>`). Each test is named after the
+Every v0.1 behaviour was verified live on 2026-10-26 by the M1 suite, the
+M2 behaviours on 2026-10-27, and the M3 behaviours on 2026-10-28 (`tests/live_*.rs`, `just test-live <target>`). Each test is named after the
 claim it backs in `claims.json`. The wire details in this file are covered by
 mock and unit tests instead; `docs/verification/s4-evidence-map.md` maps each
 one to its tests.
@@ -462,6 +467,22 @@ one to its tests.
   and sandboxes have no envd access token, so their file API takes
   unauthenticated requests (#683). Details are in
   `docs/verification/m2-live-results.md`.
+- **Hosted E2B, M3:** 72 of 75 live tests (M1's and M2's 57, all passing,
+  plus 18 for M3) passed in run `20261028T012033Z-hosted-2696474` at
+  `ebccc15`. The 3 failures are the volume tests, stopped by an environment
+  limit: `POST /volumes` answers 403 `use of volumes is not enabled` for the
+  team.
+- **sandbawks, M3:** 16 of 75 passed in run
+  `20261028T012919Z-sandbawks-2784597` at `6871dbf`, and 30 after reruns
+  120 s apart. M1's and M2's tests give the same 29 passes as in M2. Of the
+  M3 tests only the missing-volume test passes, and only because no volume
+  route exists. The rest hit routes sandbawks does not serve yet (metrics,
+  snapshots, fork, network update and volumes, which answer a bare 404, read
+  as `SandboxNotFound` on a sandbox route), create fields it ignores
+  (`network`, `allowInternetAccess`, lifecycle; #665, #667), an unknown
+  `mcp-gateway` template (#680), the template's missing `/home/user` (#688),
+  or list parameters it ignores (#689). Details are in
+  `docs/verification/m3-live-results.md`.
 
 Findings that affect how the crate talks to servers:
 

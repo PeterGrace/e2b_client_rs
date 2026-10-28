@@ -5192,3 +5192,5 @@ Done by the coordinator session, which alone writes the ledger. The ledger work 
     - "Verification against a live server" gains the M3 runs.
   - **`src/lib.rs`:** the crate docs' bullets cover the new surface.
 - [ ] **Step 4: Milestone changelog.** `changelog/<ts>-m3-milestone.md`: what shipped, the ledger counts before and after, the run ids, the sandbawks defects filed, the index of every plan correction by task (as in M2's), and the follow-ups.
+
+> **Corrected (issue #73, 2026-10-28).** Done as written. Nothing was refuted, so Step 2 added no bug tasks. CLM-0153 stays `not_enough_info` as a whole: its network, lifecycle and pause-mode parts passed live, but its volume-mounts part hit the volumes environment limit. Two ledger records were superseded, because evidence and verdicts can't be edited. EVD-0217 named CLM-0147 as a child of CLM-0002, and EVD-0218 corrects it. The first M3 verdict on CLM-0032 called `secure` deferred, and a later verdict replaces it. The milestone changelog lists both.
