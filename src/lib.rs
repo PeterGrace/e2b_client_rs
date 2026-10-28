@@ -49,10 +49,10 @@
 //!   [`Error::is_retryable`]. Transport failures are an opaque
 //!   [`TransportError`], so no HTTP client type is part of the API.
 //!
-//! Every call that takes options takes them as a reference to an options
-//! struct with `new()`, `Default` and builder setters, so adding an option
-//! later is not a breaking change. Their `request_timeout` setters bound
-//! that one call. A zero stream deadline or request timeout means no limit,
+//! Every call that takes a `*Options` type takes it by reference, and each
+//! `*Options` type has `new()`, `Default` and builder setters, so adding an
+//! option later is not a breaking change. Their `request_timeout` setters
+//! bound that one call. A zero stream deadline or request timeout means no limit,
 //! as in the SDKs.
 //!
 //! # Quick start
