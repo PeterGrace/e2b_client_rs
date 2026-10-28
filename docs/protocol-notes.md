@@ -314,6 +314,7 @@ Behaviour:
 | Write (default encoding): `POST /files?path=<p>[&username=<u>]`, `multipart/form-data`, field `file`, filename = path; response is a JSON array of `{name, type, path}` | `js: 2226-2249`; `py: sandbox_async/filesystem/filesystem.py:445-462`; `js: index.d.ts:4567-4580` |
 | envd HTTP errors carry `{"message"}`; 400/401/404/429/502/507 are distinguished | `py: envd/api.py:24-33, 143-152` |
 | `list` depth must be ≥ 1 | `py: sandbox_async/filesystem/filesystem.py:508-513` |
+| A symlink is reported as `FILE_TYPE_SYMLINK` on every envd version: newer envd sets `is_symlink` (JSON `isSymlink`) and puts the target's type in `type`, so `is_symlink` wins; older envd reports `FILE_TYPE_SYMLINK` in `type` | `py: sandbox/filesystem/filesystem.py:130-148`; `py: envd/filesystem/filesystem_pb.py:240, 299-303` |
 | `exists` is `Stat` with `not_found` → `false` | `py: sandbox_async/filesystem/filesystem.py:530-560` |
 | `make_dir` returns `false` on `already_exists` | `py: sandbox_async/filesystem/filesystem.py:647-676` |
 | `rename` is `Move` and returns the new entry | `py: sandbox_async/filesystem/filesystem.py:614-645` |

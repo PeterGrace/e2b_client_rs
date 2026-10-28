@@ -4809,7 +4809,9 @@ git commit -m "feat: cap concurrent octet-stream uploads at 8 by default"
 - Modify: `tests/envd_api.rs` (a mock test for both envd shapes)
 - Modify: `tests/live_files.rs` (`clm_0177_symlinks_report_symlink_type`)
 - Modify: `docs/protocol-notes.md` (the `EntryInfo` message row, line 302; a behaviour row)
-- Create: `changelog/<ts>-m4-task-10-symlinks.md`
+- Create: `changelog/<ts>-m4-task-10-is-symlink.md`
+
+> **Corrected (issue #30, 2026-10-28).** The code shipped as given. The changelog slug is `is-symlink`, not `symlinks`. Hosted E2B runs envd 0.10.0, which uses the new shape: with the fix disabled the live test saw `file-link` as `File` and `dir-link` as `Directory`; with it, the test passes. No later task changes.
 
 Newer envd reports a symlink's *target* type in `type` and sets `is_symlink` (proto field 12, `py: envd/filesystem/filesystem_pb.py:240, 299-303`). Older envd reports `FILE_TYPE_SYMLINK` in `type`. The SDK maps `FileType.SYMLINK if entry.is_symlink else map_file_type(entry.type)` (`py: sandbox/filesystem/filesystem.py:130-148`). The crate reads only `type` today. Watch events build their entry through the same `From`, so they get the fix too.
 
@@ -5011,7 +5013,7 @@ The "Not implemented yet" paragraph (line 430) is rewritten by Task 18, not here
 
 Run `just lint`, `just test` and `just doc`.
 
-`changelog/<ts>-m4-task-10-symlinks.md`:
+`changelog/<ts>-m4-task-10-is-symlink.md`:
 
 ```markdown
 # M4 Task 10: Report symlinks from is_symlink (issue #30)

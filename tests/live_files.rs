@@ -613,3 +613,55 @@ async fn clm_0065_download_url_fetches_without_credentials() {
         "the URL without its signature answered {unsigned_status}"
     );
 }
+
+#[tokio::test]
+#[ignore = "live: run with `just test-live <target>`"]
+async fn clm_0177_symlinks_report_symlink_type() {
+    // Arrange: a file, a directory, and a link to each.
+    let sandbox = LiveSandbox::new().await;
+    let files = sandbox.files();
+    files
+        .write("/tmp/sym/target.txt", "t", &WriteOptions::default())
+        .await
+        .expect("write target");
+    files
+        .make_dir("/tmp/sym/dir", &FileOptions::default())
+        .await
+        .expect("make dir");
+    let linked = sandbox
+        .commands()
+        .run(
+            "ln -s /tmp/sym/target.txt /tmp/sym/file-link && ln -s /tmp/sym/dir /tmp/sym/dir-link",
+            &CommandOptions::default(),
+        )
+        .await
+        .expect("run ln");
+    assert_eq!(linked.exit_code, 0, "ln failed: {}", linked.stderr);
+
+    // Act
+    let entries = files
+        .list("/tmp/sym", &ListOptions::default())
+        .await
+        .expect("list");
+    let file_link = files
+        .get_info("/tmp/sym/file-link", &FileOptions::default())
+        .await
+        .expect("get_info file-link");
+
+    // Assert: each link is a symlink whatever it points at; the targets keep
+    // their own types.
+    let found: HashSet<(String, FileType)> = entries
+        .into_iter()
+        .map(|entry| (entry.name, entry.file_type))
+        .collect();
+    let want: HashSet<(String, FileType)> = [
+        ("target.txt".to_owned(), FileType::File),
+        ("dir".to_owned(), FileType::Directory),
+        ("file-link".to_owned(), FileType::Symlink),
+        ("dir-link".to_owned(), FileType::Symlink),
+    ]
+    .into_iter()
+    .collect();
+    assert_eq!(found, want, "envd {}", sandbox.envd_version());
+    assert_eq!(file_link.file_type, FileType::Symlink);
+}

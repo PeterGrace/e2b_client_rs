@@ -90,7 +90,8 @@ impl FileType {
 pub struct EntryInfo {
     /// The base name.
     pub name: String,
-    /// File, directory or symlink.
+    /// File, directory or symlink. A symbolic link is `Symlink` on every
+    /// envd version, never its target's type.
     pub file_type: FileType,
     /// The absolute path.
     pub path: String,
@@ -117,7 +118,14 @@ pub struct EntryInfo {
 impl From<EntryInfoWire> for EntryInfo {
     fn from(wire: EntryInfoWire) -> Self {
         Self {
-            file_type: FileType::from_wire(wire.file_type.as_ref()),
+            // A link's own type, as the SDK reports it
+            // (`e2b/sandbox/filesystem/filesystem.py:130-148`): `is_symlink`
+            // wins, else the reported type, which is how older envd says it.
+            file_type: if wire.is_symlink {
+                FileType::Symlink
+            } else {
+                FileType::from_wire(wire.file_type.as_ref())
+            },
             modified_time: wire
                 .modified_time
                 .as_deref()
@@ -1954,5 +1962,26 @@ mod tests {
         let entry = EntryInfo::from(wire);
         let time = entry.modified_time.expect("time");
         assert_eq!(time.to_rfc3339(), "2026-01-02T02:04:05.500+00:00");
+    }
+
+    #[test]
+    fn is_symlink_wins_over_the_reported_type() {
+        let decode = |raw: &str| {
+            EntryInfo::from(serde_json::from_str::<EntryInfoWire>(raw).expect("entry json"))
+        };
+        assert_eq!(
+            decode(r#"{"type":"FILE_TYPE_DIRECTORY","isSymlink":true}"#).file_type,
+            FileType::Symlink
+        );
+        // The proto field name is accepted too, as Connect's JSON codec allows.
+        assert_eq!(
+            decode(r#"{"type":"FILE_TYPE_FILE","is_symlink":true}"#).file_type,
+            FileType::Symlink
+        );
+        assert_eq!(
+            decode(r#"{"type":"FILE_TYPE_FILE"}"#).file_type,
+            FileType::File
+        );
+        assert_eq!(decode(r#"{"type":3}"#).file_type, FileType::Symlink);
     }
 }

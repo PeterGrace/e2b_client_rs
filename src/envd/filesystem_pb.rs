@@ -79,6 +79,14 @@ pub(crate) struct EntryInfoWire {
     /// set.
     #[serde(default, deserialize_with = "deserialize_null_as_default")]
     pub(crate) metadata: HashMap<String, String>,
+    /// Whether the entry is a symbolic link, `bool` field 12
+    /// (`e2b/envd/filesystem/filesystem_pb.py:240, 299-303`). Newer envd sets
+    /// it and reports the *target's* type in `type`; older envd omits it and
+    /// reports `FILE_TYPE_SYMLINK` in `type`. The struct's camelCase renaming
+    /// makes the JSON name `isSymlink`; the alias also accepts the proto
+    /// name, which Connect's JSON codec allows.
+    #[serde(default, alias = "is_symlink")]
+    pub(crate) is_symlink: bool,
 }
 
 /// `filesystem.WatchDirRequest`
