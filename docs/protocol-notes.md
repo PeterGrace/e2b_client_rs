@@ -323,8 +323,9 @@ Behaviour:
 ## Uploads
 
 `Filesystem::write_files(&[WriteEntry], &WriteOptions)` writes a batch of
-in-memory files (`src/filesystem.rs`). `Filesystem::write` is a one-entry
-`write_files` with default options, so its wire request is unchanged.
+in-memory files (`src/filesystem.rs`). `Filesystem::write(path, data,
+&WriteOptions)` is a one-entry `write_files` with the caller's options, so
+octet-stream, gzip and metadata shape its request the same way.
 `Filesystem::write_stream(path, impl AsyncRead, &WriteOptions)` uploads one
 file from a reader, read as the body is sent.
 
