@@ -754,7 +754,10 @@ async fn a_request_timeout_is_a_timeout_and_not_retryable() {
     assert!(!transport.is_connect(), "{transport:?}");
     assert_eq!(err.status(), None);
     assert_eq!(Flags::of(&err), Flags { timeout: true, ..Flags::NONE });
-    assert!(err.to_string().starts_with("HTTP transport error: "), "{err}");
+    // The detail is in `source()`, not repeated in `Display`.
+    assert_eq!(err.to_string(), "HTTP transport error");
+    let source = err.source().expect("a source");
+    assert!(!source.to_string().is_empty(), "{source:?}");
 }
 
 #[tokio::test]
@@ -859,7 +862,11 @@ Replace the `Transport` variant (lines 107-109) with:
 ```rust
     /// The HTTP transport failed (connection refused, TLS failure, reset,
     /// request timeout, ...). [`TransportError`] says which.
-    #[error("HTTP transport error: {0}")]
+    ///
+    /// The `Display` is only "HTTP transport error"; the detail is the
+    /// [`std::error::Error::source`], so a chain printer (anyhow's `{:#}`,
+    /// for example) shows it once rather than twice.
+    #[error("HTTP transport error")]
     Transport(#[source] TransportError),
 ```
 

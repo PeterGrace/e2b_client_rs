@@ -122,7 +122,11 @@ pub enum Error {
 
     /// The HTTP transport failed (connection refused, TLS failure, reset,
     /// request timeout, ...). [`TransportError`] says which.
-    #[error("HTTP transport error: {0}")]
+    ///
+    /// The `Display` is only "HTTP transport error"; the detail is the
+    /// [`std::error::Error::source`], so a chain printer (anyhow's `{:#}`,
+    /// for example) shows it once rather than twice.
+    #[error("HTTP transport error")]
     Transport(#[source] TransportError),
 }
 

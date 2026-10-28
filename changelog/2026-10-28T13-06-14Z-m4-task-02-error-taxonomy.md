@@ -13,6 +13,10 @@ reqwest type is public, and `secrecy` is re-exported (CLM-0170).
   Code that called reqwest methods on it (`err.is_timeout()` on the inner
   `reqwest::Error`) calls `TransportError::is_timeout` / `is_connect`, or
   `Error::is_timeout` / `is_retryable`.
+- `Error::Transport`'s `Display` is now just "HTTP transport error"; the
+  transport's message moved to `source()` (the `TransportError`), so chain
+  printers such as anyhow's `{:#}` show it once. Code that printed `{err}` to
+  see the cause walks `source()` instead.
 - `impl From<reqwest::Error> for Error` is gone, so `?` no longer turns a
   `reqwest::Error` into an `Error`. Inside the crate every reqwest result is
   converted with `.map_err(Error::transport)` (30 sites in `src/client.rs`,

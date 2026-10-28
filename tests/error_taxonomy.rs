@@ -263,10 +263,10 @@ async fn a_request_timeout_is_a_timeout_and_not_retryable() {
             ..Flags::NONE
         }
     );
-    assert!(
-        err.to_string().starts_with("HTTP transport error: "),
-        "{err}"
-    );
+    // The detail is in `source()`, not repeated in `Display`.
+    assert_eq!(err.to_string(), "HTTP transport error");
+    let source = err.source().expect("a source");
+    assert!(!source.to_string().is_empty(), "{source:?}");
 }
 
 #[tokio::test]
