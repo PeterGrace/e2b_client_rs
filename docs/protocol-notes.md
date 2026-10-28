@@ -62,7 +62,7 @@ All JSON. Request/response models are the generated OpenAPI models under
 | Call | Route and status handling | Citation |
 |---|---|---|
 | Create | `POST /v2/sandboxes`, 201 → `Sandbox` | `py: api/client/api/sandboxes/post_v2_sandboxes.py:24-25, 39-42`; `py: sandbox_async/sandbox_api.py:256-277`; `js: 5566` |
-| Create body | `templateID`, `timeout`, `autoPause`, `autoPauseMemory`, `autoResume`, `metadata`, `envVars`, `allow_internet_access` (snake_case in the spec), `network` (see "Network"), `volumeMounts` (see "Volumes"); header `Idempotency-Key` when a key is given | `py: api/client/models/new_sandbox_v2.py:97-132, 145-171`; `py: sandbox_async/sandbox_api.py:237-260` |
+| Create body | `templateID`, `timeout`, `autoPause`, `autoPauseMemory`, `autoResume`, `metadata`, `envVars`, `allow_internet_access` (snake_case in the spec), `network` (see "Network"), `volumeMounts` (see "Volumes"), `mcp` (see "MCP gateway"); header `Idempotency-Key` when a key is given | `py: api/client/models/new_sandbox_v2.py:97-132, 145-171`; `py: sandbox_async/sandbox_api.py:237-260` |
 | Create lifecycle | `autoPause` only when `on_timeout` is set (`true` for pause, `false` for kill); `autoPauseMemory` only for a pause with a mode (`full` → `true`, `filesystem` → `false`), else omitted and the API default (full) applies; `autoResume: {enabled}` only when `auto_resume` is set | `py: sandbox/sandbox_api.py:639-662, 1054-1125`; `py: api/client/models/new_sandbox_v2.py:113-118`; `py: api/client/models/sandbox_auto_resume_config.py:18, 28` |
 | Lifecycle checks | before any request, `InvalidArgument`: `auto_resume: true` without `on_timeout` pause (unset counts as kill), and `auto_resume: true` with mode `filesystem`. The SDK's third check, a mode on a kill, cannot be written here: `OnTimeout::Kill` has no mode | `py: sandbox/sandbox_api.py:1095-1114` |
 | Idempotency key | `Idempotency-Key` header on `POST /v2/sandboxes`, only when given; 1-255 characters, then only `[a-z0-9-]`, else `InvalidArgument` before any request; checked before the lifecycle | `py: api/client/api/sandboxes/post_v2_sandboxes.py:17-21`; `py: retry.py:29-44`; `py: sandbox_async/sandbox_api.py:228-232`; `js: 5568` |
@@ -153,6 +153,28 @@ volume's token, without a sandbox) is not implemented.
 | Mounts at create: `volumeMounts: [{name, path}]` in the create body, left out when there are none (`volume_mounts if volume_mounts else UNSET`). The SDK takes a dict from path to volume (or volume name), so one path holds one mount; a second `volume_mount` at the same path replaces the first in its place, as a dict assignment does | `py: sandbox_async/main.py:203, 218-227`; `py: sandbox_async/sandbox_api.py:252`; `py: api/client/models/sandbox_volume_mount.py:10-43`; `py: api/client/models/new_sandbox_v2.py:97-102, 131-132` |
 | Mounts read back: `volumeMounts` in the detail and in list entries; missing or `null` reads as none (`d.pop("volumeMounts", UNSET) or []`) | `py: api/client/models/sandbox_detail.py:241-246`; `py: api/client/models/listed_sandbox.py:139-144` |
 | Hosted E2B, for a team without volumes: `POST /volumes` answers 403 `use of volumes is not enabled`, while `GET /volumes` answers 200 `[]`. A missing volume with a UUID-shaped ID is 404 `Volume not found` on get and destroy; an ID of another shape is 400 `Invalid volume ID` (an `Error::Api`, not `VolumeNotFound`, as in the SDK) | live, hosted E2B, 2026-10-28 (`clm_0148_missing_volume_is_not_found_and_not_destroyed`) |
+
+## MCP gateway
+
+A sandbox created with an MCP configuration runs an MCP gateway that serves
+the configured MCP servers over HTTP. The crate takes the configuration
+with `CreateSandboxParams::mcp` (`src/models.rs`), starts the gateway in
+`Client::create_sandbox` (`src/client.rs`, `Sandbox::start_mcp_gateway` in
+`src/sandbox.rs`), and exposes it through `Sandbox::{mcp_url, mcp_token}`;
+the constants and the command are in `src/mcp.rs`.
+
+| Fact | Citation |
+|---|---|
+| The configuration is a JSON object keyed by server name (e.g. `{"fetch": {}}`), sent as `mcp` in the create body. An empty object is left out of the body (`mcp or UNSET`; the JS SDK sends `{}`), but still starts the gateway. The crate takes a `serde_json::Map` and does not check the server names; the SDK's generated `McpServer` types are not ported (see the plan's deviations) | `py: sandbox_async/sandbox_api.py:219, 246`; `py: api/client/models/new_sandbox_v2.py:85-91, 127-128`; `js: 5550` |
+| Template: the one given, else `mcp-gateway` when an MCP configuration is set, else `base`. Python also replaces an empty template (`if not template`); the crate, like the JS SDK's `??`, sends an explicit `""` as given | `py: sandbox/main.py:32-33`; `py: sandbox_async/main.py:214-217`; `js: 5873, 6324` |
+| Start, after the create returns: `mcp-gateway --config <quoted JSON>` through the process service (`/bin/bash -l -c`), as `root`, with one environment variable, `GATEWAY_ACCESS_TOKEN`, set to a new random UUID v4 (lowercase, hyphenated). The token is only in the environment, never on the command line | `py: sandbox_async/main.py:245-256`; `js: 5883-5890` |
+| Quoting is `shlex.quote` (the JS SDK ports it): the empty string is `''`; a string of only ASCII letters, digits and `_@%+=:,./-` is left as is; anything else is wrapped in `'...'` with each `'` written as `'"'"'`. A JSON object always contains `{`, so it is always quoted | Python 3 `shlex.quote`; `js: 268-281` |
+| The JSON is compact, `{"fetch":{}}`, as the JS SDK's `JSON.stringify` writes it; Python's `json.dumps` writes `{"fetch": {}}` and escapes non-ASCII as `\uXXXX`. Keys come out sorted (`serde_json::Map` is a `BTreeMap`), where the SDKs keep insertion order. Each form is the same JSON object to the gateway | `py: sandbox_async/main.py:251`; `js: 5887` |
+| Failure: if the gateway exits non-zero, or the command call itself fails, the sandbox is killed and the kill's own error is ignored. A non-zero exit is `Error::McpGateway(<stderr>)` (the SDKs' `SandboxException("Failed to start MCP gateway: <stderr>")`); any other error is returned as it is | `py: sandbox_async/main.py:257-266`; `js: 5891-5893` |
+| URL: `https://<get_host(50005)>/mcp`, i.e. `https://50005-<sandbox id>.<sandbox domain>/mcp` | `py: sandbox/main.py:28, 226-232`; `js: 5785, 6201-6203` |
+| Token: the one generated at create, kept on the handle; else read once from `/etc/mcp-gateway/.token` as `root` and kept (a failed read is not kept). The crate trims trailing whitespace from the file, where the SDKs return it as is (see the plan's deviations). Clones of a `Sandbox` share the kept token | `py: sandbox_async/main.py:1063-1073`; `js: 6209-6213` |
+| The token is a secret: it is a `SecretString`, and `Sandbox`'s `Debug` does not print it | crate rule (CLM-0122's) |
+| How the token is used (the SDKs don't say): hosted E2B's gateway answers an MCP `initialize` `POST` to the URL with 401 without an `Authorization` header and with `Authorization: Bearer <another UUID>`, and with 200 with `Authorization: Bearer <the token>`. The token from the file equals the one generated at create | live, hosted E2B, 2026-10-28 (`clm_0150`) |
 
 ## Connect-RPC framing
 
@@ -405,9 +427,7 @@ the download URL with its `signature` pair removed with a 4xx.
 - **`wait()` does not replay consumed output.** The SDK handle buffers all
   output; here `next_event()` hands chunks to the caller and `wait()` only
   collects what is left, so output is held once.
-- **Not implemented yet.** Milestone 3: the remaining SDK 2.61 create
-  field (the MCP gateway).
-  Milestone 4: the `is_symlink` file type (#30) and dropping the v1 connect
+- **Not implemented yet.** Milestone 4: the `is_symlink` file type (#30) and dropping the v1 connect
   fallback.
   Unscheduled: sandbox health probing on transport errors, and the volume
   content API. Out of scope by

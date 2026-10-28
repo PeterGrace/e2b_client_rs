@@ -6,15 +6,16 @@ use std::collections::HashSet;
 use std::time::{Duration, Instant};
 
 use e2b_client::{
-    ALL_TRAFFIC, CommandOptions, ConnectOptions, EnvdVersion, Error, ForkOptions, Lifecycle,
-    ListSandboxesParams, ListSnapshotsParams, MetricsParams, NetworkConfig, NetworkRule,
-    NetworkUpdate, OnResume, OnTimeout, PauseOptions, Sandbox, SandboxInfo, SandboxState,
-    SnapshotMode, SnapshotOptions, SnapshotPage, SortOrder, TimeoutAction,
+    ALL_TRAFFIC, CommandOptions, ConnectOptions, DEFAULT_MCP_TEMPLATE, EnvdVersion, Error,
+    ForkOptions, Lifecycle, ListSandboxesParams, ListSnapshotsParams, MetricsParams, NetworkConfig,
+    NetworkRule, NetworkUpdate, OnResume, OnTimeout, PauseOptions, Sandbox, SandboxInfo,
+    SandboxState, SnapshotMode, SnapshotOptions, SnapshotPage, SortOrder, TimeoutAction,
 };
 use live_support::{
     LiveSandbox, RUN_METADATA_KEY, client, http_reply, no_http_reply_twice, params, params_from,
     poll_until, resource_name, run_id,
 };
+use secrecy::ExposeSecret;
 
 /// A sandbox id that cannot exist.
 const MISSING_ID: &str = "i0000000000000000000z";
@@ -1232,5 +1233,92 @@ async fn clm_0153_get_info_reports_volume_mounts() {
             .destroy_volume(volume.volume_id())
             .await
             .expect("destroy volume")
+    );
+}
+
+/// A well-formed v4 UUID that is not the gateway's token.
+const WRONG_MCP_TOKEN: &str = "00000000-0000-4000-8000-000000000000";
+
+/// An MCP `initialize` request (JSON-RPC 2.0), as an MCP client opens a
+/// streamable-HTTP session with.
+fn mcp_initialize() -> serde_json::Value {
+    serde_json::json!({
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "initialize",
+        "params": {
+            "protocolVersion": "2025-03-26",
+            "capabilities": {},
+            "clientInfo": {"name": "e2b-client-live-test", "version": "0"}
+        }
+    })
+}
+
+/// The HTTP status the gateway at `url` answers an `initialize` with,
+/// sending `token` as a bearer token when given.
+async fn mcp_initialize_status(url: &str, token: Option<&str>) -> u16 {
+    let mut request = reqwest::Client::new()
+        .post(url)
+        .header("accept", "application/json, text/event-stream")
+        .json(&mcp_initialize());
+    // `if let` adds the header only when a token is given.
+    if let Some(token) = token {
+        request = request.bearer_auth(token);
+    }
+    request
+        .send()
+        .await
+        .map_err(|error| error.without_url())
+        .expect("the gateway answers HTTP")
+        .status()
+        .as_u16()
+}
+
+#[tokio::test]
+#[ignore = "live: run with `just test-live <target>`"]
+async fn clm_0150_mcp_gateway_starts_and_exposes_url_and_token() {
+    // Arrange: the `fetch` server needs no credentials. `params()` would set
+    // the run's template, which wins over the gateway default, so the
+    // gateway template is named explicitly.
+    let serde_json::Value::Object(config) = serde_json::json!({"fetch": {}}) else {
+        panic!("an object");
+    };
+    let create = params_from(DEFAULT_MCP_TEMPLATE).mcp(config);
+
+    // Act
+    let sandbox = LiveSandbox::create(&create).await;
+    let token = sandbox
+        .mcp_token()
+        .await
+        .expect("token")
+        .expose_secret()
+        .to_owned();
+    let connected = sandbox
+        .client()
+        .connect_sandbox(sandbox.sandbox_id(), None)
+        .await
+        .expect("connect");
+    let from_file = connected
+        .mcp_token()
+        .await
+        .expect("token file")
+        .expose_secret()
+        .to_owned();
+    let url = sandbox.mcp_url();
+    let without_token = mcp_initialize_status(&url, None).await;
+    let wrong_token = mcp_initialize_status(&url, Some(WRONG_MCP_TOKEN)).await;
+    let with_token = mcp_initialize_status(&url, Some(&token)).await;
+
+    // Assert: the messages carry statuses only, never the token.
+    assert!(
+        from_file == token,
+        "the token file holds the token create generated"
+    );
+    assert!(url.starts_with(&format!("https://50005-{}.", sandbox.sandbox_id())));
+    assert!(url.ends_with("/mcp"), "{url}");
+    assert_eq!(
+        (without_token, wrong_token, with_token),
+        (401, 401, 200),
+        "gateway status (without a token, with another UUID, with the token)"
     );
 }

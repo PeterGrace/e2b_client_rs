@@ -150,18 +150,29 @@ impl Client {
     /// # Arguments
     ///
     /// * `params` - template, timeout, metadata, environment variables,
-    ///   network, lifecycle and an optional idempotency key.
+    ///   network, lifecycle, volume mounts, an MCP configuration and an
+    ///   optional idempotency key.
     ///
     /// # Returns
     ///
     /// A [`Sandbox`] handle with its envd access token and address resolved.
+    /// With an MCP configuration ([`CreateSandboxParams::mcp`]), the gateway
+    /// has been started, as the SDKs do, and [`Sandbox::mcp_token`] holds
+    /// the token it was started with.
     ///
     /// # Errors
     ///
     /// [`Error::InvalidArgument`] for an invalid idempotency key or
     /// lifecycle, before any request; [`Error::Api`] for a non-2xx answer,
     /// [`Error::Decode`] for an unexpected body, [`Error::Transport`] for
-    /// connection failures.
+    /// connection failures. With an MCP configuration, if the gateway does
+    /// not start the sandbox is killed and the error is
+    /// [`Error::McpGateway`] with the gateway's stderr for a non-zero exit,
+    /// or the error of the command call itself (for example
+    /// [`Error::Rpc`]). If this future is dropped while the gateway is
+    /// starting (for example by a `tokio::time::timeout` around the call),
+    /// the kill does not run and the sandbox lives until its timeout, as
+    /// in the SDKs.
     pub async fn create_sandbox(&self, params: &CreateSandboxParams) -> Result<Sandbox> {
         // Every check runs before any request, in the SDK's order: the key
         // (`sandbox_async/sandbox_api.py:228`), then the lifecycle (`:232`).
@@ -176,7 +187,18 @@ impl Client {
             request = request.header(HEADER_IDEMPOTENCY_KEY, key);
         }
         let created: SandboxCreated = parse_success(request.send().await?).await?;
-        Sandbox::from_created(self.clone(), created)
+        let sandbox = Sandbox::from_created(self.clone(), created)?;
+        // `if let ... && let ...` (a let chain) runs the block only when an
+        // MCP configuration is set and starting the gateway failed.
+        if let Some(config) = params.mcp_config()
+            && let Err(error) = sandbox.start_mcp_gateway(config).await
+        {
+            // As in the SDKs, a sandbox whose gateway failed is killed. The
+            // kill's own result is ignored so the gateway error is reported.
+            let _ = sandbox.kill().await;
+            return Err(error);
+        }
+        Ok(sandbox)
     }
 
     /// Connects to a sandbox, resuming it first if it is paused

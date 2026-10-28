@@ -9,11 +9,13 @@ use std::time::Duration;
 
 use chrono::{DateTime, SecondsFormat, Utc};
 use serde::{Deserialize, Serialize};
+use serde_json::{Map, Value};
 
 use crate::error::{Error, Result};
 use crate::lifecycle::{
     AutoResume, Lifecycle, LifecycleInfo, OnTimeout, SnapshotMode, deserialize_known_mode,
 };
+use crate::mcp::DEFAULT_MCP_TEMPLATE;
 use crate::network::{NetworkConfig, NetworkInfo};
 use crate::volumes::VolumeMount;
 use crate::wire::deserialize_null_as_default;
@@ -22,6 +24,10 @@ use crate::wire::deserialize_null_as_default;
 pub const DEFAULT_TEMPLATE: &str = "base";
 
 /// Parameters for [`crate::Client::create_sandbox`].
+///
+/// [`CreateSandboxParams::default`] creates from [`DEFAULT_TEMPLATE`], or
+/// from [`DEFAULT_MCP_TEMPLATE`] once [`CreateSandboxParams::mcp`] is set,
+/// with nothing else set.
 ///
 /// # Examples
 ///
@@ -35,9 +41,12 @@ pub const DEFAULT_TEMPLATE: &str = "base";
 ///     .env("GREETING", "hello");
 /// assert_eq!(params.template(), "base");
 /// ```
-#[derive(Debug, Clone, PartialEq, Eq)]
+// `#[derive(Default)]` builds each field's own default: `None`, empty
+// collections and `Lifecycle::default()`, so no template is set.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct CreateSandboxParams {
-    template: String,
+    // `None` until `new` names one; `template()` then picks the SDK default.
+    template: Option<String>,
     timeout: Option<Duration>,
     metadata: HashMap<String, String>,
     envs: HashMap<String, String>,
@@ -46,12 +55,7 @@ pub struct CreateSandboxParams {
     network: Option<NetworkConfig>,
     idempotency_key: Option<String>,
     volume_mounts: Vec<VolumeMount>,
-}
-
-impl Default for CreateSandboxParams {
-    fn default() -> Self {
-        Self::new(DEFAULT_TEMPLATE)
-    }
+    mcp: Option<Map<String, Value>>,
 }
 
 impl CreateSandboxParams {
@@ -63,31 +67,35 @@ impl CreateSandboxParams {
     ///
     /// # Returns
     ///
-    /// Parameters with no timeout, metadata or environment variables set; the
-    /// server applies its defaults (300 s timeout on E2B).
+    /// Parameters for `template` with nothing else set; the server applies
+    /// its defaults (300 s timeout on E2B).
     #[must_use]
     pub fn new(template: impl Into<String>) -> Self {
         Self {
-            template: template.into(),
-            timeout: None,
-            metadata: HashMap::new(),
-            envs: HashMap::new(),
-            lifecycle: Lifecycle::new(),
-            allow_internet_access: None,
-            network: None,
-            idempotency_key: None,
-            volume_mounts: Vec::new(),
+            template: Some(template.into()),
+            // `..Self::default()` fills every other field with its default,
+            // like `dataclasses.replace(Default(), template=...)` in Python.
+            ..Self::default()
         }
     }
 
-    /// The template ID or alias.
+    /// The template ID or alias the sandbox is created from: the one given
+    /// to [`CreateSandboxParams::new`], else [`DEFAULT_MCP_TEMPLATE`] when an
+    /// MCP configuration is set, else [`DEFAULT_TEMPLATE`]
+    /// (`e2b/sandbox_async/main.py:214-217`).
     ///
     /// # Returns
     ///
     /// The template.
     #[must_use]
     pub fn template(&self) -> &str {
-        &self.template
+        // A tuple match checks both options at once; `_` accepts any value
+        // in that position.
+        match (&self.template, &self.mcp) {
+            (Some(template), _) => template,
+            (None, Some(_)) => DEFAULT_MCP_TEMPLATE,
+            (None, None) => DEFAULT_TEMPLATE,
+        }
     }
 
     /// Sets how long the sandbox lives before it is killed (or paused, with
@@ -296,6 +304,51 @@ impl CreateSandboxParams {
         self
     }
 
+    /// Starts an MCP gateway in the sandbox with this configuration: a JSON
+    /// object keyed by server name, e.g. `{"fetch": {}}`, as the SDK's
+    /// `mcp=` takes it. The crate passes it on without checking the server
+    /// names or their settings.
+    ///
+    /// Without a template given to [`CreateSandboxParams::new`], the sandbox
+    /// is created from [`DEFAULT_MCP_TEMPLATE`]. After the create,
+    /// [`crate::Client::create_sandbox`] runs `mcp-gateway` as root with a
+    /// new random access token, and kills the sandbox if the gateway fails
+    /// to start. Reach the gateway at [`crate::Sandbox::mcp_url`] with
+    /// [`crate::Sandbox::mcp_token`]. An empty object still starts the
+    /// gateway, but is left out of the create body, as the Python SDK does.
+    ///
+    /// # Arguments
+    ///
+    /// * `config` - the MCP server configuration. `Map<String, Value>` is
+    ///   `serde_json`'s JSON object, the Rust side of a `dict`.
+    ///
+    /// # Returns
+    ///
+    /// The parameters, for chaining.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use e2b_client::{CreateSandboxParams, DEFAULT_MCP_TEMPLATE};
+    /// use serde_json::{Value, json};
+    ///
+    /// let Value::Object(config) = json!({"fetch": {}}) else {
+    ///     unreachable!("json! of an object literal is an object");
+    /// };
+    /// let params = CreateSandboxParams::default().mcp(config);
+    /// assert_eq!(params.template(), DEFAULT_MCP_TEMPLATE);
+    /// ```
+    #[must_use]
+    pub fn mcp(mut self, config: Map<String, Value>) -> Self {
+        self.mcp = Some(config);
+        self
+    }
+
+    /// The MCP configuration, if one is set.
+    pub(crate) fn mcp_config(&self) -> Option<&Map<String, Value>> {
+        self.mcp.as_ref()
+    }
+
     /// The idempotency key, if set and valid (`resolve_idempotency_key`,
     /// `e2b/retry.py:29-44`).
     ///
@@ -341,7 +394,7 @@ impl CreateSandboxParams {
     pub(crate) fn body(&self) -> Result<NewSandboxBody<'_>> {
         let lifecycle = self.lifecycle.body()?;
         Ok(NewSandboxBody {
-            template_id: &self.template,
+            template_id: self.template(),
             timeout: self.timeout.map(|timeout| timeout.as_secs()),
             metadata: &self.metadata,
             env_vars: &self.envs,
@@ -353,6 +406,9 @@ impl CreateSandboxParams {
             // so an empty `NetworkConfig` leaves `network` out of the body.
             network: self.network.as_ref().filter(|network| !network.is_empty()),
             volume_mounts: &self.volume_mounts,
+            // An empty configuration is left out, as the Python SDK's
+            // `mcp or UNSET` does (`e2b/sandbox_async/sandbox_api.py:246`).
+            mcp: self.mcp.as_ref().filter(|config| !config.is_empty()),
         })
     }
 }
@@ -384,6 +440,8 @@ pub(crate) struct NewSandboxBody<'a> {
     // `e2b/sandbox_async/sandbox_api.py:252`).
     #[serde(rename = "volumeMounts", skip_serializing_if = "<[_]>::is_empty")]
     volume_mounts: &'a [VolumeMount],
+    #[serde(skip_serializing_if = "Option::is_none")]
+    mcp: Option<&'a Map<String, Value>>,
 }
 
 /// `SandboxTimeoutRequest` body: the timeout in seconds.
@@ -950,6 +1008,62 @@ mod tests {
         assert_eq!(
             json,
             serde_json::json!({"templateID": "base", "metadata": {}, "envVars": {}})
+        );
+    }
+
+    #[test]
+    fn template_is_the_given_one_else_the_mcp_default_else_base() {
+        let serde_json::Value::Object(config) = serde_json::json!({"fetch": {}}) else {
+            panic!("an object");
+        };
+        assert_eq!(CreateSandboxParams::default().template(), DEFAULT_TEMPLATE);
+        assert_eq!(
+            CreateSandboxParams::default()
+                .mcp(config.clone())
+                .template(),
+            DEFAULT_MCP_TEMPLATE
+        );
+        assert_eq!(
+            CreateSandboxParams::new("my-mcp").mcp(config).template(),
+            "my-mcp"
+        );
+        // `new` names the template even when it is the default's name, and
+        // an empty configuration still selects the gateway template.
+        assert_eq!(CreateSandboxParams::new("base").template(), "base");
+        assert_eq!(
+            CreateSandboxParams::default().mcp(Map::new()).template(),
+            DEFAULT_MCP_TEMPLATE
+        );
+    }
+
+    #[test]
+    fn create_body_sends_the_mcp_config_and_leaves_out_an_empty_one() {
+        let serde_json::Value::Object(config) = serde_json::json!({"fetch": {}}) else {
+            panic!("an object");
+        };
+        let sent = serde_json::to_value(
+            CreateSandboxParams::default()
+                .mcp(config)
+                .body()
+                .expect("body"),
+        )
+        .expect("ser");
+        let empty = serde_json::to_value(
+            CreateSandboxParams::default()
+                .mcp(Map::new())
+                .body()
+                .expect("body"),
+        )
+        .expect("ser");
+        assert_eq!(
+            sent,
+            serde_json::json!({
+                "templateID": "mcp-gateway", "metadata": {}, "envVars": {}, "mcp": {"fetch": {}}
+            })
+        );
+        assert_eq!(
+            empty,
+            serde_json::json!({"templateID": "mcp-gateway", "metadata": {}, "envVars": {}})
         );
     }
 

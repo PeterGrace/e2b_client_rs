@@ -8,15 +8,18 @@ use base64::Engine;
 use base64::engine::general_purpose::STANDARD_NO_PAD;
 use reqwest::{Method, StatusCode};
 use secrecy::{ExposeSecret, SecretString};
+use serde_json::{Map, Value};
 use sha2::{Digest, Sha256};
+use tokio::sync::OnceCell;
 use url::Url;
 
 use crate::client::Client;
-use crate::commands::Commands;
+use crate::commands::{CommandOptions, Commands};
 use crate::envd::{EnvdClient, EnvdTarget, EnvdVersion, envd_http_error};
 use crate::error::{Error, Result};
 use crate::filesystem::{FILES_ROUTE, Filesystem};
 use crate::lifecycle::PauseOptions;
+use crate::mcp::{MCP_PORT, MCP_TOKEN_ENV, MCP_TOKEN_PATH, MCP_USER, gateway_command};
 use crate::metrics::{MetricsParams, SandboxMetrics};
 use crate::models::{ForkOptions, SandboxCreated, SandboxInfo};
 use crate::network::NetworkUpdate;
@@ -195,6 +198,10 @@ pub struct Sandbox {
     domain: Option<String>,
     traffic_access_token: Option<SecretString>,
     envd: Arc<EnvdClient>,
+    // The MCP gateway's token, filled once (`tokio::sync::OnceCell`, an
+    // async `functools.cached_property`). The `Arc` makes clones share it,
+    // as they share the envd connection.
+    mcp_token: Arc<OnceCell<SecretString>>,
 }
 
 impl fmt::Debug for Sandbox {
@@ -226,6 +233,7 @@ impl Sandbox {
             domain: created.domain,
             traffic_access_token: created.traffic_access_token.map(SecretString::from),
             envd: Arc::new(envd),
+            mcp_token: Arc::new(OnceCell::new()),
         })
     }
 
@@ -301,6 +309,92 @@ impl Sandbox {
         self.client
             .config()
             .sandbox_host(&self.sandbox_id, self.domain.as_deref(), port)
+    }
+
+    /// The URL of the sandbox's MCP gateway, `https://<get_host(50005)>/mcp`
+    /// (`e2b/sandbox/main.py:226-232`). It is only served on a sandbox
+    /// created with [`crate::CreateSandboxParams::mcp`]; send
+    /// [`Sandbox::mcp_token`] with each request.
+    ///
+    /// # Returns
+    ///
+    /// The URL, e.g. `https://50005-<sandbox id>.e2b.app/mcp`.
+    #[must_use]
+    pub fn mcp_url(&self) -> String {
+        format!("https://{}/mcp", self.get_host(MCP_PORT))
+    }
+
+    /// The MCP gateway's access token: the one [`Client::create_sandbox`]
+    /// generated, or, on a handle from [`Client::connect_sandbox`], read
+    /// once from `/etc/mcp-gateway/.token` as root and then kept, as the
+    /// SDKs' `get_mcp_token` does. Unlike the SDKs, trailing whitespace is
+    /// trimmed from the file, so the token can go in a header as it is.
+    ///
+    /// A failed read is not kept: the next call reads the file again.
+    ///
+    /// # Returns
+    ///
+    /// The token, wrapped so it is not printed by accident. Clones of this
+    /// handle share it.
+    ///
+    /// # Errors
+    ///
+    /// The errors of [`Filesystem::read_to_string`], for example
+    /// [`Error::Envd`] with status 404 on a sandbox without a gateway.
+    pub async fn mcp_token(&self) -> Result<&SecretString> {
+        // `get_or_try_init` runs the closure only while the cell is empty,
+        // and stores its value only when it returns `Ok`.
+        self.mcp_token
+            .get_or_try_init(|| async {
+                let token = self
+                    .files()
+                    .read_to_string(MCP_TOKEN_PATH, Some(MCP_USER))
+                    .await?;
+                // Trimmed, unlike the SDK: the token is a UUID, and a
+                // trailing newline would make it unusable in a header.
+                Ok(SecretString::from(token.trim_end().to_owned()))
+            })
+            .await
+    }
+
+    /// Starts the MCP gateway as the SDKs do
+    /// (`e2b/sandbox_async/main.py:245-268`): `mcp-gateway --config '<json>'`
+    /// as root, with a new random UUID v4 in `GATEWAY_ACCESS_TOKEN`, and
+    /// keeps that token for [`Sandbox::mcp_token`]. The token goes only in
+    /// the environment, never on the command line.
+    ///
+    /// # Arguments
+    ///
+    /// * `config` - the MCP server configuration.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::McpGateway`] with the gateway's stderr if it exits non-zero;
+    /// the errors of [`Commands::run`].
+    pub(crate) async fn start_mcp_gateway(&self, config: &Map<String, Value>) -> Result<()> {
+        let command = gateway_command(config)?;
+        let token = SecretString::from(uuid::Uuid::new_v4().to_string());
+        // `CommandOptions::env` keeps its own plain `String` copy of the
+        // token, and so does the request body. Building the options inline
+        // makes them a temporary, dropped at the end of this statement, so
+        // that copy is gone before the token is stored below.
+        let result = self
+            .commands()
+            .run(
+                &command,
+                &CommandOptions::default()
+                    .user(MCP_USER)
+                    .env(MCP_TOKEN_ENV, token.expose_secret()),
+            )
+            .await?;
+        if !result.success() {
+            return Err(Error::McpGateway(result.stderr));
+        }
+        // `set` fails only when the cell is already filled, which it never
+        // is on a handle fresh from `create_sandbox`, so the result is
+        // ignored.
+        let _ = self.mcp_token.set(token);
+        Ok(())
     }
 
     /// The process service: run commands and manage processes.
@@ -672,6 +766,7 @@ mod tests {
     const API_KEY: &str = "api-key-secret";
     const ENVD_TOKEN: &str = "envd-token-secret";
     const TRAFFIC_TOKEN: &str = "traffic-token-secret";
+    const MCP_TOKEN: &str = "mcp-token-secret";
 
     /// A client on the custom domain `configured.test`, with no envd URL
     /// override, so addressing is derived from domains.
@@ -800,8 +895,12 @@ mod tests {
 
     #[test]
     fn debug_output_omits_the_api_key_and_access_tokens() {
-        // Arrange
+        // Arrange: an MCP token is held too.
         let sandbox = sandbox_on(None);
+        sandbox
+            .mcp_token
+            .set(SecretString::from(MCP_TOKEN))
+            .expect("empty cell");
 
         // Act: `{:?}` renders the `Debug` impl, what `dbg!` and logs show.
         // The `EnvdClient` now holds the access token itself, so its own
@@ -821,6 +920,7 @@ mod tests {
                 !text.contains(TRAFFIC_TOKEN),
                 "traffic token leaked: {text}"
             );
+            assert!(!text.contains(MCP_TOKEN), "MCP token leaked: {text}");
         }
     }
 }

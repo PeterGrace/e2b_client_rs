@@ -66,7 +66,8 @@ Because the egress proxy and IAM are deferred, CLM-0031 (update network "as the 
 - **`auto_pause` stays** as shorthand: `auto_pause(true)` is `on_timeout(OnTimeout::pause())` and `auto_pause(false)` is `on_timeout(OnTimeout::Kill)`. Both write the same `Lifecycle` field, so the last call wins.
 - **Lists, not selector callables.** `allow_out` and `deny_out` take lists. `ALL_TRAFFIC` is the SDK's `ctx.all_traffic`.
 - **The MCP configuration is a JSON object** (`serde_json::Map`), not the SDK's 2,538-line generated `McpServer` TypedDict. The server sends it on; the crate does not validate server names.
-- **`mcp_token` is cached in a `tokio::sync::OnceCell`**, as the SDK caches `_mcp_token`. It is set when `create_sandbox` starts the gateway, and read from `/etc/mcp-gateway/.token` the first time on a handle from `connect_sandbox`.
+- **`mcp_token` is cached in a `tokio::sync::OnceCell`** (behind an `Arc`, so clones of a `Sandbox` share it; corrected, issue #70), as the SDK caches `_mcp_token`. It is set when `create_sandbox` starts the gateway, and read from `/etc/mcp-gateway/.token` the first time on a handle from `connect_sandbox`.
+- **The gateway's JSON is compact** (`serde_json::to_string`, keys sorted), as the JS SDK's `JSON.stringify` writes it; Python's `json.dumps` adds a space after `:` and `,` and keeps insertion order. Both are the same JSON object to the gateway (added, issue #70).
 - **The token read from the file is trimmed at the end** (`trim_end`), where the SDK returns the file as is. The token is a UUID, so trailing whitespace can only be a newline the file was written with, and a token with a newline is unusable in a header and would not equal the token `create_sandbox` generated.
 - **Fork returns `Vec<Result<Sandbox>>`.** A per-fork error is `Error::Api { status: code, message }`; the SDK maps the code to an exception class, and a per-fork 404 stays generic in both.
 - **No debug mode.** The SDK's `E2B_DEBUG` (`localhost:<port>` hosts, empty metrics) has no equivalent in the crate, so `get_host` and `get_metrics` have no debug branch.
@@ -4650,6 +4651,14 @@ git commit -m "feat: volumes and volume mounts"
 - Create: `tests/rest_mcp.rs`
 - Modify: `tests/live_lifecycle.rs`, `docs/protocol-notes.md` (new section "MCP gateway"), `docs/verification/s4-evidence-map.md`
 
+> **Corrected (issue #70, 2026-10-27).** What shipped differs from the steps below in these ways; the body and field code is fixed inline, and the live test is described here. Read `src/mcp.rs`, `src/sandbox.rs`, `tests/rest_mcp.rs` and `tests/live_lifecycle.rs` for the shipped code.
+> - **An empty MCP configuration is left out of the create body** but still selects `mcp-gateway` and starts the gateway, as the Python SDK sends `mcp or UNSET` (`py: sandbox_async/sandbox_api.py:246`) and starts the gateway when `mcp is not None`. `body()` sends `mcp: self.mcp.as_ref().filter(|config| !config.is_empty())`. (The JS SDK sends `{}`.)
+> - **The token cell is `Arc<OnceCell<SecretString>>`**, so a clone of a `Sandbox` (cloning is documented as cheap and sharing connections) shares the cached token instead of reading the file again.
+> - **`start_mcp_gateway` builds the command first**, then generates the token straight into a `SecretString` and passes `token.expose_secret()` to `CommandOptions::env`. That stores a plain `String` copy (as does the serialized request), which nothing logs; the options are a temporary inside the `run` call, so the copy is dropped before the token is cached. The user is a constant, `MCP_USER` (`"root"`), shared with the token read.
+> - **The live test probes how the token is used.** Instead of a plain `GET` that only checks `< 500`, it `POST`s an MCP `initialize` (JSON-RPC 2.0, `Accept: application/json, text/event-stream`) three times and asserts the statuses: 401 without a token, 401 with `Authorization: Bearer <another UUID>`, 200 with `Authorization: Bearer <the token>` (hosted E2B, 2026-10-28 UTC, run `dev-20261028T010914Z-2603607`). Assertion messages carry statuses only, never the token.
+> - **The JSON is compact and its keys sorted**; see the deviations above.
+> - Extra tests beyond the plan: `an_empty_mcp_config_is_left_out_of_the_body_but_starts_the_gateway`, `create_without_mcp_starts_no_gateway`, `a_failed_gateway_call_kills_the_sandbox_and_a_failed_kill_is_ignored` and `a_failed_token_read_is_not_cached` in `tests/rest_mcp.rs`; `shell_quote_borrows_a_safe_string` and `gateway_command_escapes_a_single_quote_in_the_config` in `src/mcp.rs`; `template_is_the_given_one_else_the_mcp_default_else_base` and `create_body_sends_the_mcp_config_and_leaves_out_an_empty_one` in `src/models.rs`; an MCP token in `debug_output_omits_the_api_key_and_access_tokens` and `McpGateway` in `is_not_found_covers_each_family`. The first mock test also checks that the token is a v4 UUID, that `GATEWAY_ACCESS_TOKEN` is the only variable, and that a clone shares the token.
+
 - [ ] **Step 1: Write the failing tests**
 
 Unit tests in `src/mcp.rs`'s `mod tests` (written with the module in Step 3):
@@ -4966,14 +4975,14 @@ plus the Step 1 unit tests. `src/error.rs`:
     }
 ```
 
-In `body()`, `template_id: self.template()` and `mcp: self.mcp.as_ref()`; on `NewSandboxBody`:
+In `body()`, `template_id: self.template()` and `mcp: self.mcp.as_ref().filter(|config| !config.is_empty())`; on `NewSandboxBody`:
 
 ```rust
     #[serde(skip_serializing_if = "Option::is_none")]
     mcp: Option<&'a Map<String, Value>>,
 ```
 
-`src/sandbox.rs`: a field `mcp_token: OnceCell<SecretString>` (`tokio::sync::OnceCell`, initialised with `OnceCell::new()` in `from_created`), and:
+`src/sandbox.rs`: a field `mcp_token: Arc<OnceCell<SecretString>>` (`tokio::sync::OnceCell`, initialised with `Arc::new(OnceCell::new())` in `from_created`), and:
 
 ```rust
     /// The URL of the sandbox's MCP gateway, `https://<get_host(50005)>/mcp`
