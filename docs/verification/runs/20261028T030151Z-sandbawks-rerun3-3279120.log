@@ -1,0 +1,67 @@
+commit: 6871dbfccd30862f458eb57a8772dae57bfa0560
+dirty: no
+### rerun clm_0058_make_dir_reports_creation (live_files) at 2026-10-28T03:01:51Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.06s
+     Running tests/live_files.rs (target/debug/deps/live_files-a406668c314ef385)
+
+running 1 test
+test clm_0058_make_dir_reports_creation ... FAILED
+
+successes:
+
+successes:
+
+failures:
+
+---- clm_0058_make_dir_reports_creation stdout ----
+
+thread 'clm_0058_make_dir_reports_creation' (3279150) panicked at tests/live_files.rs:216:5:
+make_dir of an existing directory returned true
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    clm_0058_make_dir_reports_creation
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 18 filtered out; finished in 1.53s
+
+error: test failed, to rerun pass `--test live_files`
+### sweep at 2026-10-28T03:01:53Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.05s
+     Running tests/live_sweep.rs (target/debug/deps/live_sweep-9120dd72c29f0516)
+
+running 3 tests
+test sweep_leftover_sandboxes_of_this_run ... ok
+test sweep_leftover_volumes_of_this_run ... FAILED
+test sweep_leftover_snapshots_of_this_run ... FAILED
+
+successes:
+
+---- sweep_leftover_sandboxes_of_this_run stdout ----
+sweep: killed 0 leftover sandbox(es) of run 20261028T030151Z-sandbawks-rerun3-3279120
+
+
+successes:
+    sweep_leftover_sandboxes_of_this_run
+
+failures:
+
+---- sweep_leftover_volumes_of_this_run stdout ----
+
+thread 'sweep_leftover_volumes_of_this_run' (3279222) panicked at tests/live_sweep.rs:145:10:
+list volumes: Api { status: 404, message: "HTTP 404" }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- sweep_leftover_snapshots_of_this_run stdout ----
+
+thread 'sweep_leftover_snapshots_of_this_run' (3279221) panicked at tests/live_sweep.rs:86:14:
+list snapshots: Api { status: 404, message: "HTTP 404" }
+
+
+failures:
+    sweep_leftover_snapshots_of_this_run
+    sweep_leftover_volumes_of_this_run
+
+test result: FAILED. 1 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.61s
+
+error: test failed, to rerun pass `--test live_sweep`

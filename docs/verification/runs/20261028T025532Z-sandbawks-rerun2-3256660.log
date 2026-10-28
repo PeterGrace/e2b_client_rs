@@ -1,0 +1,121 @@
+commit: 6871dbfccd30862f458eb57a8772dae57bfa0560
+dirty: no
+### rerun clm_0058_make_dir_reports_creation (live_files) at 2026-10-28T02:55:32Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.06s
+     Running tests/live_files.rs (target/debug/deps/live_files-a406668c314ef385)
+
+running 1 test
+test clm_0058_make_dir_reports_creation ... FAILED
+
+successes:
+
+successes:
+
+failures:
+
+---- clm_0058_make_dir_reports_creation stdout ----
+
+thread 'clm_0058_make_dir_reports_creation' (3256692) panicked at tests/live_support/mod.rs:171:59:
+create sandbox: Api { status: 503, message: "<html>\r\n<head><title>503 Service Temporarily Unavailable</title></head>\r\n<body>\r\n<center><h1>503 Service Temporarily Unavailable</h1></center>\r\n<hr><center>nginx</center>\r\n</body>\r\n</html>\r\n" }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    clm_0058_make_dir_reports_creation
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 18 filtered out; finished in 0.20s
+
+error: test failed, to rerun pass `--test live_files`
+### rerun clm_0060_remove_deletes_file_and_directory (live_files) at 2026-10-28T02:57:32Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.05s
+     Running tests/live_files.rs (target/debug/deps/live_files-a406668c314ef385)
+
+running 1 test
+test clm_0060_remove_deletes_file_and_directory ... FAILED
+
+successes:
+
+successes:
+
+failures:
+
+---- clm_0060_remove_deletes_file_and_directory stdout ----
+
+thread 'clm_0060_remove_deletes_file_and_directory' (3263802) panicked at tests/live_files.rs:257:10:
+write file: Envd { status: 404, message: "No such file or directory (os error 2)" }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    clm_0060_remove_deletes_file_and_directory
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 18 filtered out; finished in 1.04s
+
+error: test failed, to rerun pass `--test live_files`
+### rerun clm_0146_resume_restores_memory_or_reboots (live_lifecycle) at 2026-10-28T02:59:33Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.05s
+     Running tests/live_lifecycle.rs (target/debug/deps/live_lifecycle-96ba98bceafb1d73)
+
+running 1 test
+test clm_0146_resume_restores_memory_or_reboots ... FAILED
+
+successes:
+
+successes:
+
+failures:
+
+---- clm_0146_resume_restores_memory_or_reboots stdout ----
+
+thread 'clm_0146_resume_restores_memory_or_reboots' (3270944) panicked at tests/live_lifecycle.rs:61:5:
+assertion `left == right` failed: CommandResult { stdout: "", stderr: "touch: cannot touch '/home/user/on-disk': No such file or directory\n", exit_code: 1, error: None }
+  left: 1
+ right: 0
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    clm_0146_resume_restores_memory_or_reboots
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 38 filtered out; finished in 1.21s
+
+error: test failed, to rerun pass `--test live_lifecycle`
+### sweep at 2026-10-28T02:59:34Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.05s
+     Running tests/live_sweep.rs (target/debug/deps/live_sweep-9120dd72c29f0516)
+
+running 3 tests
+test sweep_leftover_volumes_of_this_run ... FAILED
+test sweep_leftover_sandboxes_of_this_run ... ok
+test sweep_leftover_snapshots_of_this_run ... FAILED
+
+successes:
+
+---- sweep_leftover_sandboxes_of_this_run stdout ----
+sweep: killed 0 leftover sandbox(es) of run 20261028T025532Z-sandbawks-rerun2-3256660
+
+
+successes:
+    sweep_leftover_sandboxes_of_this_run
+
+failures:
+
+---- sweep_leftover_volumes_of_this_run stdout ----
+
+thread 'sweep_leftover_volumes_of_this_run' (3271144) panicked at tests/live_sweep.rs:145:10:
+list volumes: Api { status: 404, message: "HTTP 404" }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- sweep_leftover_snapshots_of_this_run stdout ----
+
+thread 'sweep_leftover_snapshots_of_this_run' (3271143) panicked at tests/live_sweep.rs:86:14:
+list snapshots: Api { status: 404, message: "HTTP 404" }
+
+
+failures:
+    sweep_leftover_snapshots_of_this_run
+    sweep_leftover_volumes_of_this_run
+
+test result: FAILED. 1 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.30s
+
+error: test failed, to rerun pass `--test live_sweep`
