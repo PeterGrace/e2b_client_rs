@@ -446,7 +446,7 @@ async fn pause_with_maps_status_codes_as_pause_does() {
     // Assert
     assert!(!already.expect("409 is already paused"));
     assert!(
-        matches!(refused, Err(Error::Api { status: 400, ref message }) if message == "nope"),
+        matches!(refused, Err(Error::Api { status: 400, ref message, .. }) if message == "nope"),
         "{refused:?}"
     );
     assert!(

@@ -12,6 +12,12 @@
 //!   a proxy sent instead of envd.
 //! - [`Error::Envd`]: envd's plain HTTP file API (`/files`, `/health`) answered
 //!   with a non-success status.
+//!
+//! On top of the variants, [`Error::status`] and the `is_*` classifiers
+//! answer the questions the official SDKs answer with exception classes
+//! (`AuthenticationException`, `RateLimitException`, `ServiceBusyException`,
+//! `NotEnoughSpaceException`, `SandboxNotRunningException`,
+//! `TimeoutException`), whichever protocol the error came from.
 
 use std::fmt;
 use std::time::Duration;
@@ -47,7 +53,11 @@ pub enum Error {
     InvalidArgument(String),
 
     /// The E2B REST API answered with a non-success HTTP status.
+    ///
+    /// `#[non_exhaustive]`: match it with `Error::Api { status, .. }`, so a
+    /// field added later is not a breaking change.
     #[error("E2B API error (HTTP {status}): {message}")]
+    #[non_exhaustive]
     Api {
         /// The HTTP status code.
         status: u16,
@@ -73,7 +83,10 @@ pub enum Error {
     McpGateway(String),
 
     /// An envd Connect-RPC call failed.
+    ///
+    /// `#[non_exhaustive]`: match it with `Error::Rpc { code, .. }`.
     #[error("envd RPC error ({code}): {message}")]
+    #[non_exhaustive]
     Rpc {
         /// The Connect error code.
         code: ConnectCode,
@@ -82,7 +95,10 @@ pub enum Error {
     },
 
     /// envd's plain HTTP file API answered with a non-success status.
+    ///
+    /// `#[non_exhaustive]`: match it with `Error::Envd { status, .. }`.
     #[error("envd HTTP error (HTTP {status}): {message}")]
+    #[non_exhaustive]
     Envd {
         /// The HTTP status code.
         status: u16,
@@ -104,12 +120,63 @@ pub enum Error {
     #[error("timed out after {0:?}")]
     Timeout(Duration),
 
-    /// The HTTP transport failed (connection refused, TLS failure, reset, ...).
-    #[error("HTTP transport error: {0}")]
-    Transport(#[from] reqwest::Error),
+    /// The HTTP transport failed (connection refused, TLS failure, reset,
+    /// request timeout, ...). [`TransportError`] says which.
+    ///
+    /// The `Display` is only "HTTP transport error"; the detail is the
+    /// [`std::error::Error::source`], so a chain printer (anyhow's `{:#}`,
+    /// for example) shows it once rather than twice.
+    #[error("HTTP transport error")]
+    Transport(#[source] TransportError),
 }
 
 impl Error {
+    /// Wraps a reqwest error. reqwest stays private: callers see only
+    /// [`TransportError`].
+    ///
+    /// Python note: Rust's `?` converts errors with a `From` impl. A
+    /// `From<reqwest::Error>` impl would be public API (it would tie this
+    /// crate's semver to reqwest's), so call sites convert explicitly with
+    /// `.map_err(Error::transport)?`.
+    pub(crate) fn transport(error: reqwest::Error) -> Self {
+        Self::Transport(TransportError(error))
+    }
+
+    /// The HTTP status of a REST or envd HTTP error.
+    ///
+    /// # Returns
+    ///
+    /// The status for [`Error::Api`] and [`Error::Envd`], else `None`.
+    /// [`Error::SandboxNotFound`] and [`Error::VolumeNotFound`] are 404s by
+    /// definition and return `None`; an [`Error::Rpc`] has a code instead.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # async fn demo(client: &e2b_client::Client) {
+    /// if let Err(err) = client.get_sandbox_info("sbx-1").await {
+    ///     if err.status() == Some(403) {
+    ///         eprintln!("this key may not read that sandbox");
+    ///     }
+    /// }
+    /// # }
+    /// ```
+    #[must_use]
+    pub fn status(&self) -> Option<u16> {
+        match self {
+            Self::Api { status, .. } | Self::Envd { status, .. } => Some(*status),
+            _ => None,
+        }
+    }
+
+    /// The Connect code of an [`Error::Rpc`], else `None`.
+    fn rpc_code(&self) -> Option<ConnectCode> {
+        match self {
+            Self::Rpc { code, .. } => Some(*code),
+            _ => None,
+        }
+    }
+
     /// Whether this error means "the thing you asked about does not exist":
     /// a missing sandbox or volume, an RPC `not_found`, or an HTTP 404 from
     /// the REST or envd file API.
@@ -123,19 +190,210 @@ impl Error {
     /// # Examples
     ///
     /// ```
-    /// use e2b_client::{ConnectCode, Error};
+    /// use e2b_client::Error;
     ///
-    /// let err = Error::Rpc { code: ConnectCode::NotFound, message: "no such pid".into() };
+    /// let err = Error::SandboxNotFound("sbx-1".into());
     /// assert!(err.is_not_found());
     /// ```
     #[must_use]
     pub fn is_not_found(&self) -> bool {
         match self {
             Self::SandboxNotFound(_) | Self::VolumeNotFound(_) => true,
-            Self::Rpc { code, .. } => *code == ConnectCode::NotFound,
-            Self::Api { status, .. } | Self::Envd { status, .. } => *status == 404,
+            _ => self.status() == Some(404) || self.rpc_code() == Some(ConnectCode::NotFound),
+        }
+    }
+
+    /// Whether the server refused the credentials: HTTP 401 from the REST
+    /// or envd HTTP API, or an RPC `unauthenticated` (the SDKs'
+    /// `AuthenticationException`, `py: api/__init__.py:164-168`,
+    /// `py: envd/api.py:26`, `py: envd/rpc.py:28`).
+    ///
+    /// # Returns
+    ///
+    /// `true` for those errors. [`Error::MissingApiKey`] is a local
+    /// configuration error, not a refusal, and returns `false`.
+    #[must_use]
+    pub fn is_auth(&self) -> bool {
+        self.status() == Some(401) || self.rpc_code() == Some(ConnectCode::Unauthenticated)
+    }
+
+    /// Whether the server is rate limiting: HTTP 429, or an RPC
+    /// `resource_exhausted` (the SDKs' `RateLimitException`,
+    /// `py: api/__init__.py:170-174`, `py: envd/api.py:28-30`,
+    /// `py: envd/rpc.py:31-33`).
+    ///
+    /// # Returns
+    ///
+    /// `true` for those errors.
+    #[must_use]
+    pub fn is_rate_limited(&self) -> bool {
+        self.status() == Some(429) || self.rpc_code() == Some(ConnectCode::ResourceExhausted)
+    }
+
+    /// Whether the REST API refused the call as temporarily busy (HTTP 503):
+    /// nothing was changed, so the same call can be retried after a short
+    /// wait (the SDKs' `ServiceBusyException`, `py: api/__init__.py:176-180`).
+    /// An envd 503 is not this: the SDKs raise it only for REST.
+    ///
+    /// # Returns
+    ///
+    /// `true` for [`Error::Api`] with status 503.
+    #[must_use]
+    pub fn is_service_busy(&self) -> bool {
+        matches!(self, Self::Api { status: 503, .. })
+    }
+
+    /// Whether the sandbox's disk is full: envd answered HTTP 507 (the SDKs'
+    /// `NotEnoughSpaceException`, `py: envd/api.py:32`).
+    ///
+    /// # Returns
+    ///
+    /// `true` for [`Error::Envd`] with status 507.
+    #[must_use]
+    pub fn is_not_enough_space(&self) -> bool {
+        matches!(self, Self::Envd { status: 507, .. })
+    }
+
+    /// Whether envd could not be reached through the proxy: envd HTTP 502 or
+    /// an RPC `unavailable`. The message says whether the sandbox is gone
+    /// ("was not found") or running with envd's port closed ("port is not
+    /// open") (the SDKs' `SandboxNotRunningException` and
+    /// `SandboxUnreachableException`, `py: exceptions.py:4-36`,
+    /// `py: envd/api.py:31`, `py: envd/rpc.py:30`).
+    ///
+    /// # Returns
+    ///
+    /// `true` for those errors.
+    #[must_use]
+    pub fn is_sandbox_unreachable(&self) -> bool {
+        matches!(self, Self::Envd { status: 502, .. })
+            || self.rpc_code() == Some(ConnectCode::Unavailable)
+    }
+
+    /// Whether a deadline ended the call: a client-side deadline
+    /// ([`Error::Timeout`]), an RPC `deadline_exceeded` or `canceled` (the
+    /// SDKs' `TimeoutException`, `py: envd/rpc.py:34-39`), or a request
+    /// timeout in the transport.
+    ///
+    /// # Returns
+    ///
+    /// `true` for those errors.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::time::Duration;
+    /// use e2b_client::Error;
+    ///
+    /// assert!(Error::Timeout(Duration::from_secs(60)).is_timeout());
+    /// ```
+    #[must_use]
+    pub fn is_timeout(&self) -> bool {
+        match self {
+            Self::Timeout(_) => true,
+            Self::Rpc { code, .. } => {
+                matches!(code, ConnectCode::DeadlineExceeded | ConnectCode::Canceled)
+            }
+            Self::Transport(transport) => transport.is_timeout(),
             _ => false,
         }
+    }
+
+    /// Whether retrying the same call later can succeed without changing
+    /// it: the server is rate limiting ([`Error::is_rate_limited`]), the REST
+    /// API is busy ([`Error::is_service_busy`]), or the connection was never
+    /// made ([`TransportError::is_connect`]), so the request never reached
+    /// the server. Timeouts are not included: a timed-out request may have
+    /// taken effect.
+    ///
+    /// # Returns
+    ///
+    /// `true` for those errors.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::time::Duration;
+    ///
+    /// # async fn demo(client: &e2b_client::Client) -> e2b_client::Result<()> {
+    /// let info = match client.get_sandbox_info("sbx-1").await {
+    ///     Err(err) if err.is_retryable() => {
+    ///         tokio::time::sleep(Duration::from_secs(1)).await;
+    ///         client.get_sandbox_info("sbx-1").await?
+    ///     }
+    ///     other => other?,
+    /// };
+    /// println!("{:?}", info.state);
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[must_use]
+    pub fn is_retryable(&self) -> bool {
+        self.is_rate_limited()
+            || self.is_service_busy()
+            || matches!(self, Self::Transport(transport) if transport.is_connect())
+    }
+}
+
+/// A failure of the HTTP transport under a call: the connection could not be
+/// made, TLS failed, the connection dropped, or the request timed out.
+///
+/// The underlying HTTP client is an implementation detail, so this type is
+/// opaque. Its `Display` is the transport's message, and
+/// [`std::error::Error::source`] gives the cause below it (for example the
+/// I/O error).
+///
+/// # Examples
+///
+/// ```no_run
+/// use e2b_client::Error;
+///
+/// # async fn demo(client: &e2b_client::Client) {
+/// if let Err(Error::Transport(transport)) = client.get_sandbox_info("sbx-1").await {
+///     if transport.is_connect() {
+///         eprintln!("could not reach the API: {transport}");
+///     }
+/// }
+/// # }
+/// ```
+#[derive(Debug)]
+pub struct TransportError(reqwest::Error);
+
+impl TransportError {
+    /// Whether the request timed out (the configured request timeout or a
+    /// per-call one).
+    ///
+    /// # Returns
+    ///
+    /// `true` for a timeout.
+    #[must_use]
+    pub fn is_timeout(&self) -> bool {
+        self.0.is_timeout()
+    }
+
+    /// Whether the connection could not be made (refused, DNS failure, TLS
+    /// handshake), so the request never reached the server.
+    ///
+    /// # Returns
+    ///
+    /// `true` for a connection failure.
+    #[must_use]
+    pub fn is_connect(&self) -> bool {
+        self.0.is_connect()
+    }
+}
+
+impl fmt::Display for TransportError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.0, f)
+    }
+}
+
+impl std::error::Error for TransportError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        // reqwest's own cause (an I/O or hyper error), not reqwest's error
+        // itself, whose message `Display` already shows.
+        self.0.source()
     }
 }
 
@@ -388,6 +646,149 @@ mod tests {
                 message: String::new()
             }
             .is_not_found()
+        );
+    }
+
+    #[test]
+    fn status_is_the_http_status_of_api_and_envd_only() {
+        let api = Error::Api {
+            status: 403,
+            message: String::new(),
+        };
+        let envd = Error::Envd {
+            status: 507,
+            message: String::new(),
+        };
+        let rpc = Error::Rpc {
+            code: ConnectCode::NotFound,
+            message: String::new(),
+        };
+        assert_eq!(api.status(), Some(403));
+        assert_eq!(envd.status(), Some(507));
+        assert_eq!(rpc.status(), None);
+        assert_eq!(Error::SandboxNotFound("sbx".into()).status(), None);
+        assert_eq!(Error::Timeout(Duration::from_secs(1)).status(), None);
+    }
+
+    #[test]
+    fn service_busy_is_a_rest_503_only() {
+        assert!(
+            Error::Api {
+                status: 503,
+                message: String::new()
+            }
+            .is_service_busy()
+        );
+        assert!(
+            !Error::Envd {
+                status: 503,
+                message: String::new()
+            }
+            .is_service_busy()
+        );
+        assert!(
+            !Error::Rpc {
+                code: ConnectCode::Unavailable,
+                message: String::new()
+            }
+            .is_service_busy()
+        );
+    }
+
+    #[test]
+    fn an_envd_502_and_an_rpc_unavailable_are_sandbox_unreachable() {
+        let proxy = Error::Envd {
+            status: 502,
+            message: "The sandbox was not found".into(),
+        };
+        let rpc = Error::Rpc {
+            code: ConnectCode::Unavailable,
+            message: String::new(),
+        };
+        assert!(proxy.is_sandbox_unreachable());
+        assert!(rpc.is_sandbox_unreachable());
+        assert!(
+            !Error::Api {
+                status: 502,
+                message: String::new()
+            }
+            .is_sandbox_unreachable()
+        );
+        assert!(!proxy.is_retryable());
+    }
+
+    #[test]
+    fn timeouts_cover_the_client_deadline_and_the_rpc_codes() {
+        assert!(Error::Timeout(Duration::from_millis(1)).is_timeout());
+        for code in [ConnectCode::DeadlineExceeded, ConnectCode::Canceled] {
+            assert!(
+                Error::Rpc {
+                    code,
+                    message: String::new()
+                }
+                .is_timeout(),
+                "{code}"
+            );
+        }
+        assert!(
+            !Error::Rpc {
+                code: ConnectCode::Internal,
+                message: String::new()
+            }
+            .is_timeout()
+        );
+        assert!(
+            !Error::Api {
+                status: 504,
+                message: String::new()
+            }
+            .is_timeout()
+        );
+    }
+
+    #[test]
+    fn auth_and_rate_limits_cover_both_http_apis_and_rpc() {
+        for error in [
+            Error::Api {
+                status: 401,
+                message: String::new(),
+            },
+            Error::Envd {
+                status: 401,
+                message: String::new(),
+            },
+            Error::Rpc {
+                code: ConnectCode::Unauthenticated,
+                message: String::new(),
+            },
+        ] {
+            assert!(error.is_auth(), "{error:?}");
+            assert!(!error.is_retryable(), "{error:?}");
+        }
+        for error in [
+            Error::Api {
+                status: 429,
+                message: String::new(),
+            },
+            Error::Envd {
+                status: 429,
+                message: String::new(),
+            },
+            Error::Rpc {
+                code: ConnectCode::ResourceExhausted,
+                message: String::new(),
+            },
+        ] {
+            assert!(error.is_rate_limited(), "{error:?}");
+            assert!(error.is_retryable(), "{error:?}");
+        }
+        assert!(!Error::MissingApiKey.is_auth());
+        assert!(
+            !Error::Api {
+                status: 403,
+                message: String::new()
+            }
+            .is_auth()
         );
     }
 }

@@ -565,7 +565,8 @@ impl Sandbox {
             .envd
             .http_request(Method::GET, ENVD_HEALTH_ROUTE)
             .send()
-            .await?;
+            .await
+            .map_err(Error::transport)?;
         if response.status() == StatusCode::BAD_GATEWAY {
             return Ok(false);
         }

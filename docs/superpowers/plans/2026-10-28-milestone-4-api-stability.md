@@ -557,6 +557,8 @@ git commit -m "feat!: drop the v1 connect fallback"
 - Modify: `README.md` (the "Errors" row, line 63), `docs/protocol-notes.md` (new section "Error classification"), `docs/verification/s4-evidence-map.md` (row CLM-0169)
 - Create: `changelog/<ts>-m4-task-02-error-taxonomy.md`
 
+> **Corrected (issue #92, 2026-10-28).** On 88184fb (after Task 1) the reqwest conversions are 30, not 32: Step 3's table lists 30 lines, and the line numbers in `src/client.rs` moved up once Task 1 removed the v1 fallback (by 3 above `connect_sandbox`, so `:105` is `:102`; by 32 below it, so `:325` is `:293` and `:1044` is `:1012`). Follow the compiler's list. Step 4's `tests/rest_api.rs:328` is now `:339`; the 19 pattern sites are otherwise as listed. No later task changes: their code already converts with `.map_err(Error::transport)` and matches the struct variants with `..`.
+
 Decisions 1 and 4. The `Api`, `Envd` and `Rpc` variants stay. `status()` and seven classifiers map them onto SDK 2.61's exception classes (Verified facts: `py: api/__init__.py:155-213`, `py: envd/api.py:24-33`, `py: envd/rpc.py:26-40`). `Error::Transport` now holds a `TransportError`, so no reqwest type is public (CLM-0170). Because `From<reqwest::Error> for Error` is a public trait impl, it goes, and every reqwest result is converted with `.map_err(Error::transport)`.
 
 - [ ] **Step 1: Write the failing integration tests**
@@ -570,7 +572,6 @@ Create `tests/error_taxonomy.rs`. It uses only the public API. The struct varian
 mod common;
 
 use std::error::Error as _;
-use std::net::TcpListener;
 use std::time::Duration;
 
 use common::{SANDBOX_ID, client_for, client_with_timeout, sandbox};
@@ -752,16 +753,21 @@ async fn a_request_timeout_is_a_timeout_and_not_retryable() {
     assert!(!transport.is_connect(), "{transport:?}");
     assert_eq!(err.status(), None);
     assert_eq!(Flags::of(&err), Flags { timeout: true, ..Flags::NONE });
-    assert!(err.to_string().starts_with("HTTP transport error: "), "{err}");
+    // The detail is in `source()`, not repeated in `Display`.
+    assert_eq!(err.to_string(), "HTTP transport error");
+    let source = err.source().expect("a source");
+    assert!(!source.to_string().is_empty(), "{source:?}");
 }
 
 #[tokio::test]
 async fn a_refused_connection_is_retryable_and_keeps_its_cause() {
-    // Arrange: bind a port, then free it, so nothing listens there.
-    let port = {
-        let listener = TcpListener::bind("127.0.0.1:0").expect("bind");
-        listener.local_addr().expect("addr").port()
-    };
+    // Arrange: reserve a port with a socket that is bound but never listens.
+    // The kernel refuses connections to it, and because the socket stays
+    // bound until the end of the test, no other process can take the port
+    // in between (binding and then freeing a port would leave that race).
+    let reserved = tokio::net::TcpSocket::new_v4().expect("socket");
+    reserved.bind("127.0.0.1:0".parse().expect("addr")).expect("bind");
+    let port = reserved.local_addr().expect("addr").port();
     let config = ConnectionConfig::builder()
         .api_key("test-api-key")
         .api_url(format!("http://127.0.0.1:{port}"))
@@ -857,7 +863,11 @@ Replace the `Transport` variant (lines 107-109) with:
 ```rust
     /// The HTTP transport failed (connection refused, TLS failure, reset,
     /// request timeout, ...). [`TransportError`] says which.
-    #[error("HTTP transport error: {0}")]
+    ///
+    /// The `Display` is only "HTTP transport error"; the detail is the
+    /// [`std::error::Error::source`], so a chain printer (anyhow's `{:#}`,
+    /// for example) shows it once rather than twice.
+    #[error("HTTP transport error")]
     Transport(#[source] TransportError),
 ```
 

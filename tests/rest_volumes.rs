@@ -67,7 +67,7 @@ async fn create_volume_refused_is_an_api_error() {
 
         // Assert
         assert!(
-            matches!(&error, Error::Api { status: got, message: text }
+            matches!(&error, Error::Api { status: got, message: text, .. }
                 if *got == status && text == message),
             "{status}: {error:?}"
         );
@@ -128,7 +128,7 @@ async fn get_volume_refused_is_an_api_error_not_not_found() {
 
     // Assert
     assert!(
-        matches!(&error, Error::Api { status: 500, message } if message == "boom"),
+        matches!(&error, Error::Api { status: 500, message, .. } if message == "boom"),
         "{error:?}"
     );
     assert!(!error.is_not_found());
@@ -182,7 +182,7 @@ async fn list_volumes_reads_a_null_body_as_none_and_maps_errors() {
     // Assert
     assert!(empty.is_empty(), "{empty:?}");
     assert!(
-        matches!(&error, Error::Api { status: 401, message } if message == "bad key"),
+        matches!(&error, Error::Api { status: 401, message, .. } if message == "bad key"),
         "{error:?}"
     );
 }
@@ -222,7 +222,7 @@ async fn destroy_volume_reports_whether_it_existed() {
     assert!(destroyed);
     assert!(!missing);
     assert!(
-        matches!(&error, Error::Api { status: 500, message } if message == "busy"),
+        matches!(&error, Error::Api { status: 500, message, .. } if message == "busy"),
         "{error:?}"
     );
 }

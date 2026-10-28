@@ -99,12 +99,14 @@ impl Client {
             .user_agent(user_agent())
             .default_headers(api_headers)
             .redirect(reqwest::redirect::Policy::none())
-            .build()?;
+            .build()
+            .map_err(Error::transport)?;
         // envd gets its own client so the API key is never sent to sandboxes.
         let envd_http = reqwest::Client::builder()
             .user_agent(user_agent())
             .redirect(reqwest::redirect::Policy::none())
-            .build()?;
+            .build()
+            .map_err(Error::transport)?;
         Ok(Self {
             inner: Arc::new(ClientInner {
                 config,
@@ -183,7 +185,8 @@ impl Client {
         if let Some(key) = idempotency_key {
             request = request.header(HEADER_IDEMPOTENCY_KEY, key);
         }
-        let created: SandboxCreated = parse_success(request.send().await?).await?;
+        let created: SandboxCreated =
+            parse_success(request.send().await.map_err(Error::transport)?).await?;
         let sandbox = Sandbox::from_created(self.clone(), created)?;
         // `if let ... && let ...` (a let chain) runs the block only when an
         // MCP configuration is set and starting the gateway failed.
@@ -290,7 +293,8 @@ impl Client {
         let response = self
             .request(Method::GET, &["sandboxes", sandbox_id])?
             .send()
-            .await?;
+            .await
+            .map_err(Error::transport)?;
         parse_sandbox_response(response, sandbox_id).await
     }
 
@@ -337,7 +341,8 @@ impl Client {
             .request(Method::GET, &["sandboxes", sandbox_id, "metrics"])?
             .query(&params.query())
             .send()
-            .await?;
+            .await
+            .map_err(Error::transport)?;
         // The API may answer `null` for "no samples"; `Option` accepts it,
         // like `list_sandboxes` does.
         let metrics: Option<Vec<SandboxMetrics>> =
@@ -385,7 +390,8 @@ impl Client {
             .request(Method::GET, &["v2", "sandboxes"])?
             .query(&params.query())
             .send()
-            .await?;
+            .await
+            .map_err(Error::transport)?;
         let next_token = next_token_of(&response);
         let sandboxes: Option<Vec<SandboxInfo>> = parse_success(response).await?;
         Ok(SandboxPage {
@@ -412,7 +418,8 @@ impl Client {
         let response = self
             .request(Method::DELETE, &["sandboxes", sandbox_id])?
             .send()
-            .await?;
+            .await
+            .map_err(Error::transport)?;
         if response.status() == StatusCode::NOT_FOUND {
             return Ok(false);
         }
@@ -648,7 +655,8 @@ impl Client {
             .request(Method::GET, &["snapshots"])?
             .query(&params.query())
             .send()
-            .await?;
+            .await
+            .map_err(Error::transport)?;
         let next_token = next_token_of(&response);
         // A `null` body reads as an empty page, as in the SDK
         // (`if res.parsed is None: return []`).
@@ -682,7 +690,8 @@ impl Client {
         let response = self
             .request(Method::DELETE, &["templates", snapshot_id])?
             .send()
-            .await?;
+            .await
+            .map_err(Error::transport)?;
         if response.status() == StatusCode::NOT_FOUND {
             return Ok(false);
         }
@@ -876,7 +885,8 @@ impl Client {
         let response = self
             .request(Method::GET, &["volumes", volume_id])?
             .send()
-            .await?;
+            .await
+            .map_err(Error::transport)?;
         if response.status() == StatusCode::NOT_FOUND {
             return Err(Error::VolumeNotFound(volume_id.to_owned()));
         }
@@ -897,7 +907,11 @@ impl Client {
     /// [`Error::Api`] for a non-2xx answer, [`Error::Decode`] for an
     /// unexpected body, [`Error::Transport`] for connection failures.
     pub async fn list_volumes(&self) -> Result<Vec<VolumeInfo>> {
-        let response = self.request(Method::GET, &["volumes"])?.send().await?;
+        let response = self
+            .request(Method::GET, &["volumes"])?
+            .send()
+            .await
+            .map_err(Error::transport)?;
         // `Option` so a `null` body decodes to `None` (`if res.parsed is
         // None: return []`) instead of failing.
         let volumes: Option<Vec<VolumeInfo>> = parse_success(response).await?;
@@ -924,7 +938,8 @@ impl Client {
         let response = self
             .request(Method::DELETE, &["volumes", volume_id])?
             .send()
-            .await?;
+            .await
+            .map_err(Error::transport)?;
         if response.status() == StatusCode::NOT_FOUND {
             return Ok(false);
         }
@@ -952,7 +967,11 @@ impl Client {
         segments: &[&str],
         body: &B,
     ) -> Result<reqwest::Response> {
-        Ok(self.request(method, segments)?.json(body).send().await?)
+        self.request(method, segments)?
+            .json(body)
+            .send()
+            .await
+            .map_err(Error::transport)
     }
 }
 
@@ -989,7 +1008,7 @@ async fn api_error(response: reqwest::Response) -> Error {
             };
             Error::Api { status, message }
         }
-        Err(err) => Error::Transport(err),
+        Err(err) => Error::transport(err),
     }
 }
 
@@ -1009,7 +1028,11 @@ async fn ensure_found_and_success(response: reqwest::Response, sandbox_id: &str)
 }
 
 async fn parse_success<T: serde::de::DeserializeOwned>(response: reqwest::Response) -> Result<T> {
-    let body = ensure_success(response).await?.bytes().await?;
+    let body = ensure_success(response)
+        .await?
+        .bytes()
+        .await
+        .map_err(Error::transport)?;
     Ok(serde_json::from_slice(&body)?)
 }
 

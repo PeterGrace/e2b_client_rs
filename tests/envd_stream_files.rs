@@ -322,7 +322,7 @@ async fn read_stream_of_a_missing_file_is_envd_not_found() {
     // Assert
     let err = result.expect_err("missing file");
     assert!(
-        matches!(&err, Error::Envd { status: 404, message } if message == "no such file"),
+        matches!(&err, Error::Envd { status: 404, message, .. } if message == "no such file"),
         "{err:?}"
     );
     assert!(err.is_not_found());

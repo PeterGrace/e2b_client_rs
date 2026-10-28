@@ -365,10 +365,10 @@ impl<T: DeserializeOwned> ConnectStream<T> {
 
     async fn read_chunk(&mut self) -> Result<Option<Bytes>> {
         match self.deadline {
-            None => Ok(self.response.chunk().await?),
+            None => self.response.chunk().await.map_err(Error::transport),
             Some((deadline, timeout)) => {
                 match tokio::time::timeout_at(deadline, self.response.chunk()).await {
-                    Ok(chunk) => Ok(chunk?),
+                    Ok(chunk) => chunk.map_err(Error::transport),
                     Err(_elapsed) => {
                         self.finished = true;
                         Err(Error::Timeout(timeout))

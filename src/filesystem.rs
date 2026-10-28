@@ -709,7 +709,7 @@ impl FileStream {
     /// # }
     /// ```
     pub async fn next_chunk(&mut self) -> Result<Option<Bytes>> {
-        Ok(self.response.chunk().await?)
+        self.response.chunk().await.map_err(Error::transport)
     }
 }
 
@@ -813,7 +813,7 @@ impl Filesystem {
         if options.gzip {
             request = request.header(CONTENT_ENCODING, HeaderValue::from_static("gzip"));
         }
-        written_entries(request.body(body).send().await?).await
+        written_entries(request.body(body).send().await.map_err(Error::transport)?).await
     }
 
     /// Uploads a multipart form of `file` parts (`POST /files`), with the
@@ -851,7 +851,8 @@ impl Filesystem {
             .headers(metadata.clone())
             .multipart(form)
             .send()
-            .await?;
+            .await
+            .map_err(Error::transport)?;
         written_entries(response).await
     }
 
@@ -876,11 +877,12 @@ impl Filesystem {
             .http_request(Method::GET, FILES_ROUTE)
             .query(&self.file_query(path, user))
             .send()
-            .await?;
+            .await
+            .map_err(Error::transport)?;
         if !response.status().is_success() {
             return Err(envd_http_error(response).await);
         }
-        Ok(response.bytes().await?)
+        response.bytes().await.map_err(Error::transport)
     }
 
     /// Downloads a file and decodes it as UTF-8, replacing invalid sequences.
@@ -933,7 +935,8 @@ impl Filesystem {
             .http_request_with_timeout(Method::GET, FILES_ROUTE, None)
             .query(&self.file_query(path, user))
             .send()
-            .await?;
+            .await
+            .map_err(Error::transport)?;
         if !response.status().is_success() {
             return Err(envd_http_error(response).await);
         }
@@ -1080,8 +1083,8 @@ impl Filesystem {
     ///
     /// * `path` - where to write.
     /// * `reader` - the content, read to its end (a socket, a byte slice, a
-    ///   `tokio::fs::File`...). It must be `Send + 'static` because reqwest
-    ///   may poll the body on another task, so it cannot borrow local data.
+    ///   `tokio::fs::File`...). It must be `Send + 'static` because the HTTP
+    ///   client may poll the body on another task, so it cannot borrow local data.
     /// * `options` - user, gzip and metadata (`octet_stream` is implied).
     ///
     /// # Returns
@@ -1418,7 +1421,7 @@ async fn written_entries(response: reqwest::Response) -> Result<Vec<WriteInfo>> 
     if !response.status().is_success() {
         return Err(envd_http_error(response).await);
     }
-    let body = response.bytes().await?;
+    let body = response.bytes().await.map_err(Error::transport)?;
     let entries: Vec<UploadedEntry> = serde_json::from_slice(&body)?;
     if entries.is_empty() {
         return Err(no_written_file());

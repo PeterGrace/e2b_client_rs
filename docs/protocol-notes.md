@@ -413,8 +413,27 @@ Hosted envd accepted a multipart `POST` to an upload URL and
 served a download URL with no credentials live on 2026-10-27, and refused
 the download URL with its `signature` pair removed with a 4xx.
 
+## Error classification
+
+The crate keeps one variant per protocol (`Api`, `Envd`, `Rpc`) and answers
+the SDKs' exception classes with methods on `Error`.
+
+| Fact | Citation |
+|---|---|
+| REST: 401 → `AuthenticationException`, 429 → `RateLimitException`, 503 → `ServiceBusyException`; other statuses keep `status_code`. Crate: `Error::Api { status }` with `is_auth`, `is_rate_limited`, `is_service_busy`, and `status()` | `py: api/__init__.py:155-213` |
+| envd HTTP: 400 invalid argument, 401 authentication, 404 not found, 429 rate limit, 502 sandbox unavailable, 507 not enough space. Crate: `Error::Envd { status }` with `is_auth`, `is_not_found`, `is_rate_limited`, `is_sandbox_unreachable`, `is_not_enough_space`, and `status()` | `py: envd/api.py:24-33` |
+| envd RPC: `unauthenticated` → authentication, `not_found`, `unavailable` → sandbox unavailable, `resource_exhausted` → rate limit, `canceled` and `deadline_exceeded` → timeout. Crate: `Error::Rpc { code }` with `is_auth`, `is_not_found`, `is_sandbox_unreachable`, `is_rate_limited`, `is_timeout` | `py: envd/rpc.py:26-40` |
+| A 502 or `unavailable` from the proxy says "was not found" (the sandbox is gone) or "port is not open" (envd unreachable); both are `is_sandbox_unreachable`, and the message says which | `py: exceptions.py:4-36` |
+| `is_retryable`: rate limited, a busy REST API, or a connection that was never made (`TransportError::is_connect`); not a timeout, which may have taken effect | crate decision (M4, decision 1) |
+| `Error::Transport` holds an opaque `TransportError`: reqwest is not part of the public API | crate decision (M4, decision 4) |
+
 ## Deliberate differences from the SDKs
 
+- **Classifier methods, not exception classes.** The SDKs raise one class per
+  category; this crate keeps the protocol in the variant (`Api`, `Envd`,
+  `Rpc`) and answers the category with `Error::is_*` (see "Error
+  classification"). `is_sandbox_unreachable` stands for both
+  `SandboxNotRunningException` and `SandboxUnreachableException`.
 - **Non-zero exit is not an error.** The SDKs raise `CommandExitException`
   from `run`; this crate returns `CommandResult` with `exit_code` and a
   `success()` helper, which is the idiomatic Rust shape.
