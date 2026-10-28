@@ -20,6 +20,20 @@ use serde::{Deserialize, Serialize};
 /// `Debug` prints the ID, name and domain but never the token. `Clone`
 /// copies the token too, still wrapped (Python note: Rust values are moved,
 /// not shared, unless cloned, so a handle you also pass on needs a clone).
+///
+/// # Examples
+///
+/// ```no_run
+/// use e2b_client::CreateSandboxParams;
+///
+/// # async fn demo(client: e2b_client::Client) -> e2b_client::Result<()> {
+/// let volume = client.create_volume("datasets").await?;
+/// let params = CreateSandboxParams::new("base").volume_mount(volume.name(), "/mnt/data");
+/// let sandbox = client.create_sandbox(&params).await?;
+/// # let _ = sandbox;
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Clone)]
 pub struct Volume {
     volume_id: String,
@@ -127,6 +141,16 @@ pub(crate) struct NewVolumeBody<'a> {
 ///
 /// This is a plain data record, so its fields are public. It is
 /// `#[non_exhaustive]` so fields can be added without a breaking change.
+///
+/// # Examples
+///
+/// ```no_run
+/// # async fn demo(client: e2b_client::Client) -> e2b_client::Result<()> {
+/// let names: Vec<String> = client.list_volumes().await?.into_iter().map(|v| v.name).collect();
+/// println!("{names:?}");
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize)]
 #[non_exhaustive]
 pub struct VolumeInfo {
@@ -143,6 +167,17 @@ pub struct VolumeInfo {
 ///
 /// This is a plain data record, so its fields are public. It is
 /// `#[non_exhaustive]` so fields can be added without a breaking change.
+///
+/// # Examples
+///
+/// ```no_run
+/// # async fn demo(sandbox: e2b_client::Sandbox) -> e2b_client::Result<()> {
+/// for mount in sandbox.get_info().await?.volume_mounts {
+///     println!("{} at {}", mount.name, mount.path);
+/// }
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[non_exhaustive]
 pub struct VolumeMount {

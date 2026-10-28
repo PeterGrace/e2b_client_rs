@@ -619,6 +619,20 @@ pub(crate) struct SandboxCreated {
 }
 
 /// Whether a sandbox is running or paused.
+///
+/// # Examples
+///
+/// ```no_run
+/// use e2b_client::{ListSandboxesParams, SandboxState};
+///
+/// # async fn demo(client: e2b_client::Client) -> e2b_client::Result<()> {
+/// let paused = client
+///     .list_sandboxes(&ListSandboxesParams::new().state(SandboxState::Paused))
+///     .await?;
+/// println!("{} paused", paused.sandboxes.len());
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 #[non_exhaustive]
@@ -649,6 +663,19 @@ impl SandboxState {
 ///
 /// This is a plain data record, so its fields are public. It is
 /// `#[non_exhaustive]` so fields can be added without a breaking change.
+///
+/// # Examples
+///
+/// ```no_run
+/// # async fn demo(sandbox: e2b_client::Sandbox) -> e2b_client::Result<()> {
+/// let info = sandbox.get_info().await?;
+/// println!(
+///     "{} ({}): {} CPUs, {} MiB, ends {}",
+///     info.sandbox_id, info.template_id, info.cpu_count, info.memory_mb, info.end_at
+/// );
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
@@ -713,6 +740,15 @@ pub struct SandboxInfo {
 /// `#[non_exhaustive]` means code outside this crate must keep a `_` arm when
 /// it `match`es on the enum, so a variant can be added later without breaking
 /// callers.
+///
+/// # Examples
+///
+/// ```
+/// use e2b_client::{ListSandboxesParams, SortOrder};
+///
+/// let newest_first = ListSandboxesParams::new().order(SortOrder::Descending).limit(10);
+/// # let _ = newest_first;
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum SortOrder {
@@ -963,6 +999,27 @@ fn encode_uri_component(raw: &str) -> String {
 }
 
 /// One page of [`crate::Client::list_sandboxes`] results.
+///
+/// # Examples
+///
+/// ```no_run
+/// use e2b_client::{Client, ListSandboxesParams};
+///
+/// # async fn demo(client: Client) -> e2b_client::Result<()> {
+/// let mut params = ListSandboxesParams::new().limit(100);
+/// loop {
+///     let page = client.list_sandboxes(&params).await?;
+///     for sandbox in &page.sandboxes {
+///         println!("{}", sandbox.sandbox_id);
+///     }
+///     match page.next_token {
+///         Some(token) => params = params.next_token(token),
+///         None => break,
+///     }
+/// }
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct SandboxPage {

@@ -109,6 +109,23 @@ const ENV_SANDBOX_URL: &str = "E2B_SANDBOX_URL";
 /// Build one with [`ConnectionConfig::builder`] or [`ConnectionConfig::from_env`].
 /// The API key is held as a [`SecretString`], so it never appears in `Debug`
 /// output or logs.
+///
+/// # Examples
+///
+/// ```
+/// use std::time::Duration;
+///
+/// use e2b_client::ConnectionConfig;
+///
+/// let config = ConnectionConfig::builder()
+///     .api_key("e2b_example_key")
+///     .domain("e2b.example.com")
+///     .request_timeout(Some(Duration::from_secs(30)))
+///     .build()?;
+/// assert_eq!(config.domain(), "e2b.example.com");
+/// assert_eq!(config.api_url().as_str(), "https://api.e2b.example.com/");
+/// # Ok::<(), e2b_client::Error>(())
+/// ```
 #[derive(Clone)]
 pub struct ConnectionConfig {
     api_key: Option<SecretString>,

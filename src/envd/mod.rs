@@ -62,6 +62,17 @@ pub(crate) fn keepalive_headers() -> HeaderMap {
 /// an explicit user). A version string that does not parse as
 /// `MAJOR.MINOR.PATCH` is treated as newer than any real release, the same
 /// fallback the SDKs use in debug mode (`e2b/envd/versions.py:4`).
+///
+/// # Examples
+///
+/// ```
+/// use e2b_client::EnvdVersion;
+///
+/// let version: EnvdVersion = "0.5.7".parse()?;
+/// assert!(version >= EnvdVersion::new(0, 4, 0));
+/// assert_eq!(version.to_string(), "0.5.7");
+/// # Ok::<(), e2b_client::Error>(())
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct EnvdVersion {
     major: u64,

@@ -52,6 +52,23 @@ pub const DEFAULT_WATCH_TIMEOUT: Duration = Duration::from_secs(60);
 pub const DEFAULT_UPLOAD_CONCURRENCY: usize = 8;
 
 /// What kind of filesystem entry something is.
+///
+/// # Examples
+///
+/// ```no_run
+/// use e2b_client::{FileType, ListOptions, Sandbox};
+///
+/// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
+/// for entry in sandbox.files().list("/home/user", &ListOptions::new()).await? {
+///     match entry.file_type {
+///         FileType::Directory => println!("{}/", entry.name),
+///         FileType::Symlink => println!("{} -> {:?}", entry.name, entry.symlink_target),
+///         _ => println!("{}", entry.name),
+///     }
+/// }
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum FileType {
@@ -85,6 +102,18 @@ impl FileType {
 }
 
 /// Metadata about a file or directory (`filesystem.EntryInfo`).
+///
+/// # Examples
+///
+/// ```no_run
+/// use e2b_client::{FileOptions, Sandbox};
+///
+/// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
+/// let entry = sandbox.files().get_info("/etc/hostname", &FileOptions::new()).await?;
+/// println!("{} bytes, {} {}, mode {:o}", entry.size, entry.owner, entry.group, entry.mode);
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct EntryInfo {
@@ -145,6 +174,18 @@ impl From<EntryInfoWire> for EntryInfo {
 }
 
 /// What envd reports about an uploaded file.
+///
+/// # Examples
+///
+/// ```no_run
+/// use e2b_client::{Sandbox, WriteOptions};
+///
+/// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
+/// let written = sandbox.files().write("/tmp/a.txt", "alpha", &WriteOptions::new()).await?;
+/// println!("wrote {} ({:?})", written.path, written.file_type);
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct WriteInfo {
@@ -640,6 +681,22 @@ impl WriteOptions {
 }
 
 /// What happened to a watched entry (`filesystem.EventType`).
+///
+/// # Examples
+///
+/// ```no_run
+/// use e2b_client::{FilesystemEventType, Sandbox, WatchOptions};
+///
+/// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
+/// let mut watch = sandbox.files().watch_dir("/tmp", &WatchOptions::new()).await?;
+/// while let Some(event) = watch.next_event().await? {
+///     if event.event_type == FilesystemEventType::Create {
+///         println!("created {}", event.name);
+///     }
+/// }
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum FilesystemEventType {
@@ -690,6 +747,21 @@ impl FilesystemEventType {
 }
 
 /// One change in a watched directory (`filesystem.FilesystemEvent`).
+///
+/// # Examples
+///
+/// ```no_run
+/// use e2b_client::{Sandbox, WatchOptions};
+///
+/// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
+/// let options = WatchOptions::new().recursive(true).include_entry(true);
+/// let mut watch = sandbox.files().watch_dir("/home/user", &options).await?;
+/// if let Some(event) = watch.next_event().await? {
+///     println!("{:?} {} {:?}", event.event_type, event.name, event.entry.map(|e| e.size));
+/// }
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct FilesystemEvent {
@@ -905,6 +977,20 @@ impl WatchOptions {
 /// `while let Some(event) = watch.next_event().await? { ... }`, and dropping
 /// the handle (letting it go out of scope) is the SDK's `stop()`: it closes
 /// the HTTP stream, which ends the watch in envd.
+///
+/// # Examples
+///
+/// ```no_run
+/// use e2b_client::{Sandbox, WatchOptions, WriteOptions};
+///
+/// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
+/// let mut watch = sandbox.files().watch_dir("/tmp", &WatchOptions::new()).await?;
+/// sandbox.files().write("/tmp/new.txt", "x", &WriteOptions::new()).await?;
+/// let event = watch.next_event().await?.expect("an event before the deadline");
+/// println!("{:?} {}", event.event_type, event.name);
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Debug)]
 pub struct WatchHandle {
     stream: ConnectStream<WatchDirResponse>,
@@ -966,6 +1052,22 @@ impl WatchHandle {
 /// Python note: this is the SDK's `read(format="stream")` iterator. Pull
 /// chunks with `while let Some(chunk) = stream.next_chunk().await? { ... }`;
 /// dropping the stream (letting it go out of scope) closes the connection.
+///
+/// # Examples
+///
+/// ```no_run
+/// use e2b_client::{FileOptions, Sandbox};
+///
+/// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
+/// let mut download = sandbox.files().read_stream("/var/log/big.log", &FileOptions::new()).await?;
+/// let mut total = 0;
+/// while let Some(chunk) = download.next_chunk().await? {
+///     total += chunk.len();
+/// }
+/// println!("{total} bytes");
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Debug)]
 pub struct FileStream {
     response: reqwest::Response,
@@ -1011,6 +1113,19 @@ impl FileStream {
 /// (which also decides how relative paths resolve; unset uses the sandbox
 /// default) and a per-call request timeout ([`FileOptions`],
 /// [`ListOptions`], [`WriteOptions`], [`WatchOptions`]).
+///
+/// # Examples
+///
+/// ```no_run
+/// use e2b_client::{FileOptions, Sandbox, WriteOptions};
+///
+/// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
+/// let files = sandbox.files();
+/// files.write("/tmp/greeting.txt", "hello", &WriteOptions::new()).await?;
+/// assert_eq!(files.read_to_string("/tmp/greeting.txt", &FileOptions::new()).await?, "hello");
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Debug, Clone)]
 pub struct Filesystem {
     envd: Arc<EnvdClient>,
@@ -1164,6 +1279,18 @@ impl Filesystem {
     ///
     /// [`Error::Envd`] (404 when the file does not exist), or
     /// [`Error::Transport`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use e2b_client::{FileOptions, Sandbox};
+    ///
+    /// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
+    /// let bytes = sandbox.files().read("/bin/true", &FileOptions::new().user("root")).await?;
+    /// assert_eq!(&bytes[..4], b"\x7fELF");
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn read(&self, path: &str, options: &FileOptions) -> Result<Bytes> {
         let response = self
             .envd
@@ -1192,6 +1319,21 @@ impl Filesystem {
     /// # Errors
     ///
     /// As [`Filesystem::read`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::time::Duration;
+    ///
+    /// use e2b_client::{FileOptions, Sandbox};
+    ///
+    /// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
+    /// let options = FileOptions::new().request_timeout(Some(Duration::from_secs(5)));
+    /// let hostname = sandbox.files().read_to_string("/etc/hostname", &options).await?;
+    /// println!("{}", hostname.trim());
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn read_to_string(&self, path: &str, options: &FileOptions) -> Result<String> {
         let bytes = self.read(path, options).await?;
         Ok(String::from_utf8_lossy(&bytes).into_owned())
@@ -1222,6 +1364,20 @@ impl Filesystem {
     ///
     /// [`Error::Envd`] (404 when the file does not exist), or
     /// [`Error::Transport`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use e2b_client::{FileOptions, Sandbox};
+    ///
+    /// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
+    /// let mut stream = sandbox.files().read_stream("/tmp/big.bin", &FileOptions::new()).await?;
+    /// while let Some(chunk) = stream.next_chunk().await? {
+    ///     println!("{} bytes", chunk.len());
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn read_stream(&self, path: &str, options: &FileOptions) -> Result<FileStream> {
         // No timeout unless the caller set one: `resolve(None)`.
         let timeout = options.request_timeout.resolve(None);
@@ -1261,6 +1417,18 @@ impl Filesystem {
     /// [`WriteOptions::max_concurrency`], [`Error::Envd`] for a non-2xx answer,
     /// [`Error::Protocol`] if envd reports no written file, [`Error::Decode`]
     /// or [`Error::Transport`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use e2b_client::{Sandbox, WriteOptions};
+    ///
+    /// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
+    /// let options = WriteOptions::new().user("root");
+    /// sandbox.files().write("/etc/motd", "welcome\n", &options).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn write(
         &self,
         path: &str,
@@ -1489,6 +1657,21 @@ impl Filesystem {
     /// [`Error::InvalidArgument`] if the depth is 0
     /// (`e2b/sandbox_async/filesystem/filesystem.py:508-509`), [`Error::Rpc`]
     /// (`not_found` for a missing directory), or [`Error::Transport`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use e2b_client::{ListOptions, Sandbox};
+    ///
+    /// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
+    /// // Two levels deep: the directory's entries and theirs.
+    /// let entries = sandbox.files().list("/home/user", &ListOptions::new().depth(2)).await?;
+    /// for entry in entries {
+    ///     println!("{}", entry.path);
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn list(&self, path: &str, options: &ListOptions) -> Result<Vec<EntryInfo>> {
         if options.depth == 0 {
             return Err(Error::InvalidArgument("depth should be at least 1".into()));
@@ -1524,6 +1707,18 @@ impl Filesystem {
     ///
     /// [`Error::Rpc`] (`not_found` for a missing path), [`Error::Protocol`]
     /// if envd returns no entry, or [`Error::Transport`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use e2b_client::{FileOptions, FileType, Sandbox};
+    ///
+    /// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
+    /// let info = sandbox.files().get_info("/home/user", &FileOptions::new()).await?;
+    /// assert_eq!(info.file_type, FileType::Directory);
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn get_info(&self, path: &str, options: &FileOptions) -> Result<EntryInfo> {
         let response: EntryResponse = self
             .envd
@@ -1552,6 +1747,19 @@ impl Filesystem {
     /// # Errors
     ///
     /// Errors of [`Filesystem::get_info`] other than `not_found`.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use e2b_client::{FileOptions, Sandbox};
+    ///
+    /// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
+    /// if !sandbox.files().exists("/home/user/.cache", &FileOptions::new()).await? {
+    ///     println!("no cache yet");
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn exists(&self, path: &str, options: &FileOptions) -> Result<bool> {
         match self.get_info(path, options).await {
             Ok(_) => Ok(true),
@@ -1578,6 +1786,18 @@ impl Filesystem {
     /// # Errors
     ///
     /// [`Error::Rpc`] other than `already_exists`, or [`Error::Transport`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use e2b_client::{FileOptions, Sandbox};
+    ///
+    /// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
+    /// let created = sandbox.files().make_dir("/home/user/out/logs", &FileOptions::new()).await?;
+    /// println!("created now: {created}");
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn make_dir(&self, path: &str, options: &FileOptions) -> Result<bool> {
         let result: Result<EntryResponse> = self
             .envd
@@ -1615,6 +1835,21 @@ impl Filesystem {
     ///
     /// [`Error::Rpc`] (`not_found` for a missing source), [`Error::Protocol`]
     /// if envd returns no entry, or [`Error::Transport`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use e2b_client::{FileOptions, Sandbox};
+    ///
+    /// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
+    /// let moved = sandbox
+    ///     .files()
+    ///     .rename("/tmp/report.txt", "/home/user/report.txt", &FileOptions::new())
+    ///     .await?;
+    /// assert_eq!(moved.path, "/home/user/report.txt");
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn rename(
         &self,
         source: &str,
@@ -1647,6 +1882,18 @@ impl Filesystem {
     /// # Errors
     ///
     /// [`Error::Rpc`] (`not_found` for a missing path) or [`Error::Transport`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use e2b_client::{FileOptions, Sandbox};
+    ///
+    /// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
+    /// // Removes a file, or a directory with everything in it.
+    /// sandbox.files().remove("/tmp/scratch", &FileOptions::new()).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn remove(&self, path: &str, options: &FileOptions) -> Result<()> {
         let _: Empty = self
             .envd

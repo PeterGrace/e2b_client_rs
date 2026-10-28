@@ -183,3 +183,22 @@ From the plan's Scope ("Deferred") table and this review:
 - **`Error::Decode` holds a `serde_json::Error`**, so serde_json 1.x is a
   public dependency; the README lists it (Task 13).
 - **`get_` names** on the SDK-mirroring operations (C-GETTER above) stay.
+
+## Example coverage (Task 14)
+
+`tests/doc_examples.rs` requires an `# Examples` section on every public type
+re-exported from `lib.rs` and every `pub async fn`, and fails naming each
+item that lacks one. Builder setters and accessors are covered by their
+type's example. `missing_docs` (Task 12) keeps every public item documented.
+
+| | Before (`origin/main` at 89218d1) | After (issue #97) |
+|---|---|---|
+| Re-exported public types | 28 of 67 | 67 of 67 |
+| Public async functions | 18 of 69 | 69 of 69 |
+
+Before M4 the plan session counted 13 of 72 async functions. The examples
+that need a sandbox or the API are `no_run` (compiled by `cargo test`, never
+run); the pure-value ones run as doctests. Task 14 added five of those
+(`ConnectionConfig`, `EnvdVersion`, `ConnectCode`, `OnTimeout`,
+`SortOrder`); the options types' and `CreateSandboxParams`'s running
+examples came with earlier tasks.

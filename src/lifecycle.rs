@@ -14,6 +14,18 @@ use crate::error::{Error, Result};
 /// `#[non_exhaustive]` means code outside this crate must keep a `_` arm when
 /// it `match`es on the enum, so a mode can be added later without breaking
 /// callers.
+///
+/// # Examples
+///
+/// ```no_run
+/// use e2b_client::{PauseOptions, Sandbox, SnapshotMode};
+///
+/// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
+/// // Keep memory, so the next resume continues where it left off.
+/// sandbox.pause(&PauseOptions::new().mode(SnapshotMode::Full)).await?;
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 #[non_exhaustive]
@@ -38,6 +50,17 @@ impl SnapshotMode {
 ///
 /// The SDK refuses a `mode` on a kill at run time; here [`OnTimeout::Kill`]
 /// has no mode field, so the compiler rules that combination out.
+///
+/// # Examples
+///
+/// ```
+/// use e2b_client::{CreateSandboxParams, Lifecycle, OnTimeout, SnapshotMode};
+///
+/// // Pause with a filesystem-only snapshot when the timeout passes.
+/// let lifecycle = Lifecycle::new().on_timeout(OnTimeout::pause_with(SnapshotMode::Filesystem));
+/// let params = CreateSandboxParams::new("base").lifecycle(lifecycle);
+/// # let _ = params;
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum OnTimeout {
@@ -209,6 +232,22 @@ pub(crate) struct AutoResume {
 ///
 /// The default is [`TimeoutAction::Unknown`], which is what a missing or
 /// `null` `onTimeout` reads as.
+///
+/// # Examples
+///
+/// ```no_run
+/// use e2b_client::{Sandbox, TimeoutAction};
+///
+/// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
+/// let info = sandbox.get_info().await?;
+/// if let Some(lifecycle) = info.lifecycle {
+///     if lifecycle.on_timeout == TimeoutAction::Pause {
+///         println!("pauses at its timeout; auto-resume: {}", lifecycle.auto_resume);
+///     }
+/// }
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Deserialize)]
 #[serde(rename_all = "lowercase")]
 #[non_exhaustive]
@@ -229,6 +268,16 @@ pub enum TimeoutAction {
 ///
 /// This is a plain data record, so its fields are public. It is
 /// `#[non_exhaustive]` so fields can be added without a breaking change.
+///
+/// # Examples
+///
+/// ```no_run
+/// # async fn demo(sandbox: e2b_client::Sandbox) -> e2b_client::Result<()> {
+/// let lifecycle = sandbox.get_info().await?.lifecycle;
+/// println!("{lifecycle:?}");
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
@@ -356,6 +405,19 @@ impl PauseOptions {
 /// `e2b/sandbox/sandbox_api.py:783-791`).
 ///
 /// `#[non_exhaustive]`: a `match` outside this crate needs a `_` arm.
+///
+/// # Examples
+///
+/// ```no_run
+/// use e2b_client::{Client, ConnectOptions, OnResume};
+///
+/// # async fn demo(client: Client, sandbox_id: &str) -> e2b_client::Result<()> {
+/// let options = ConnectOptions::new().on_resume(OnResume::Reboot);
+/// let sandbox = client.connect_sandbox(sandbox_id, &options).await?;
+/// # let _ = sandbox;
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum OnResume {

@@ -33,6 +33,23 @@ pub type Result<T> = std::result::Result<T, Error>;
 ///
 /// The enum is `#[non_exhaustive]` so new variants can be added without a
 /// breaking change; match on the variants you care about and keep a `_` arm.
+///
+/// # Examples
+///
+/// ```no_run
+/// use e2b_client::{Client, Error};
+///
+/// # async fn demo(client: Client) -> e2b_client::Result<()> {
+/// match client.get_sandbox_info("sbx-maybe-gone").await {
+///     Ok(info) => println!("{:?}", info.state),
+///     Err(error) if error.is_not_found() => println!("gone"),
+///     Err(error) if error.is_retryable() => println!("try again later: {error}"),
+///     Err(Error::Api { status, message, .. }) => println!("HTTP {status}: {message}"),
+///     Err(error) => return Err(error),
+/// }
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]
 pub enum Error {
@@ -411,6 +428,17 @@ impl std::error::Error for TransportError {
 /// closed set of gRPC status codes, and the crate reports a wire code it does
 /// not recognise as one of them (from the HTTP status, else
 /// [`ConnectCode::Unknown`]), so a `match` without a `_` arm stays valid.
+///
+/// # Examples
+///
+/// ```
+/// use e2b_client::ConnectCode;
+///
+/// let code = ConnectCode::from_wire("deadline_exceeded").expect("a known code");
+/// assert_eq!(code, ConnectCode::DeadlineExceeded);
+/// assert_eq!(code.as_wire(), "deadline_exceeded");
+/// assert_eq!(ConnectCode::from_plain_http_status(404), ConnectCode::NotFound);
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ConnectCode {
     /// The operation was cancelled.

@@ -123,6 +123,23 @@ pub(crate) enum InputKind {
 /// Python note: this is the SDK's `AsyncCommandInputHandle`. `send` is
 /// `async` because it waits when 64 chunks are already queued, instead of
 /// buffering without bound.
+///
+/// # Examples
+///
+/// ```no_run
+/// use e2b_client::{CommandOptions, Sandbox, StreamInputOptions};
+///
+/// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
+/// let handle = sandbox.commands().start("cat", &CommandOptions::new().stdin(true)).await?;
+/// let mut input = sandbox.commands().stream_input(handle.pid(), &StreamInputOptions::new());
+/// input.send("a").await?;
+/// input.send("b\n").await?;
+/// input.close().await?;
+/// sandbox.commands().close_stdin(handle.pid()).await?;
+/// assert_eq!(handle.wait().await?.stdout, "ab\n");
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Debug)]
 pub struct InputStream {
     // `Option` so `send` and `close` can drop the sender (ending the request
@@ -186,6 +203,22 @@ impl InputStream {
     /// [`Error::Timeout`], [`Error::Transport`]...), [`Error::Protocol`] if
     /// envd ended the call cleanly before it was closed, or
     /// [`Error::InvalidArgument`] once that error was already returned.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use e2b_client::{CommandOptions, Sandbox, StreamInputOptions};
+    ///
+    /// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
+    /// let handle = sandbox.commands().start("wc -l", &CommandOptions::new().stdin(true)).await?;
+    /// let mut input = sandbox.commands().stream_input(handle.pid(), &StreamInputOptions::new());
+    /// for line in ["one\n", "two\n", "three\n"] {
+    ///     input.send(line).await?;
+    /// }
+    /// input.close().await?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn send(&mut self, data: impl Into<Bytes>) -> Result<()> {
         let Some(sender) = &self.sender else {
             return Err(closed());
@@ -215,6 +248,21 @@ impl InputStream {
     /// when the stream deadline passed, [`Error::Transport`] for connection
     /// failures, or [`Error::InvalidArgument`] if `send` already returned the
     /// stream's error.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use e2b_client::{CommandOptions, Sandbox, StreamInputOptions};
+    ///
+    /// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
+    /// let handle = sandbox.commands().start("cat", &CommandOptions::new().stdin(true)).await?;
+    /// let mut input = sandbox.commands().stream_input(handle.pid(), &StreamInputOptions::new());
+    /// input.send("done\n").await?;
+    /// // Waits for envd to accept every chunk; stdin itself stays open.
+    /// input.close().await?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn close(mut self) -> Result<()> {
         // Dropping the sender ends the request body after the queued chunks.
         self.sender = None;
