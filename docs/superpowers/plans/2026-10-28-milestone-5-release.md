@@ -580,13 +580,13 @@ async fn clm_0182_a_one_millisecond_request_timeout_times_out_get_info() {
 
     // Act
     let timed_out = sandbox.get_info(&tiny).await;
-    let unbounded = sandbox.get_info(&RequestOptions::new()).await;
+    let configured = sandbox.get_info(&RequestOptions::new()).await;
 
     // Assert: 1 ms is too short for any real round trip; the configured
     // timeout is not.
     let error = timed_out.expect_err("1 ms passes before the API answers");
     assert!(error.is_timeout(), "{error:?}");
-    assert!(unbounded.is_ok(), "{unbounded:?}");
+    assert!(configured.is_ok(), "{configured:?}");
 }
 ```
 
@@ -780,12 +780,12 @@ async fn clm_0183_a_one_millisecond_request_timeout_times_out_list() {
 
     // Act
     let timed_out = sandbox.commands().list(&tiny).await;
-    let unbounded = sandbox.commands().list(&RequestOptions::new()).await;
+    let configured = sandbox.commands().list(&RequestOptions::new()).await;
 
     // Assert
     let error = timed_out.expect_err("1 ms passes before envd answers");
     assert!(error.is_timeout(), "{error:?}");
-    assert!(unbounded.is_ok(), "{unbounded:?}");
+    assert!(configured.is_ok(), "{configured:?}");
 }
 ```
 
@@ -904,7 +904,11 @@ and in the rerun loop:
 ```bash
         run_one "$bin" "$test" "$out"
         result="$(classify "$?" "$out")"
-        if [ "$result" = PASS ]; then result=PASS-ON-RERUN; else status=1; fi
+        case "$result" in
+            PASS) result=PASS-ON-RERUN ;;
+            SKIP) ;;
+            *) status=1 ;;
+        esac
 ```
 
 (the rerun's line stays `RESULT <test> <result> (rerun)`, so a rerun that fails the same way is `FAIL-SANDBOX-FAILED (rerun)` or `FAIL-READINESS (rerun)`, and a rerun that fails differently is `FAIL (rerun)`). The summary line counts `FAIL-SANDBOX-FAILED (rerun)` as its own figure: `..., N still not ready, M sandbox failed`. Keep `set -uo pipefail` semantics: `run_one` returning non-zero must not stop the loop (it does not under `-u` alone).
@@ -1061,26 +1065,33 @@ jobs:
     name: just test-live hosted
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    env:
-      E2B_API_KEY_HOSTED: ${{ secrets.E2B_API_KEY_HOSTED }}
+    # The key is set only on the three steps that need it, never job-wide,
+    # so the third-party actions below can't read it; and those actions are
+    # pinned to commit SHAs, since this job holds a billing key.
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-      - uses: extractions/setup-just@v2
+      - uses: actions/checkout@<sha> # v4
+      - uses: dtolnay/rust-toolchain@<sha> # stable
+      - uses: Swatinem/rust-cache@<sha> # v2
+      - uses: extractions/setup-just@<sha> # v2
       - name: Check the secret is set
+        env:
+          E2B_API_KEY_HOSTED: ${{ secrets.E2B_API_KEY_HOSTED }}
         run: |
           if [ -z "$E2B_API_KEY_HOSTED" ]; then
             echo "::error::Set the repository secret E2B_API_KEY_HOSTED"
             exit 1
           fi
       - name: Live tests
+        env:
+          E2B_API_KEY_HOSTED: ${{ secrets.E2B_API_KEY_HOSTED }}
         run: just test-live hosted
       # GitHub masks the secret in the job log, but not inside uploaded
       # files, so the run log is checked for it before upload and deleted
       # if it is there.
       - name: Check the run log for the key
         if: always()
+        env:
+          E2B_API_KEY_HOSTED: ${{ secrets.E2B_API_KEY_HOSTED }}
         run: |
           # An empty secret would match every line; the first step already failed.
           [ -n "$E2B_API_KEY_HOSTED" ] || exit 0
@@ -1094,13 +1105,15 @@ jobs:
           done
       - name: Upload the run log
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@<sha> # v4
         with:
           name: live-hosted-log
           path: target/live-logs/*.log
           if-no-files-found: warn
           retention-days: 30
 ```
+
+Replace each `<sha>` with the full commit SHA the tag points to now, keeping the tag as the comment: `gh api repos/<owner>/<repo>/commits/<tag> --jq .sha` (for example `repos/actions/checkout/commits/v4`; `dtolnay/rust-toolchain`'s `stable` is a branch, so pin its current head). A pinned action does not move under the job; updating one is a deliberate edit. `ci.yml` keeps its tags: it holds no secret.
 
 The harness refuses to run while a standard `E2B_API_KEY` is set (none is in CI) and reads `E2B_API_KEY_HOSTED` from the environment when there is no `.env` (`tests/live_support/mod.rs:55-73`). The `_stamp` header records the checked-out commit and `dirty: no`.
 
@@ -1309,6 +1322,8 @@ fn expected_table(ledger: &Value) -> String {
             .and_then(|verdicts| verdicts.last())
             .and_then(|last| last["verdict"].as_str())
             .unwrap_or("unverified");
+        // An unknown verdict would drop out of every column, so fail instead.
+        assert!(VERDICTS.contains(&verdict), "{}: unknown verdict {verdict}", claim["id"]);
         let tags = claim["tags"].as_array().expect("tags array");
         let area = AREAS
             .iter()
