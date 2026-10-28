@@ -135,8 +135,11 @@ impl CreateSandboxParams {
     /// Pauses instead of killing the sandbox when its timeout expires.
     /// Shorthand for [`CreateSandboxParams::lifecycle`] with
     /// `on_timeout(OnTimeout::pause())` (`true`) or `on_timeout(OnTimeout::Kill)`
-    /// (`false`), keeping any `auto_resume` already set. Both write the same
-    /// setting, so the later of the two calls wins.
+    /// (`false`), keeping any `auto_resume` already set. It replaces the
+    /// whole `on_timeout`, so an earlier pause mode is dropped:
+    /// `auto_pause(true)` after `on_timeout(OnTimeout::pause_with(..))`
+    /// pauses with the API's default mode (currently full). Both write the
+    /// same setting, so the later of the two calls wins.
     ///
     /// # Arguments
     ///
@@ -763,13 +766,17 @@ mod tests {
         let overridden = CreateSandboxParams::default()
             .lifecycle(Lifecycle::new().on_timeout(OnTimeout::pause_with(SnapshotMode::Full)))
             .auto_pause(false);
+        let mode_dropped = CreateSandboxParams::default()
+            .lifecycle(Lifecycle::new().on_timeout(OnTimeout::pause_with(SnapshotMode::Filesystem)))
+            .auto_pause(true);
 
         // Act
-        let bodies = [paused, replaced, overridden]
+        let bodies = [paused, replaced, overridden, mode_dropped]
             .map(|params| serde_json::to_value(params.body().expect("body")).expect("ser"));
 
         // Assert: `auto_pause` keeps `auto_resume`, `lifecycle` replaces
-        // `auto_pause`, and `auto_pause(false)` drops the pause mode.
+        // `auto_pause`, and a later `auto_pause` of either value drops an
+        // earlier pause mode (no `autoPauseMemory`).
         let base = |extra: serde_json::Value| {
             let mut body = serde_json::json!({"templateID": "base", "metadata": {}, "envVars": {}});
             if let (Some(body), serde_json::Value::Object(extra)) = (body.as_object_mut(), extra) {
@@ -783,6 +790,7 @@ mod tests {
                 base(serde_json::json!({"autoPause": true, "autoResume": {"enabled": true}})),
                 base(serde_json::json!({"autoPause": false})),
                 base(serde_json::json!({"autoPause": false})),
+                base(serde_json::json!({"autoPause": true})),
             ]
         );
     }
