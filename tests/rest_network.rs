@@ -2,27 +2,13 @@
 
 mod common;
 
-use common::{SANDBOX_ID, client_for, sandbox, sandbox_json};
+use common::{SANDBOX_ID, client_for, detail_json, sandbox, sandbox_json};
 use e2b_client::{
     ALL_TRAFFIC, CreateSandboxParams, Error, NetworkConfig, NetworkRule, NetworkUpdate,
 };
 use serde_json::{Value, json};
 use wiremock::matchers::{body_json, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
-
-/// A `SandboxDetail` with `extra` merged in.
-fn detail_json(extra: Value) -> Value {
-    let mut detail = json!({
-        "templateID": "base", "sandboxID": SANDBOX_ID, "clientID": "c",
-        "startedAt": "2026-10-27T12:00:00Z", "endAt": "2026-10-27T12:05:00Z",
-        "envdVersion": "0.5.7", "cpuCount": 2, "memoryMB": 512, "diskSizeMB": 2048,
-        "state": "running"
-    });
-    if let (Some(detail), Value::Object(extra)) = (detail.as_object_mut(), extra) {
-        detail.extend(extra);
-    }
-    detail
-}
 
 /// Mounts a create endpoint that only matches `body`, once.
 async fn expect_create_body(server: &MockServer, body: Value) {

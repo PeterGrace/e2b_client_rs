@@ -62,13 +62,18 @@ All JSON. Request/response models are the generated OpenAPI models under
 | Call | Route and status handling | Citation |
 |---|---|---|
 | Create | `POST /v2/sandboxes`, 201 → `Sandbox` | `py: api/client/api/sandboxes/post_v2_sandboxes.py:24-25, 39-42`; `py: sandbox_async/sandbox_api.py:256-277`; `js: 5566` |
-| Create body | `templateID`, `timeout`, `autoPause`, `metadata`, `envVars`, `allow_internet_access` (snake_case in the spec), `network` (see "Network") | `py: api/client/models/new_sandbox_v2.py:112-132, 145-171`; `py: sandbox_async/sandbox_api.py:237-251` |
+| Create body | `templateID`, `timeout`, `autoPause`, `autoPauseMemory`, `autoResume`, `metadata`, `envVars`, `allow_internet_access` (snake_case in the spec), `network` (see "Network"); header `Idempotency-Key` when a key is given | `py: api/client/models/new_sandbox_v2.py:112-132, 145-171`; `py: sandbox_async/sandbox_api.py:237-260` |
+| Create lifecycle | `autoPause` only when `on_timeout` is set (`true` for pause, `false` for kill); `autoPauseMemory` only for a pause with a mode (`full` → `true`, `filesystem` → `false`), else omitted and the API default (full) applies; `autoResume: {enabled}` only when `auto_resume` is set | `py: sandbox/sandbox_api.py:639-662, 1054-1125`; `py: api/client/models/new_sandbox_v2.py:113-118`; `py: api/client/models/sandbox_auto_resume_config.py:18, 28` |
+| Lifecycle checks | before any request, `InvalidArgument`: `auto_resume: true` without `on_timeout` pause (unset counts as kill), and `auto_resume: true` with mode `filesystem`. The SDK's third check, a mode on a kill, cannot be written here: `OnTimeout::Kill` has no mode | `py: sandbox/sandbox_api.py:1095-1114` |
+| Idempotency key | `Idempotency-Key` header on `POST /v2/sandboxes`, only when given; 1-255 characters, then only `[a-z0-9-]`, else `InvalidArgument` before any request; checked before the lifecycle | `py: api/client/api/sandboxes/post_v2_sandboxes.py:17-21`; `py: retry.py:29-44`; `py: sandbox_async/sandbox_api.py:228-232`; `js: 5568` |
 | Created sandbox | `templateID`, `sandboxID`, `clientID`, `envdVersion`, `envdAccessToken?`, `trafficAccessToken?`, `domain?` | `py: api/client/models/sandbox.py:85-115` |
 | Connect / resume | `POST /v2/sandboxes/{id}/connect` body `{timeout?}`, 200 or 201 → `Sandbox` | `py: api/client/api/sandboxes/post_v_2_sandboxes_sandbox_id_connect.py:22-23, 37-44`; `py: api/client/models/connect_sandbox_v2.py:25`; `py: sandbox_async/sandbox_api.py:511-520`; `js: 5617` |
 | Connect v1 (fallback) | `POST /sandboxes/{id}/connect`, body `{timeout}` required | `py: api/client/api/sandboxes/post_sandboxes_sandbox_id_connect.py:22-23`; `py: api/client/models/connect_sandbox.py:24, 48` |
 | Default sandbox timeout 300 s | | `py: sandbox/main.py:30` |
 | Get | `GET /sandboxes/{id}` → `SandboxDetail`; 404 → not found | `py: api/client/api/sandboxes/get_sandboxes_sandbox_id.py:17-18`; `py: sandbox_async/sandbox_api.py:118-135`; `js: 5289` |
 | Detail fields | `startedAt`, `endAt`, `cpuCount`, `memoryMB`, `diskSizeMB`, `state`, `metadata`, `domain`, ... | `py: api/client/models/sandbox_detail.py:174-218` |
+| Detail `lifecycle` | `{onTimeout: pause\|kill, autoResume: bool}`; an unknown, missing or `null` `onTimeout` reads as `TimeoutAction::Unknown` (the SDK raises on these); a missing `autoResume` reads as `false`; `lifecycle` absent or `null` → `None` | `py: api/client/models/sandbox_lifecycle.py:44-46`; `py: api/client/models/sandbox_detail.py:43, 227-232` |
+| Detail `pauseMode` | `full` or `filesystem`: what the latest pause saved; returned once a pause has finished and omitted while running or still pausing (hosted E2B adds it a poll after `state` turns `paused`, live 2026-10-27); unknown values read as `None` | `py: api/client/models/sandbox_detail.py:44-47, 234-239`; `py: api/client/models/sandbox_pause_mode.py:5-6` |
 | State values | `running`, `paused` | `py: api/client/models/sandbox_state.py:5-6` |
 | Metrics | `GET /sandboxes/{id}/metrics?start&end`, both Unix seconds, each omitted when unset; 200 → `SandboxMetric[]`; 404 → not found | `py: api/client/api/sandboxes/get_sandboxes_sandbox_id_metrics.py:21-29, 39-60`; `py: sandbox_async/sandbox_api.py:280-336`; `js: 5346-5378` |
 | Metric fields | `timestamp` (RFC 3339), `timestampUnix`, `cpuCount`, `cpuUsedPct` (float), `memUsed`, `memTotal`, `memCache`, `diskUsed`, `diskTotal` (bytes) | `py: api/client/models/sandbox_metric.py:28-36, 79-95` |
@@ -356,8 +361,9 @@ the download URL with its `signature` pair removed with a 4xx.
   output; here `next_event()` hands chunks to the caller and `wait()` only
   collects what is left, so output is held once.
 - **Not implemented yet.** Milestone 3: snapshots and fork, and the
-  remaining SDK 2.61 create fields. Milestone 4:
-  the `is_symlink` file type (#30) and dropping the v1 connect fallback.
+  remaining SDK 2.61 create fields (volume mounts and the MCP gateway).
+  Milestone 4: the `is_symlink` file type (#30) and dropping the v1 connect
+  fallback.
   Unscheduled: sandbox health probing on transport errors. Out of scope by
   design: template builds and a sync API.
 

@@ -10,6 +10,10 @@ use std::time::Duration;
 use chrono::{DateTime, SecondsFormat, Utc};
 use serde::{Deserialize, Serialize};
 
+use crate::error::{Error, Result};
+use crate::lifecycle::{
+    AutoResume, Lifecycle, LifecycleInfo, OnTimeout, SnapshotMode, deserialize_known_mode,
+};
 use crate::network::{NetworkConfig, NetworkInfo};
 
 /// The template the SDKs use when none is given (`e2b/sandbox/main.py:32`).
@@ -35,9 +39,10 @@ pub struct CreateSandboxParams {
     timeout: Option<Duration>,
     metadata: HashMap<String, String>,
     envs: HashMap<String, String>,
-    auto_pause: Option<bool>,
+    lifecycle: Lifecycle,
     allow_internet_access: Option<bool>,
     network: Option<NetworkConfig>,
+    idempotency_key: Option<String>,
 }
 
 impl Default for CreateSandboxParams {
@@ -64,9 +69,10 @@ impl CreateSandboxParams {
             timeout: None,
             metadata: HashMap::new(),
             envs: HashMap::new(),
-            auto_pause: None,
+            lifecycle: Lifecycle::new(),
             allow_internet_access: None,
             network: None,
+            idempotency_key: None,
         }
     }
 
@@ -127,6 +133,13 @@ impl CreateSandboxParams {
     }
 
     /// Pauses instead of killing the sandbox when its timeout expires.
+    /// Shorthand for [`CreateSandboxParams::lifecycle`] with
+    /// `on_timeout(OnTimeout::pause())` (`true`) or `on_timeout(OnTimeout::Kill)`
+    /// (`false`), keeping any `auto_resume` already set. It replaces the
+    /// whole `on_timeout`, so an earlier pause mode is dropped:
+    /// `auto_pause(true)` after `on_timeout(OnTimeout::pause_with(..))`
+    /// pauses with the API's default mode (currently full). Both write the
+    /// same setting, so the later of the two calls wins.
     ///
     /// # Arguments
     ///
@@ -137,7 +150,59 @@ impl CreateSandboxParams {
     /// The parameters, for chaining.
     #[must_use]
     pub fn auto_pause(mut self, auto_pause: bool) -> Self {
-        self.auto_pause = Some(auto_pause);
+        let on_timeout = if auto_pause {
+            OnTimeout::pause()
+        } else {
+            OnTimeout::Kill
+        };
+        self.lifecycle = self.lifecycle.on_timeout(on_timeout);
+        self
+    }
+
+    /// Sets the lifecycle: what happens at the timeout, and auto-resume.
+    /// Replaces any earlier [`CreateSandboxParams::auto_pause`]. The SDK's
+    /// checks run in [`crate::Client::create_sandbox`], before any request.
+    ///
+    /// # Arguments
+    ///
+    /// * `lifecycle` - the settings.
+    ///
+    /// # Returns
+    ///
+    /// The parameters, for chaining.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use e2b_client::{CreateSandboxParams, Lifecycle, OnTimeout, SnapshotMode};
+    ///
+    /// let params = CreateSandboxParams::new("base").lifecycle(
+    ///     Lifecycle::new().on_timeout(OnTimeout::pause_with(SnapshotMode::Filesystem)),
+    /// );
+    /// # let _ = params;
+    /// ```
+    #[must_use]
+    pub fn lifecycle(mut self, lifecycle: Lifecycle) -> Self {
+        self.lifecycle = lifecycle;
+        self
+    }
+
+    /// Makes the create request idempotent: a retry with the same key gets
+    /// the same sandbox instead of a second one. Sent as the
+    /// `Idempotency-Key` header.
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - 1 to 255 lowercase ASCII letters, digits or hyphens, for
+    ///   example a lowercase UUID. `impl Into<String>` accepts both a `&str`
+    ///   and an owned `String`. Checked by [`crate::Client::create_sandbox`].
+    ///
+    /// # Returns
+    ///
+    /// The parameters, for chaining.
+    #[must_use]
+    pub fn idempotency_key(mut self, key: impl Into<String>) -> Self {
+        self.idempotency_key = Some(key.into());
         self
     }
 
@@ -184,19 +249,63 @@ impl CreateSandboxParams {
         self
     }
 
+    /// The idempotency key, if set and valid (`resolve_idempotency_key`,
+    /// `e2b/retry.py:29-44`).
+    ///
+    /// # Returns
+    ///
+    /// The key, or `None` when none was set.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::InvalidArgument`] for a key that is empty, longer than 255
+    /// characters, or has a character outside `a-z`, `0-9` and `-`.
+    pub(crate) fn checked_idempotency_key(&self) -> Result<Option<&str>> {
+        let Some(key) = self.idempotency_key.as_deref() else {
+            return Ok(None);
+        };
+        // Length first, in characters, as the SDK's `len(key)` counts them
+        // (Rust's `str::len` counts UTF-8 bytes).
+        let characters = key.chars().count();
+        if !(1..=255).contains(&characters) {
+            return Err(Error::InvalidArgument(format!(
+                "idempotency key must be 1-255 characters (got {characters})"
+            )));
+        }
+        let allowed = |byte: u8| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'-';
+        if !key.bytes().all(allowed) {
+            return Err(Error::InvalidArgument(
+                "idempotency key may only hold lowercase ASCII letters, digits and hyphens".into(),
+            ));
+        }
+        Ok(Some(key))
+    }
+
     /// The request body (`NewSandboxV2`, `e2b/api/client/models/new_sandbox_v2.py`).
-    pub(crate) fn body(&self) -> NewSandboxBody<'_> {
-        NewSandboxBody {
+    ///
+    /// # Returns
+    ///
+    /// The body, borrowing from these parameters.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::InvalidArgument`] for a lifecycle the SDK refuses (see
+    /// [`Lifecycle::auto_resume`]).
+    pub(crate) fn body(&self) -> Result<NewSandboxBody<'_>> {
+        let lifecycle = self.lifecycle.body()?;
+        Ok(NewSandboxBody {
             template_id: &self.template,
             timeout: self.timeout.map(|timeout| timeout.as_secs()),
             metadata: &self.metadata,
             env_vars: &self.envs,
-            auto_pause: self.auto_pause,
+            auto_pause: lifecycle.auto_pause,
+            auto_pause_memory: lifecycle.auto_pause_memory,
+            auto_resume: lifecycle.auto_resume,
             allow_internet_access: self.allow_internet_access,
             // `Option::filter` keeps the settings only when something is set,
             // so an empty `NetworkConfig` leaves `network` out of the body.
             network: self.network.as_ref().filter(|network| !network.is_empty()),
-        }
+        })
     }
 }
 
@@ -212,6 +321,10 @@ pub(crate) struct NewSandboxBody<'a> {
     env_vars: &'a HashMap<String, String>,
     #[serde(rename = "autoPause", skip_serializing_if = "Option::is_none")]
     auto_pause: Option<bool>,
+    #[serde(rename = "autoPauseMemory", skip_serializing_if = "Option::is_none")]
+    auto_pause_memory: Option<bool>,
+    #[serde(rename = "autoResume", skip_serializing_if = "Option::is_none")]
+    auto_resume: Option<AutoResume>,
     // The spec spells this one field in snake_case
     // (`new_sandbox_v2.py:160`).
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -330,6 +443,13 @@ pub struct SandboxInfo {
     /// The sandbox's network settings, when reported (detail only).
     #[serde(default)]
     pub network: Option<NetworkInfo>,
+    /// The sandbox's lifecycle settings, when reported (detail only).
+    #[serde(default)]
+    pub lifecycle: Option<LifecycleInfo>,
+    /// What the sandbox's pause keeps, when reported and known (detail
+    /// only); a mode this crate does not know reads as `None`.
+    #[serde(default, deserialize_with = "deserialize_known_mode")]
+    pub pause_mode: Option<SnapshotMode>,
 }
 
 /// Sort order for [`ListSandboxesParams::order`]: by start time, across the
@@ -610,7 +730,7 @@ mod tests {
             .env("A", "1")
             .auto_pause(true)
             .allow_internet_access(false);
-        let json = serde_json::to_value(params.body()).expect("serialize");
+        let json = serde_json::to_value(params.body().expect("body")).expect("serialize");
         assert_eq!(
             json,
             serde_json::json!({
@@ -626,11 +746,101 @@ mod tests {
 
     #[test]
     fn create_body_omits_unset_optionals() {
-        let json = serde_json::to_value(CreateSandboxParams::default().body()).expect("ser");
+        let json = serde_json::to_value(CreateSandboxParams::default().body().expect("body"))
+            .expect("ser");
         assert_eq!(
             json,
             serde_json::json!({"templateID": "base", "metadata": {}, "envVars": {}})
         );
+    }
+
+    #[test]
+    fn auto_pause_is_shorthand_for_the_lifecycle_on_timeout() {
+        // Arrange
+        let paused = CreateSandboxParams::default()
+            .lifecycle(Lifecycle::new().auto_resume(true))
+            .auto_pause(true);
+        let replaced = CreateSandboxParams::default()
+            .auto_pause(true)
+            .lifecycle(Lifecycle::new().on_timeout(OnTimeout::Kill));
+        let overridden = CreateSandboxParams::default()
+            .lifecycle(Lifecycle::new().on_timeout(OnTimeout::pause_with(SnapshotMode::Full)))
+            .auto_pause(false);
+        let mode_dropped = CreateSandboxParams::default()
+            .lifecycle(Lifecycle::new().on_timeout(OnTimeout::pause_with(SnapshotMode::Filesystem)))
+            .auto_pause(true);
+
+        // Act
+        let bodies = [paused, replaced, overridden, mode_dropped]
+            .map(|params| serde_json::to_value(params.body().expect("body")).expect("ser"));
+
+        // Assert: `auto_pause` keeps `auto_resume`, `lifecycle` replaces
+        // `auto_pause`, and a later `auto_pause` of either value drops an
+        // earlier pause mode (no `autoPauseMemory`).
+        let base = |extra: serde_json::Value| {
+            let mut body = serde_json::json!({"templateID": "base", "metadata": {}, "envVars": {}});
+            if let (Some(body), serde_json::Value::Object(extra)) = (body.as_object_mut(), extra) {
+                body.extend(extra);
+            }
+            body
+        };
+        assert_eq!(
+            bodies,
+            [
+                base(serde_json::json!({"autoPause": true, "autoResume": {"enabled": true}})),
+                base(serde_json::json!({"autoPause": false})),
+                base(serde_json::json!({"autoPause": false})),
+                base(serde_json::json!({"autoPause": true})),
+            ]
+        );
+    }
+
+    #[test]
+    fn idempotency_key_accepts_1_to_255_of_lowercase_digits_and_hyphens() {
+        for key in [
+            "a",
+            "0-9",
+            &"z".repeat(255),
+            "9f1c2d3e-0000-4abc-8def-0123456789ab",
+        ] {
+            let params = CreateSandboxParams::default().idempotency_key(key);
+            assert_eq!(params.checked_idempotency_key().expect("valid"), Some(key));
+        }
+        assert_eq!(
+            CreateSandboxParams::default()
+                .checked_idempotency_key()
+                .expect("unset"),
+            None
+        );
+    }
+
+    #[test]
+    fn idempotency_key_refuses_bad_lengths_and_characters() {
+        // Arrange: "\u{e9}" (e-acute) is one character but two UTF-8 bytes, so
+        // 200 of them pass the length check and fail on the character set,
+        // as in the SDK.
+        let cases = [
+            (String::new(), "1-255 characters (got 0)"),
+            ("a".repeat(256), "1-255 characters (got 256)"),
+            ("\u{e9}".repeat(200), "lowercase"),
+            ("Upper".to_owned(), "lowercase"),
+            ("under_score".to_owned(), "lowercase"),
+            ("with space".to_owned(), "lowercase"),
+        ];
+
+        for (key, expected) in cases {
+            // Act
+            let error = CreateSandboxParams::default()
+                .idempotency_key(key.clone())
+                .checked_idempotency_key()
+                .expect_err("invalid key");
+
+            // Assert
+            assert!(
+                matches!(&error, Error::InvalidArgument(message) if message.contains(expected)),
+                "{key:?}: {error:?}"
+            );
+        }
     }
 
     #[test]

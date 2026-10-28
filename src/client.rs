@@ -25,6 +25,10 @@ const HEADER_API_KEY: &str = "x-api-key";
 /// The response header carrying the next list page token
 /// (`e2b/paginator.py:48-50`).
 const HEADER_NEXT_TOKEN: &str = "x-next-token";
+/// The request header carrying a create's idempotency key
+/// (`e2b/api/client/api/sandboxes/post_v2_sandboxes.py:21`; JS
+/// `dist/index.js:5568`).
+const HEADER_IDEMPOTENCY_KEY: &str = "Idempotency-Key";
 /// The sandbox timeout the SDKs fall back to (`e2b/sandbox/main.py:30`); the
 /// v1 connect body requires a timeout.
 const DEFAULT_SANDBOX_TIMEOUT: Duration = Duration::from_secs(300);
@@ -142,7 +146,8 @@ impl Client {
     ///
     /// # Arguments
     ///
-    /// * `params` - template, timeout, metadata and environment variables.
+    /// * `params` - template, timeout, metadata, environment variables,
+    ///   network, lifecycle and an optional idempotency key.
     ///
     /// # Returns
     ///
@@ -150,13 +155,24 @@ impl Client {
     ///
     /// # Errors
     ///
-    /// [`Error::Api`] for a non-2xx answer, [`Error::Decode`] for an
-    /// unexpected body, [`Error::Transport`] for connection failures.
+    /// [`Error::InvalidArgument`] for an invalid idempotency key or
+    /// lifecycle, before any request; [`Error::Api`] for a non-2xx answer,
+    /// [`Error::Decode`] for an unexpected body, [`Error::Transport`] for
+    /// connection failures.
     pub async fn create_sandbox(&self, params: &CreateSandboxParams) -> Result<Sandbox> {
-        let response = self
-            .send_json(Method::POST, &["v2", "sandboxes"], &params.body())
-            .await?;
-        let created: SandboxCreated = parse_success(response).await?;
+        // Every check runs before any request, in the SDK's order: the key
+        // (`sandbox_async/sandbox_api.py:228`), then the lifecycle (`:232`).
+        let idempotency_key = params.checked_idempotency_key()?;
+        let body = params.body()?;
+        let mut request = self
+            .request(Method::POST, &["v2", "sandboxes"])?
+            .json(&body);
+        // `if let` runs the block only when the key is `Some`, like
+        // `if key is not None:` in Python.
+        if let Some(key) = idempotency_key {
+            request = request.header(HEADER_IDEMPOTENCY_KEY, key);
+        }
+        let created: SandboxCreated = parse_success(request.send().await?).await?;
         Sandbox::from_created(self.clone(), created)
     }
 
