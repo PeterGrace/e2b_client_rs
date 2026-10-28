@@ -261,6 +261,18 @@ impl CommandConnectOptions {
 ///
 /// `#[non_exhaustive]`: envd's `process.Signal` may gain signals, so a
 /// `match` outside this crate needs a `_` arm.
+///
+/// # Examples
+///
+/// ```no_run
+/// use e2b_client::{CommandOptions, Sandbox, Signal};
+///
+/// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
+/// let handle = sandbox.commands().start("sleep 600", &CommandOptions::new()).await?;
+/// sandbox.commands().send_signal(handle.pid(), Signal::Sigterm).await?;
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum Signal {
@@ -284,6 +296,25 @@ impl Signal {
 /// `#[non_exhaustive]`: envd's `process.ProcessEvent` may gain event kinds,
 /// so a `match` outside this crate needs a catch-all arm (`_` or
 /// `other => ...`).
+///
+/// # Examples
+///
+/// ```no_run
+/// use e2b_client::{CommandEvent, CommandOptions, Sandbox};
+///
+/// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
+/// let mut handle = sandbox.commands().start("make", &CommandOptions::new()).await?;
+/// while let Some(event) = handle.next_event().await? {
+///     match event {
+///         CommandEvent::Stdout(chunk) => print!("{}", String::from_utf8_lossy(&chunk)),
+///         CommandEvent::Stderr(chunk) => eprint!("{}", String::from_utf8_lossy(&chunk)),
+///         CommandEvent::Exit(exit) => println!("exit {}", exit.exit_code),
+///         _ => {}
+///     }
+/// }
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum CommandEvent {
@@ -296,6 +327,22 @@ pub enum CommandEvent {
 }
 
 /// How a command ended (`process.ProcessEvent.EndEvent`).
+///
+/// # Examples
+///
+/// ```no_run
+/// use e2b_client::{CommandEvent, CommandOptions, Sandbox};
+///
+/// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
+/// let mut handle = sandbox.commands().start("false", &CommandOptions::new()).await?;
+/// while let Some(event) = handle.next_event().await? {
+///     if let CommandEvent::Exit(exit) = event {
+///         println!("code {}, error {:?}", exit.exit_code, exit.error);
+///     }
+/// }
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct CommandExit {
@@ -306,6 +353,20 @@ pub struct CommandExit {
 }
 
 /// The collected outcome of a finished command.
+///
+/// # Examples
+///
+/// ```no_run
+/// # async fn demo(sandbox: e2b_client::Sandbox) -> e2b_client::Result<()> {
+/// let result = sandbox.commands().run("ls /", &e2b_client::CommandOptions::new()).await?;
+/// if result.success() {
+///     print!("{}", result.stdout);
+/// } else {
+///     eprintln!("exit {}: {}", result.exit_code, result.stderr);
+/// }
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct CommandResult {
@@ -332,6 +393,17 @@ impl CommandResult {
 }
 
 /// A process running in the sandbox, from [`Commands::list`].
+///
+/// # Examples
+///
+/// ```no_run
+/// # async fn demo(sandbox: e2b_client::Sandbox) -> e2b_client::Result<()> {
+/// for process in sandbox.commands().list().await? {
+///     println!("{} {} {:?}", process.pid, process.cmd, process.args);
+/// }
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct ProcessInfo {
@@ -351,6 +423,17 @@ pub struct ProcessInfo {
 
 /// The process service of one sandbox. Get it from
 /// [`crate::Sandbox::commands`].
+///
+/// # Examples
+///
+/// ```no_run
+/// # async fn demo(sandbox: e2b_client::Sandbox) -> e2b_client::Result<()> {
+/// let commands = sandbox.commands();
+/// let result = commands.run("echo hi", &e2b_client::CommandOptions::new()).await?;
+/// assert_eq!(result.stdout, "hi\n");
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Debug, Clone)]
 pub struct Commands {
     envd: Arc<EnvdClient>,
@@ -438,6 +521,24 @@ impl Commands {
     /// # Errors
     ///
     /// As [`Commands::start`] and [`CommandHandle::wait`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::time::Duration;
+    ///
+    /// use e2b_client::{CommandOptions, Sandbox};
+    ///
+    /// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
+    /// let options = CommandOptions::new()
+    ///     .cwd("/home/user")
+    ///     .env("RUST_LOG", "debug")
+    ///     .timeout(Some(Duration::from_secs(300)));
+    /// let result = sandbox.commands().run("cargo --version", &options).await?;
+    /// println!("{}", result.stdout);
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn run(&self, cmd: &str, options: &CommandOptions) -> Result<CommandResult> {
         self.start(cmd, options).await?.wait().await
     }
@@ -526,6 +627,16 @@ impl Commands {
     /// # Errors
     ///
     /// [`Error::Rpc`], [`Error::Decode`] or [`Error::Transport`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # async fn demo(sandbox: e2b_client::Sandbox) -> e2b_client::Result<()> {
+    /// let running = sandbox.commands().list().await?;
+    /// println!("{} processes", running.len());
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn list(&self) -> Result<Vec<ProcessInfo>> {
         let response: ListResponse = self
             .envd
@@ -565,6 +676,20 @@ impl Commands {
     /// # Errors
     ///
     /// [`Error::Rpc`] (e.g. `not_found`) or [`Error::Transport`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use e2b_client::{CommandOptions, Sandbox};
+    ///
+    /// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
+    /// let handle = sandbox.commands().start("cat", &CommandOptions::new().stdin(true)).await?;
+    /// sandbox.commands().send_stdin(handle.pid(), "hello\n").await?;
+    /// sandbox.commands().close_stdin(handle.pid()).await?;
+    /// assert_eq!(handle.wait().await?.stdout, "hello\n");
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn send_stdin(&self, pid: u32, data: impl AsRef<[u8]>) -> Result<()> {
         let request = SendInputRequest {
             process: ProcessSelector::Pid(pid),
@@ -647,6 +772,21 @@ impl Commands {
     /// which has no `CloseStdin`; nothing is sent in that case, matching the
     /// SDK (`e2b/sandbox_async/commands/command.py:189-193`). Otherwise
     /// [`Error::Rpc`] (e.g. `not_found`) or [`Error::Transport`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use e2b_client::{CommandOptions, Sandbox};
+    ///
+    /// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
+    /// let handle = sandbox.commands().start("wc -c", &CommandOptions::new().stdin(true)).await?;
+    /// sandbox.commands().send_stdin(handle.pid(), "abc").await?;
+    /// // EOF: `wc` prints its count and exits.
+    /// sandbox.commands().close_stdin(handle.pid()).await?;
+    /// assert_eq!(handle.wait().await?.stdout.trim(), "3");
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn close_stdin(&self, pid: u32) -> Result<()> {
         let version = self.envd.version();
         if version < EnvdVersion::CLOSE_STDIN {
@@ -681,6 +821,18 @@ impl Commands {
     /// # Errors
     ///
     /// [`Error::Rpc`] (e.g. `not_found`) or [`Error::Transport`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use e2b_client::{CommandOptions, Sandbox, Signal};
+    ///
+    /// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
+    /// let handle = sandbox.commands().start("sleep 600", &CommandOptions::new()).await?;
+    /// sandbox.commands().send_signal(handle.pid(), Signal::Sigterm).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn send_signal(&self, pid: u32, signal: Signal) -> Result<()> {
         let request = SendSignalRequest {
             process: ProcessSelector::Pid(pid),
@@ -713,6 +865,18 @@ impl Commands {
     /// # Errors
     ///
     /// [`Error::Rpc`] other than `not_found`, or [`Error::Transport`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use e2b_client::{CommandOptions, Sandbox};
+    ///
+    /// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
+    /// let handle = sandbox.commands().start("sleep 600", &CommandOptions::new()).await?;
+    /// assert!(sandbox.commands().kill(handle.pid()).await?);
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn kill(&self, pid: u32) -> Result<bool> {
         match self.send_signal(pid, Signal::Sigkill).await {
             Ok(()) => Ok(true),
@@ -795,6 +959,21 @@ pub(crate) async fn open_process_stream<Req: serde::Serialize>(
 
 /// A started command. Read its output with [`next_event`](Self::next_event)
 /// or collect everything with [`wait`](Self::wait).
+///
+/// # Examples
+///
+/// ```no_run
+/// # async fn demo(sandbox: e2b_client::Sandbox) -> e2b_client::Result<()> {
+/// let handle = sandbox
+///     .commands()
+///     .start("sleep 1; echo ok", &e2b_client::CommandOptions::new())
+///     .await?;
+/// println!("pid {}", handle.pid());
+/// let result = handle.wait().await?;
+/// assert_eq!(result.stdout, "ok\n");
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Debug)]
 pub struct CommandHandle {
     pid: u32,
@@ -830,6 +1009,22 @@ impl CommandHandle {
     /// that ends without an end-of-stream envelope,
     /// [`Error::Timeout`] when the command timeout passes,
     /// [`Error::Transport`] for connection failures.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use e2b_client::{CommandEvent, CommandOptions, Sandbox};
+    ///
+    /// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
+    /// let mut handle = sandbox.commands().start("seq 3", &CommandOptions::new()).await?;
+    /// while let Some(event) = handle.next_event().await? {
+    ///     if let CommandEvent::Stdout(chunk) = event {
+    ///         print!("{}", String::from_utf8_lossy(&chunk));
+    ///     }
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn next_event(&mut self) -> Result<Option<CommandEvent>> {
         while let Some(response) = self.stream.next().await? {
             let Some(event) = response.event else {
@@ -866,6 +1061,20 @@ impl CommandHandle {
     /// [`Error::Protocol`] if the stream ends without an exit event
     /// (`e2b/sandbox_async/commands/command_handle.py:252-253`), plus the errors
     /// of [`next_event`](Self::next_event).
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # async fn demo(sandbox: e2b_client::Sandbox) -> e2b_client::Result<()> {
+    /// let handle = sandbox
+    ///     .commands()
+    ///     .start("echo out; echo err >&2", &e2b_client::CommandOptions::new())
+    ///     .await?;
+    /// let result = handle.wait().await?;
+    /// assert_eq!((result.stdout.as_str(), result.stderr.as_str()), ("out\n", "err\n"));
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn wait(mut self) -> Result<CommandResult> {
         let mut stdout = BytesMut::new();
         let mut stderr = BytesMut::new();
@@ -897,6 +1106,20 @@ impl CommandHandle {
     /// # Errors
     ///
     /// As [`Commands::send_stdin`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use e2b_client::{CommandOptions, Sandbox};
+    ///
+    /// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
+    /// let options = CommandOptions::new().stdin(true);
+    /// let handle = sandbox.commands().start("head -n1", &options).await?;
+    /// handle.send_stdin("first line\n").await?;
+    /// assert_eq!(handle.wait().await?.stdout, "first line\n");
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn send_stdin(&self, data: impl AsRef<[u8]>) -> Result<()> {
         self.commands.send_stdin(self.pid, data).await
     }
@@ -910,6 +1133,19 @@ impl CommandHandle {
     /// # Errors
     ///
     /// As [`Commands::kill`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # async fn demo(sandbox: e2b_client::Sandbox) -> e2b_client::Result<()> {
+    /// let handle = sandbox
+    ///     .commands()
+    ///     .start("sleep 600", &e2b_client::CommandOptions::new())
+    ///     .await?;
+    /// assert!(handle.kill().await?);
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn kill(&self) -> Result<bool> {
         self.commands.kill(self.pid).await
     }

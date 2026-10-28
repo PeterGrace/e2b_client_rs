@@ -6019,6 +6019,8 @@ After pushing, confirm the new job ran on the PR: `gh pr checks <PR>` lists `MSR
 - Modify: `docs/api-review.md` (coverage numbers)
 - Create: `changelog/<ts>-m4-task-14-rustdoc-examples.md`
 
+> **Corrected (issue #97, 2026-10-28).** `has_examples` (and Step 5's counter) also look through plain `//` comments: `CreateSandboxParams`, `PtyOptions` and `PtyConnectOptions` keep an example above a `//` comment on their `#[derive]`, so the planned helper listed them as missing. Step 2 then listed 93 items, 90 of them real (39 types, 51 async functions); `has_examples_looks_through_attributes_only` gains a third case for it, its `lib` literal is a `concat!` to stay within 100 columns, and `declared_item` ends with `?` (clippy `question_mark`). Step 3 skipped every item that already had an example on 89218d1: `Client::connect_sandbox`, `Client::pause_sandbox`, `Commands::connect`, `Pty::connect`, `Sandbox::pause`, `CommandConnectOptions`, `PtyConnectOptions`, `PtyOptions`, `FileOptions`, `ListOptions`, `TransportError` and `CreateSandboxParams`. Every other block landed as given, except that the `CommandHandle::send_stdin` and `Sandbox::create_snapshot` examples are wrapped to 100 columns. `ConnectCode::from_plain_http_status(404)` is `NotFound`, as the block asserts. Coverage went from 28 of 67 re-exported types and 18 of 69 async functions to all of both; `docs/api-review.md` records it as a table. No later task changes.
+
 "Non-trivial use" in CLM-0120 is made concrete: **every public type re-exported from `lib.rs`, and every `pub async fn`**, has an `# Examples` section. Builder setters and accessors are covered by their type's example. The test makes the rule permanent.
 
 - [ ] **Step 1: Write the failing test**
@@ -6107,10 +6109,9 @@ fn declared_item(line: &str) -> Option<(&'static str, &str)> {
         ("type", rest)
     } else if let Some(rest) = line.strip_prefix("pub enum ") {
         ("type", rest)
-    } else if let Some(rest) = trimmed.strip_prefix("pub async fn ") {
-        ("async fn", rest)
     } else {
-        return None;
+        // `?` on an `Option` returns `None` early, like a guard clause.
+        ("async fn", trimmed.strip_prefix("pub async fn ")?)
     };
     let end = rest
         .find(|c: char| !(c.is_alphanumeric() || c == '_'))
@@ -6119,7 +6120,8 @@ fn declared_item(line: &str) -> Option<(&'static str, &str)> {
 }
 
 /// Whether the doc comment directly above line `item` has `# Examples`.
-/// Attributes (`#[...]`) between the comment and the item are skipped.
+/// Attributes (`#[...]`) and plain `//` comments between the doc comment
+/// and the item are skipped; a blank line or code ends the search.
 ///
 /// # Arguments
 ///
@@ -6130,14 +6132,19 @@ fn has_examples(lines: &[&str], item: usize) -> bool {
         .iter()
         .rev()
         .map(|line| line.trim())
-        .take_while(|line| line.starts_with("///") || line.starts_with("#["))
+        // `//` also matches `///`, so one test covers doc and plain comments.
+        .take_while(|line| line.starts_with("//") || line.starts_with("#["))
         .any(|line| line == "/// # Examples")
 }
 
 #[test]
 fn reexported_names_reads_single_and_grouped_uses() {
     // Arrange
-    let lib = "pub use client::Client;\npub use error::{ConnectCode, Error,\n    Result};\npub use secrecy;\n";
+    let lib = concat!(
+        "pub use client::Client;\n",
+        "pub use error::{ConnectCode, Error,\n    Result};\n",
+        "pub use secrecy;\n",
+    );
 
     // Act
     let names = reexported_names(lib);
@@ -6162,11 +6169,19 @@ fn has_examples_looks_through_attributes_only() {
         "",
         "/// No example.",
         "pub struct Other;",
+        "",
+        "/// Commented.",
+        "///",
+        "/// # Examples",
+        "// Why the derive.",
+        "#[derive(Debug)]",
+        "pub struct Commented;",
     ];
 
     // Act and Assert
     assert!(has_examples(&lines, 4));
     assert!(!has_examples(&lines, 7));
+    assert!(has_examples(&lines, 14));
 }
 
 #[test]
@@ -6191,7 +6206,11 @@ fn every_public_type_and_async_method_has_an_example() {
             let checked = kind == "async fn" || exported.contains(name);
             if checked && !has_examples(&lines, index) {
                 let shown = file.strip_prefix(&src).unwrap_or(file);
-                missing.push(format!("src/{}:{} {kind} {name}", shown.display(), index + 1));
+                missing.push(format!(
+                    "src/{}:{} {kind} {name}",
+                    shown.display(),
+                    index + 1
+                ));
             }
         }
     }
@@ -8037,7 +8056,7 @@ for path in sorted(glob.glob('src/**/*.rs', recursive=True)):
         if not m:
             continue
         j, doc = i - 1, []
-        while j >= 0 and lines[j].strip().startswith(('///', '#[')):
+        while j >= 0 and lines[j].strip().startswith(('//', '#[')):
             doc.append(lines[j].strip()); j -= 1
         has = '/// # Examples' in doc
         if m.group(1):

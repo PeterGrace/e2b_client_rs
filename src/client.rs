@@ -176,6 +176,23 @@ impl Client {
     /// starting (for example by a `tokio::time::timeout` around the call),
     /// the kill does not run and the sandbox lives until its timeout, as
     /// in the SDKs.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::time::Duration;
+    ///
+    /// use e2b_client::{Client, CreateSandboxParams};
+    ///
+    /// # async fn demo(client: Client) -> e2b_client::Result<()> {
+    /// let params = CreateSandboxParams::new("base")
+    ///     .timeout(Duration::from_secs(120))
+    ///     .metadata("purpose", "docs");
+    /// let sandbox = client.create_sandbox(&params).await?;
+    /// println!("{}", sandbox.sandbox_id());
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn create_sandbox(&self, params: &CreateSandboxParams) -> Result<Sandbox> {
         // Every check runs before any request, in the SDK's order: the key
         // (`sandbox_async/sandbox_api.py:228`), then the lifecycle (`:232`).
@@ -284,6 +301,16 @@ impl Client {
     ///
     /// [`Error::SandboxNotFound`] for HTTP 404, [`Error::Api`] for other
     /// non-2xx answers, [`Error::Transport`] for connection failures.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # async fn demo(client: e2b_client::Client, sandbox_id: &str) -> e2b_client::Result<()> {
+    /// let info = client.get_sandbox_info(sandbox_id).await?;
+    /// println!("{:?} until {}", info.state, info.end_at);
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn get_sandbox_info(&self, sandbox_id: &str) -> Result<SandboxInfo> {
         let response = self
             .request(Method::GET, &["sandboxes", sandbox_id])?
@@ -409,6 +436,17 @@ impl Client {
     ///
     /// [`Error::Api`] for a non-2xx answer other than 404,
     /// [`Error::Transport`] for connection failures.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # async fn demo(client: e2b_client::Client, sandbox_id: &str) -> e2b_client::Result<()> {
+    /// if !client.kill_sandbox(sandbox_id).await? {
+    ///     println!("{sandbox_id} was already gone");
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn kill_sandbox(&self, sandbox_id: &str) -> Result<bool> {
         let response = self
             .request(Method::DELETE, &["sandboxes", sandbox_id])?
@@ -501,6 +539,17 @@ impl Client {
     ///
     /// [`Error::SandboxNotFound`] for HTTP 404, [`Error::Api`] for other
     /// non-2xx answers, [`Error::Transport`] for connection failures.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::time::Duration;
+    ///
+    /// # async fn demo(client: e2b_client::Client, sandbox_id: &str) -> e2b_client::Result<()> {
+    /// client.set_sandbox_timeout(sandbox_id, Duration::from_secs(900)).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn set_sandbox_timeout(&self, sandbox_id: &str, timeout: Duration) -> Result<()> {
         let body = TimeoutBody {
             timeout: timeout.as_secs(),
@@ -524,6 +573,19 @@ impl Client {
     ///
     /// [`Error::SandboxNotFound`] for HTTP 404, [`Error::Api`] for other
     /// non-2xx answers, [`Error::Transport`] for connection failures.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use e2b_client::{Client, NetworkUpdate};
+    ///
+    /// # async fn demo(client: Client, sandbox_id: &str) -> e2b_client::Result<()> {
+    /// // Cut the sandbox off from the internet without restarting it.
+    /// let update = NetworkUpdate::new().allow_internet_access(false);
+    /// client.update_sandbox_network(sandbox_id, &update).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn update_sandbox_network(
         &self,
         sandbox_id: &str,
@@ -547,6 +609,17 @@ impl Client {
     ///
     /// [`Error::SandboxNotFound`] for HTTP 404, [`Error::Api`] for other
     /// non-2xx answers, [`Error::Transport`] for connection failures.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::time::Duration;
+    ///
+    /// # async fn demo(client: e2b_client::Client, sandbox_id: &str) -> e2b_client::Result<()> {
+    /// client.refresh_sandbox(sandbox_id, Some(Duration::from_secs(60))).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn refresh_sandbox(
         &self,
         sandbox_id: &str,
@@ -684,6 +757,16 @@ impl Client {
     /// delete a snapshot while a sandbox created from it is running, with
     /// HTTP 400 `cannot delete template '<id>' because there are running
     /// sandboxes using it`: kill those sandboxes first.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # async fn demo(client: e2b_client::Client) -> e2b_client::Result<()> {
+    /// let deleted = client.delete_snapshot("team/my-snapshot:v1").await?;
+    /// println!("deleted: {deleted}");
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn delete_snapshot(&self, snapshot_id: &str) -> Result<bool> {
         let response = self
             .request(Method::DELETE, &["templates", snapshot_id])?
@@ -880,6 +963,16 @@ impl Client {
     /// 400 `Invalid volume ID` for an ID of another shape),
     /// [`Error::Decode`] for an unexpected body, [`Error::Transport`] for
     /// connection failures.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # async fn demo(client: e2b_client::Client, volume_id: &str) -> e2b_client::Result<()> {
+    /// let volume = client.get_volume(volume_id).await?;
+    /// println!("{} is {}", volume.volume_id(), volume.name());
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn get_volume(&self, volume_id: &str) -> Result<Volume> {
         let response = self
             .request(Method::GET, &["volumes", volume_id])?
@@ -905,6 +998,17 @@ impl Client {
     ///
     /// [`Error::Api`] for a non-2xx answer, [`Error::Decode`] for an
     /// unexpected body, [`Error::Transport`] for connection failures.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # async fn demo(client: e2b_client::Client) -> e2b_client::Result<()> {
+    /// for volume in client.list_volumes().await? {
+    ///     println!("{} {}", volume.volume_id, volume.name);
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn list_volumes(&self) -> Result<Vec<VolumeInfo>> {
         let response = self
             .request(Method::GET, &["volumes"])?
@@ -933,6 +1037,17 @@ impl Client {
     /// [`Error::Api`] for a non-2xx answer other than 404 (hosted E2B answers
     /// 400 `Invalid volume ID` for an ID that is not a UUID),
     /// [`Error::Transport`] for connection failures.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # async fn demo(client: e2b_client::Client, volume_id: &str) -> e2b_client::Result<()> {
+    /// if !client.destroy_volume(volume_id).await? {
+    ///     println!("no volume {volume_id}");
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn destroy_volume(&self, volume_id: &str) -> Result<bool> {
         let response = self
             .request(Method::DELETE, &["volumes", volume_id])?

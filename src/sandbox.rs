@@ -353,6 +353,20 @@ impl Sandbox {
     ///
     /// The errors of [`Filesystem::read_to_string`], for example
     /// [`Error::Envd`] with status 404 on a sandbox without a gateway.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use e2b_client::secrecy::ExposeSecret;
+    ///
+    /// # async fn demo(sandbox: e2b_client::Sandbox) -> e2b_client::Result<()> {
+    /// let token = sandbox.mcp_token().await?;
+    /// // Send it as `Authorization: Bearer <token>` to `sandbox.mcp_url()`.
+    /// let header = format!("Bearer {}", token.expose_secret());
+    /// # let _ = header;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn mcp_token(&self) -> Result<&SecretString> {
         // `get_or_try_init` runs the closure only while the cell is empty,
         // and stores its value only when it returns `Ok`.
@@ -572,6 +586,17 @@ impl Sandbox {
     ///
     /// [`crate::Error::Envd`] for another non-2xx status,
     /// [`crate::Error::Transport`] for connection failures.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # async fn demo(sandbox: e2b_client::Sandbox) -> e2b_client::Result<()> {
+    /// if !sandbox.is_running().await? {
+    ///     println!("{} has stopped", sandbox.sandbox_id());
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn is_running(&self) -> Result<bool> {
         let response = self
             .envd
@@ -597,6 +622,15 @@ impl Sandbox {
     /// # Errors
     ///
     /// As [`Client::kill_sandbox`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # async fn demo(sandbox: e2b_client::Sandbox) -> e2b_client::Result<()> {
+    /// sandbox.kill().await?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn kill(&self) -> Result<bool> {
         self.client.kill_sandbox(&self.sandbox_id).await
     }
@@ -641,6 +675,17 @@ impl Sandbox {
     /// # Errors
     ///
     /// As [`Client::set_sandbox_timeout`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::time::Duration;
+    ///
+    /// # async fn demo(sandbox: e2b_client::Sandbox) -> e2b_client::Result<()> {
+    /// sandbox.set_timeout(Duration::from_secs(30 * 60)).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn set_timeout(&self, timeout: Duration) -> Result<()> {
         self.client
             .set_sandbox_timeout(&self.sandbox_id, timeout)
@@ -657,6 +702,17 @@ impl Sandbox {
     /// # Errors
     ///
     /// As [`Client::update_sandbox_network`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use e2b_client::NetworkUpdate;
+    ///
+    /// # async fn demo(sandbox: e2b_client::Sandbox) -> e2b_client::Result<()> {
+    /// sandbox.update_network(&NetworkUpdate::new().allow_internet_access(true)).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn update_network(&self, update: &NetworkUpdate) -> Result<()> {
         self.client
             .update_sandbox_network(&self.sandbox_id, update)
@@ -672,6 +728,16 @@ impl Sandbox {
     /// # Errors
     ///
     /// As [`Client::refresh_sandbox`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # async fn demo(sandbox: e2b_client::Sandbox) -> e2b_client::Result<()> {
+    /// // Keep the sandbox alive for the API's default refresh period.
+    /// sandbox.refresh(None).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn refresh(&self, duration: Option<Duration>) -> Result<()> {
         self.client
             .refresh_sandbox(&self.sandbox_id, duration)
@@ -688,6 +754,16 @@ impl Sandbox {
     /// # Errors
     ///
     /// As [`Client::get_sandbox_info`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # async fn demo(sandbox: e2b_client::Sandbox) -> e2b_client::Result<()> {
+    /// let info = sandbox.get_info().await?;
+    /// println!("{:?}, metadata {:?}", info.state, info.metadata);
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn get_info(&self) -> Result<SandboxInfo> {
         self.client.get_sandbox_info(&self.sandbox_id).await
     }
@@ -706,6 +782,20 @@ impl Sandbox {
     /// # Errors
     ///
     /// As [`Client::get_sandbox_metrics`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use e2b_client::MetricsParams;
+    ///
+    /// # async fn demo(sandbox: e2b_client::Sandbox) -> e2b_client::Result<()> {
+    /// let samples = sandbox.get_metrics(&MetricsParams::new()).await?;
+    /// if let Some(last) = samples.last() {
+    ///     println!("disk {}/{}", last.disk_used, last.disk_total);
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn get_metrics(&self, params: &MetricsParams) -> Result<Vec<SandboxMetrics>> {
         self.client
             .get_sandbox_metrics(&self.sandbox_id, params)
@@ -725,6 +815,20 @@ impl Sandbox {
     /// # Errors
     ///
     /// As [`Client::create_snapshot`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use e2b_client::{Client, CreateSandboxParams, Sandbox, SnapshotOptions};
+    ///
+    /// # async fn demo(client: Client, sandbox: Sandbox) -> e2b_client::Result<()> {
+    /// let snapshot = sandbox.create_snapshot(&SnapshotOptions::new().name("warm-cache")).await?;
+    /// // A new sandbox starts from the snapshot as from a template.
+    /// let copy = client.create_sandbox(&CreateSandboxParams::new(&snapshot.snapshot_id)).await?;
+    /// # let _ = copy;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn create_snapshot(&self, options: &SnapshotOptions) -> Result<SnapshotInfo> {
         self.client.create_snapshot(&self.sandbox_id, options).await
     }
@@ -744,6 +848,20 @@ impl Sandbox {
     /// # Errors
     ///
     /// As [`Client::list_snapshots`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use e2b_client::ListSnapshotsParams;
+    ///
+    /// # async fn demo(sandbox: e2b_client::Sandbox) -> e2b_client::Result<()> {
+    /// let page = sandbox.list_snapshots(&ListSnapshotsParams::new()).await?;
+    /// for snapshot in page.snapshots {
+    ///     println!("{} {:?}", snapshot.snapshot_id, snapshot.names);
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn list_snapshots(&self, params: &ListSnapshotsParams) -> Result<SnapshotPage> {
         // `.clone()` copies the caller's parameters, since the builder
         // methods take `self` by value and `params` is only borrowed.
@@ -764,6 +882,22 @@ impl Sandbox {
     /// # Errors
     ///
     /// As [`Client::fork_sandbox`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use e2b_client::ForkOptions;
+    ///
+    /// # async fn demo(sandbox: e2b_client::Sandbox) -> e2b_client::Result<()> {
+    /// for fork in sandbox.fork(&ForkOptions::new().count(3)).await? {
+    ///     match fork {
+    ///         Ok(copy) => println!("forked {}", copy.sandbox_id()),
+    ///         Err(error) => eprintln!("one fork failed: {error}"),
+    ///     }
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn fork(&self, options: &ForkOptions) -> Result<Vec<Result<Sandbox>>> {
         self.client.fork_sandbox(&self.sandbox_id, options).await
     }

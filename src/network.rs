@@ -418,6 +418,17 @@ impl fmt::Debug for NetworkTransform {
 ///
 /// This is a plain data record, so its fields are public. It is
 /// `#[non_exhaustive]` so fields can be added without a breaking change.
+///
+/// # Examples
+///
+/// ```no_run
+/// # async fn demo(sandbox: e2b_client::Sandbox) -> e2b_client::Result<()> {
+/// if let Some(network) = sandbox.get_info().await?.network {
+///     println!("allow {:?}, deny {:?}", network.allow_out, network.deny_out);
+/// }
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]

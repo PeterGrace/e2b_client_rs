@@ -111,6 +111,18 @@ pub(crate) struct SnapshotRequest<'a> {
 ///
 /// This is a plain data record, so its fields are public. It is
 /// `#[non_exhaustive]` so fields can be added without a breaking change.
+///
+/// # Examples
+///
+/// ```no_run
+/// use e2b_client::SnapshotOptions;
+///
+/// # async fn demo(sandbox: e2b_client::Sandbox) -> e2b_client::Result<()> {
+/// let snapshot = sandbox.create_snapshot(&SnapshotOptions::new()).await?;
+/// println!("{} also known as {:?}", snapshot.snapshot_id, snapshot.names);
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[non_exhaustive]
 pub struct SnapshotInfo {
@@ -253,6 +265,25 @@ impl ListSnapshotsParams {
 }
 
 /// One page of [`crate::Client::list_snapshots`] results.
+///
+/// # Examples
+///
+/// ```no_run
+/// use e2b_client::{Client, ListSnapshotsParams};
+///
+/// # async fn demo(client: Client) -> e2b_client::Result<()> {
+/// let mut params = ListSnapshotsParams::new().limit(50);
+/// loop {
+///     let page = client.list_snapshots(&params).await?;
+///     println!("{} snapshots", page.snapshots.len());
+///     match page.next_token {
+///         Some(token) => params = params.next_token(token),
+///         None => break,
+///     }
+/// }
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct SnapshotPage {

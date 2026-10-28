@@ -8,6 +8,22 @@ use serde::Deserialize;
 ///
 /// This is a plain data record, so its fields are public. It is
 /// `#[non_exhaustive]` so fields can be added without a breaking change.
+///
+/// # Examples
+///
+/// ```no_run
+/// use e2b_client::{MetricsParams, Sandbox};
+///
+/// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
+/// for sample in sandbox.get_metrics(&MetricsParams::new()).await? {
+///     println!(
+///         "{} cpu {:.1}% mem {}/{}",
+///         sample.timestamp, sample.cpu_used_pct, sample.mem_used, sample.mem_total
+///     );
+/// }
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[non_exhaustive]
