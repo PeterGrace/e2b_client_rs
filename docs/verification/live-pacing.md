@@ -32,7 +32,11 @@ Hosted E2B has no such limit and keeps `just test-live`.
    up`, `Service Temporarily Unavailable`, `Unschedulable` or `will not become
    ready`, the messages the M2 and M3 sandbawks runs saw while no sandbox was
    ready. A failure reported only as an exit code (M2 saw a synthetic 75) is
-   left as `FAIL` for a person to classify. A test that failed and was rerun
+   left as `FAIL` for a person to classify. `will not become ready` also ends
+   the gateway's message for a sandbox that failed outright (`the sandbox
+   failed (action_failure)`, an unknown template, gfd/sandbawks#680), so read
+   a `FAIL-READINESS (rerun)` line before counting it as capacity: M4 Task
+   17's `clm_0150` was one (`m4-live-results.md`, section "sandbawks"). A test that failed and was rerun
    has two lines: `FAIL-READINESS`, then the rerun's result.
 5. Reruns each readiness failure once, after another gap.
 6. Runs `live_sweep` for the run id, then writes a summary line that counts
