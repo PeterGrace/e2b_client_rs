@@ -153,8 +153,13 @@ The other two known environment limits did not occur:
   (`tests/rest_api.rs`); the live test shows hosted E2B's v2 404 alone gives
   `Error::SandboxNotFound`.
 - **CLM-0171** (a moded pause reads only "already paused" as `false`):
-  `clm_0171_moded_pause_of_a_paused_sandbox_is_false` passed, so hosted E2B's
-  409 for a paused sandbox contains `already paused`.
+  `clm_0171_moded_pause_of_a_paused_sandbox_is_false` passed. The log does
+  not record the 409 itself; that its message contains `already paused` is
+  inferred from the crate's matching (`ALREADY_PAUSED` in `src/client.rs`:
+  with a mode, any other 409 would have been an `Error::Api` and failed the
+  test's `expect`). The full message, `Error pausing sandbox - sandbox '<id>'
+  is already paused`, is quoted in that constant's rustdoc (seen live on
+  2026-10-28, issue #81).
   `clm_0146_filesystem_pause_cold_boots` passed too (no refusing 409).
 - **CLM-0173** (filesystem options): all 20 `live_files` tests passed through
   `FileOptions`, `ListOptions`, `WriteOptions` and `WatchOptions`, and
@@ -177,10 +182,14 @@ The other two known environment limits did not occur:
   (code 3); a pid that never existed is refused with `ConnectCode::NotFound`.
   That is what `Pty::connect`'s rustdoc states.
 
-The other M1 to M3 tests changed only their call forms (options structs in
-place of `None` and `Option` arguments, `pause` and `connect_sandbox` in
-place of the `_with` twins, and a catch-all arm on the `#[non_exhaustive]`
-`CommandEvent` in `clm_0034`); every one of them passed. CLM-0169, CLM-0170,
+In M4.01 to M4.15 (PRs #101 to #115) the other M1 to M3 tests changed only
+their call forms (options structs in place of `None` and `Option` arguments,
+`pause` and `connect_sandbox` in place of the `_with` twins, and a catch-all
+arm on the `#[non_exhaustive]` `CommandEvent` in `clm_0034`) and, in
+`clm_0146_filesystem_pause_cold_boots`, a comment and two messages. That
+comes from `git diff 3808f92 bf65ca8 -- tests/live_*.rs` (from the M4 plan's
+merge, before any M4 code task, to this run's commit), not from this log,
+which shows only that every one of them passed. CLM-0169, CLM-0170,
 CLM-0172, CLM-0176, CLM-0179, CLM-0180 and CLM-0119 to CLM-0121 have no live
 test; CLM-0181 is Task 17's paced sandbawks run.
 
