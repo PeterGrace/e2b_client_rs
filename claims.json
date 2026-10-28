@@ -51,13 +51,24 @@
             "by": "server",
             "mac": "3875b08692cb125525dbe0fb9cc6dad0216c7e192261716e2420ad909ea81080"
           }
+        },
+        {
+          "verdict": "not_enough_info",
+          "rationale": "At M3 close the Commands, Filesystem and wire-protocol branches (CLM-0003, 0004, 0005) are supported, and 26 of 30 lifecycle claims under CLM-0002 are, but CLM-0002 still waits on the egress proxy and IAM (CLM-0031, 0032, unscheduled) and on volumes being enabled for the team (CLM-0148, 0153), and publishability (CLM-0006: CLM-0118..0124, M4/M5) is not yet met.",
+          "auditor": "claude-code/claude-opus-5-5 (M3 coordinator)",
+          "evidence_ids": [],
+          "recorded_at": "2026-10-28T03:24:33.290664960Z",
+          "seal": {
+            "by": "server",
+            "mac": "302e602ffecad52c3ecf4f114cf3ccd82e3d878f7eca99bb120c57180d645101"
+          }
         }
       ],
       "created_at": "2026-10-26T22:09:06.855685366Z",
-      "updated_at": "2026-10-27T15:28:25.511615346Z",
+      "updated_at": "2026-10-28T03:24:33.290664960Z",
       "seal": {
         "by": "server",
-        "mac": "70b9a24ece90fc9580d18aab113146538907fa263ceb978f50b7aa8a4645061e"
+        "mac": "721d8a45d0cddf5086db6f7d2aa7cf9e4ff0acffd7a4c4458fec57e56261ee28"
       }
     },
     {
