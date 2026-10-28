@@ -127,7 +127,7 @@ async fn command_connect_without_a_deadline_sends_no_header() {
 }
 
 #[tokio::test]
-async fn pty_connect_defaults_to_the_sdk_sixty_seconds() {
+async fn pty_connect_has_no_deadline_by_default() {
     // Arrange
     let server = MockServer::start().await;
     let sandbox = sandbox(&server).await;
@@ -142,7 +142,29 @@ async fn pty_connect_defaults_to_the_sdk_sixty_seconds() {
 
     // Assert
     assert_eq!(
-        deadline_header(&server, "/process.Process/Connect")
+        deadline_header(&server, "/process.Process/Connect").await,
+        None
+    );
+}
+
+#[tokio::test]
+async fn pty_create_sends_a_deadline_only_when_set() {
+    // Arrange
+    let server = MockServer::start().await;
+    let sandbox = sandbox(&server).await;
+    mount_stream(&server, "/process.Process/Start", Duration::ZERO).await;
+
+    // Act
+    let options = PtyOptions::default().timeout(Some(e2b_client::DEFAULT_PTY_TIMEOUT));
+    sandbox
+        .pty()
+        .create(PtySize::new(80, 24), &options)
+        .await
+        .expect("create");
+
+    // Assert
+    assert_eq!(
+        deadline_header(&server, "/process.Process/Start")
             .await
             .as_deref(),
         Some("60000")

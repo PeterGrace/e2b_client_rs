@@ -19,8 +19,11 @@ use crate::envd::{EnvdClient, keepalive_headers};
 use crate::error::{Error, Result};
 use crate::stream_input::{InputKind, InputStream, StreamInputOptions};
 
-/// The SDKs' default bound on a PTY stream (`timeout=60`,
-/// `e2b/sandbox_async/commands/pty.py:146`).
+/// The SDKs' bound on a PTY stream (`timeout=60`,
+/// `e2b/sandbox_async/commands/pty.py:146, 211`). This crate does not apply
+/// it by default (a deadline ends the shell, see [`PtyOptions::timeout`]);
+/// pass `Some(DEFAULT_PTY_TIMEOUT)` to [`PtyOptions::timeout`] or
+/// [`PtyConnectOptions::timeout`] for the SDKs' behaviour.
 pub const DEFAULT_PTY_TIMEOUT: Duration = Duration::from_secs(60);
 
 /// The shell a PTY session runs: an interactive login bash
@@ -97,28 +100,20 @@ impl PtySize {
 ///     .cwd("/tmp")
 ///     .env("LANG", "en_US.UTF-8")
 ///     .user("root")
-///     .timeout(None);
+///     .timeout(Some(Duration::from_secs(3600)));
 /// # let _ = options;
 /// ```
-#[derive(Debug, Clone, PartialEq, Eq)]
+// Every field's own default is the option's default (no deadline, #55), so
+// `Default` is derived: `#[derive(Default)]` is Python's "every field takes
+// its zero value", here an empty map, `None`s and the configured request
+// timeout.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct PtyOptions {
     envs: HashMap<String, String>,
     cwd: Option<String>,
     user: Option<String>,
     timeout: Option<Duration>,
     request_timeout: RequestTimeout,
-}
-
-impl Default for PtyOptions {
-    fn default() -> Self {
-        Self {
-            envs: HashMap::new(),
-            cwd: None,
-            user: None,
-            timeout: Some(DEFAULT_PTY_TIMEOUT),
-            request_timeout: RequestTimeout::default(),
-        }
-    }
 }
 
 impl PtyOptions {
@@ -167,17 +162,17 @@ impl PtyOptions {
         self
     }
 
-    /// Bounds the whole session; `None`, or a zero duration (the SDK's
-    /// `timeout=0`), for no limit. Defaults to [`DEFAULT_PTY_TIMEOUT`] (60 s),
-    /// as in the SDKs.
+    /// Bounds the whole session; `None` or zero for no limit, which is the
+    /// default. This differs from the SDKs, which default to 60 s
+    /// ([`DEFAULT_PTY_TIMEOUT`]).
     ///
-    /// The deadline counts from when the session opens, not from the last
-    /// activity: with the default, the output stream ends 60 s after
-    /// [`Pty::create`] even while the shell is in use, and
-    /// [`PtyHandle::next_event`] returns the deadline error. envd then ends
-    /// the shell too, so it cannot be reattached with [`Pty::connect`]
-    /// (observed on hosted E2B, 2026-10-27). For a long-lived interactive
-    /// session pass `None`, or a bound as long as the session should live.
+    /// A deadline, if you set one, counts from when the session opens, not
+    /// from the last activity. When it passes, the output stream ends with
+    /// the deadline error from [`PtyHandle::next_event`], even while the
+    /// shell is in use. envd then ends the shell too, so it cannot be
+    /// reattached with [`Pty::connect`] (observed on hosted E2B,
+    /// 2026-10-27). Without a deadline, the session lives until the shell
+    /// exits, you kill it, or the sandbox ends.
     ///
     /// # Arguments
     ///
@@ -238,7 +233,8 @@ pub enum PtyEvent {
 /// Options for [`Pty::connect`]: the deadline of the reattached session, and
 /// the request timeout for the wait until envd confirms the attach. They match
 /// the SDKs' `pty.connect(pid, timeout=60, request_timeout=None)`
-/// (`e2b/sandbox_async/commands/pty.py:207-212`).
+/// (`e2b/sandbox_async/commands/pty.py:207-212`), except that no deadline is
+/// set by default (see [`PtyOptions::timeout`]).
 ///
 /// # Examples
 ///
@@ -251,24 +247,17 @@ pub enum PtyEvent {
 ///     .request_timeout(Some(Duration::from_secs(10)));
 /// # let _ = options;
 /// ```
-#[derive(Debug, Clone, PartialEq, Eq)]
+// Derived for the same reason as `PtyOptions`: no deadline and the
+// configured request timeout are each field's own default.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct PtyConnectOptions {
     timeout: Option<Duration>,
     request_timeout: RequestTimeout,
 }
 
-impl Default for PtyConnectOptions {
-    fn default() -> Self {
-        Self {
-            timeout: Some(DEFAULT_PTY_TIMEOUT),
-            request_timeout: RequestTimeout::default(),
-        }
-    }
-}
-
 impl PtyConnectOptions {
-    /// The default options: a stream deadline of [`DEFAULT_PTY_TIMEOUT`] and
-    /// the configured request timeout.
+    /// The default options: no stream deadline (the SDKs use 60 s,
+    /// [`DEFAULT_PTY_TIMEOUT`]) and the configured request timeout.
     ///
     /// # Returns
     ///
@@ -279,7 +268,8 @@ impl PtyConnectOptions {
     }
 
     /// Bounds the reattached session; `None` or zero for no limit. The
-    /// deadline counts from the attach.
+    /// deadline counts from the attach. No deadline by default; see
+    /// [`PtyOptions::timeout`] for what a deadline does to the shell.
     ///
     /// # Arguments
     ///
@@ -333,7 +323,8 @@ impl Pty {
     /// # Arguments
     ///
     /// * `size` - the initial terminal size.
-    /// * `options` - environment, working directory, user and timeout.
+    /// * `options` - environment, working directory, user, the session
+    ///   deadline (none by default) and the request timeout.
     ///
     /// # Returns
     ///
@@ -683,23 +674,17 @@ mod tests {
     }
 
     #[test]
-    fn options_default_to_the_sdk_deadline() {
-        assert_eq!(PtyOptions::default().timeout, Some(DEFAULT_PTY_TIMEOUT));
-        assert_eq!(DEFAULT_PTY_TIMEOUT, Duration::from_secs(60));
-    }
-
-    #[test]
-    fn connect_options_default_to_the_sdk_deadline() {
-        assert_eq!(
-            PtyConnectOptions::default().timeout,
-            Some(DEFAULT_PTY_TIMEOUT)
-        );
+    fn options_default_to_no_deadline() {
+        assert_eq!(PtyOptions::default().timeout, None);
+        assert_eq!(PtyConnectOptions::default().timeout, None);
         assert_eq!(PtyConnectOptions::new(), PtyConnectOptions::default());
         assert_eq!(
             PtyConnectOptions::default().request_timeout,
             RequestTimeout::default(),
             "unset: the configured request timeout applies"
         );
+        // The SDKs' value stays available for callers who want parity.
+        assert_eq!(DEFAULT_PTY_TIMEOUT, Duration::from_secs(60));
     }
 
     #[test]

@@ -8,7 +8,7 @@ use e2b_client::{
     CommandConnectOptions, CommandEvent, CommandOptions, ConnectCode, Error, PtyEvent, PtyHandle,
     PtyOptions, PtySize, Signal, StreamInputOptions,
 };
-use live_support::LiveSandbox;
+use live_support::{LiveSandbox, params};
 
 #[tokio::test]
 #[ignore = "live: run with `just test-live <target>`"]
@@ -474,5 +474,35 @@ async fn clm_0049_pty_input_reaches_the_shell() {
     let (transcript, exit_code) = pty_transcript(handle).await;
 
     assert!(transcript.contains("in-42"), "no in-42 in {transcript:?}");
+    assert_eq!(exit_code, 0);
+}
+
+#[tokio::test]
+#[ignore = "live: run with `just test-live <target>`"]
+async fn clm_0175_pty_outlives_sixty_seconds() {
+    // Arrange: the sandbox must outlive the 65 s wait (the default test
+    // sandbox lives 60 s).
+    let sandbox = LiveSandbox::create(&params().timeout(Duration::from_secs(150))).await;
+    let handle = sandbox
+        .pty()
+        .create(PtySize::new(80, 24), &PtyOptions::default())
+        .await
+        .expect("create pty");
+
+    // Act: wait past the SDKs' 60 s default, then use the shell. The
+    // terminal echoes the input, so the marker is one only the shell can
+    // produce: the echo reads `alive-$((40+2))`, the output `alive-42`.
+    tokio::time::sleep(Duration::from_secs(65)).await;
+    handle
+        .send_stdin("echo alive-$((40+2))\nexit\n")
+        .await
+        .expect("send_stdin after 65 s: the shell must still be running");
+    let (transcript, exit_code) = pty_transcript(handle).await;
+
+    // Assert
+    assert!(
+        transcript.contains("alive-42"),
+        "no alive-42 in {transcript:?}"
+    );
     assert_eq!(exit_code, 0);
 }

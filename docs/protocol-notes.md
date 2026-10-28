@@ -276,8 +276,8 @@ through the same `open_process_stream` (`src/commands.rs`).
 | `PTY {size: PTY.Size {cols: uint32 = 1, rows: uint32 = 2}}`; `StartRequest.pty` is optional field 2, `stdin` optional field 4 | `py: envd/process/process_pb.py:18-80, 212-260` |
 | `create` sends `Start` with `cmd "/bin/bash"`, `args ["-i", "-l"]`, `envs`, `cwd`, `pty.size {cols, rows}` and no `stdin` field | `py: sandbox_async/commands/pty.py:166-185`; `js: 4682-4712` |
 | `TERM=xterm-256color`, `LANG=C.UTF-8` and `LC_ALL=C.UTF-8` are added to `envs` only when the caller did not set them | `py: sandbox_async/commands/pty.py:162-165` |
-| `create` sends the user header and `Keepalive-Ping-Interval: 50`; `connect` sends `Connect {process: {pid}}` with the keepalive header only; in the SDKs both default to a 60 s stream deadline (here `PtyOptions` and `PtyConnectOptions` default to it) | `py: sandbox_async/commands/pty.py:139-185, 207-234` |
-| The deadline counts from when the stream opens. When a `Start` stream's deadline passes, the stream ends with `deadline_exceeded` and envd ends the shell: the pid leaves `List`, and `SendInput` answers `not_found` | observed on hosted E2B, 2026-10-27 (a 3 s PTY, checked 2 s after the deadline) |
+| `create` sends the user header and `Keepalive-Ping-Interval: 50`; `connect` sends `Connect {process: {pid}}` with the keepalive header only; in the SDKs both default to a 60 s stream deadline (here neither `PtyOptions` nor `PtyConnectOptions` sets a deadline by default, a deliberate difference, since a deadline ends the shell; `Some(DEFAULT_PTY_TIMEOUT)` gives the SDK value) | `py: sandbox_async/commands/pty.py:139-185, 207-234` |
+| When a deadline is set, it counts from when the stream opens. When a `Start` stream's deadline passes, the stream ends with `deadline_exceeded` and envd ends the shell: the pid leaves `List`, and `SendInput` answers `not_found` | observed on hosted E2B, 2026-10-27 (a 3 s PTY, checked 2 s after the deadline) |
 | Both wait for the opening `start` event within the request timeout, the call's own when `PtyOptions`/`PtyConnectOptions::request_timeout` is set, as commands do | `py: sandbox_async/commands/pty.py:187-199, 236-248` |
 | Output arrives as `DataEvent.pty` bytes, next to `stdout`/`stderr` in the same oneof | `py: envd/process/process_pb.py:369-394`; `py: sandbox_async/commands/command_handle.py:169, 221-231` |
 | `send_stdin` is `SendInput` with `input.pty` bytes | `py: sandbox_async/commands/pty.py:85-111` |
@@ -449,6 +449,12 @@ the SDKs' exception classes with methods on `Error`.
   409 that says the sandbox "is already paused", and `Error::Api` 409 for any
   other, so a refused filesystem-only pause is not mistaken for a pause
   (issue #81). Without a mode it matches the SDK.
+- **No PTY deadline by default.** SDK 2.61 bounds `pty.create` and
+  `pty.connect` with `timeout=60`. The deadline counts from when the session
+  opens, and when it passes envd ends the shell, so the default ends an
+  interactive session after a minute. Here `PtyOptions::default()` and
+  `PtyConnectOptions::default()` set no deadline; `DEFAULT_PTY_TIMEOUT` stays
+  exported as the SDK's 60 s for callers who want parity (issue #55).
 - **Not implemented yet.** Milestone 4: the `is_symlink` file type (#30)
   and the API review (#52 to #57).
   Deferred from milestone 3 and unscheduled: the SOCKS5 egress proxy, IAM

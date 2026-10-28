@@ -79,13 +79,9 @@ async fn create_sends_bash_with_pty_size_and_terminal_env_defaults() {
             .and_then(|value| value.to_str().ok()),
         Some("50")
     );
-    assert_eq!(
-        start
-            .headers
-            .get("connect-timeout-ms")
-            .and_then(|value| value.to_str().ok()),
-        Some("60000"),
-        "the PTY stream deadline defaults to 60 s"
+    assert!(
+        !start.headers.contains_key("connect-timeout-ms"),
+        "a PTY has no stream deadline by default (CLM-0175)"
     );
     // CLM-0133: `data.pty` bytes come out as `Data`; the keepalive is skipped.
     assert_eq!(first, Some(PtyEvent::Data(Bytes::from_static(b"$ "))));
@@ -154,7 +150,7 @@ async fn connect_attaches_by_pid_with_the_keepalive_header() {
 
     let handle = sandbox
         .pty()
-        .connect(11, &PtyConnectOptions::new().timeout(None))
+        .connect(11, &PtyConnectOptions::default())
         .await
         .expect("connect");
     let pid = handle.pid();
@@ -171,7 +167,7 @@ async fn connect_attaches_by_pid_with_the_keepalive_header() {
     );
     assert!(
         !connect.headers.contains_key("connect-timeout-ms"),
-        "no deadline header when the timeout is None"
+        "no deadline header by default"
     );
     assert_eq!(pid, 11);
     assert_eq!(exit.exit_code, 0);

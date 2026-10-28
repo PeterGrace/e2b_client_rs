@@ -4234,7 +4234,9 @@ git commit -m "feat!: options structs for Commands::connect and Pty::connect, pe
 - Modify: `tests/live_commands.rs`, which gains `clm_0175_pty_outlives_sixty_seconds`.
 - Modify: `README.md`, the PTY example.
 - Modify: `docs/protocol-notes.md`, the PTY rows.
-- Create: `changelog/<ts>-m4-task-08-pty-no-default-deadline.md`.
+- Create: `changelog/<ts>-m4-task-08-no-pty-deadline.md`.
+
+> **Corrected (issue #55, 2026-10-28).** With no deadline, every field of `PtyOptions` and `PtyConnectOptions` takes its own type's default, so both derive `Default` (`#[derive(Debug, Clone, Default, PartialEq, Eq)]`) instead of the hand-written `impl Default` blocks Step 3 gave; Step 3 now says so. The changelog slug is `no-pty-deadline`. `docs/protocol-notes.md` also gains a "No PTY deadline by default" bullet under "Deliberate differences from the SDKs". The `PtyConnectOptions` type-level rustdoc says its defaults match the SDK's except the deadline. The live check ran `clm_0175`, `clm_0047`, `clm_0048` and `clm_0049` on hosted E2B, one at a time; all passed. No later task changes: Tasks 11, 12 and 14 already use `PtyOptions::default()`/`new()` and `PtyConnectOptions::default()`/`new()`, which `Self::default()` still serves.
 
 **Why.** The deadline counts from open, not from activity. When it passes, envd ends the shell, and the session can't be reattached (observed on hosted E2B on 2026-10-27; `docs/protocol-notes.md`, the PTY section). A 60 s default therefore kills interactive sessions. pgrace decided on 2026-10-28 that a PTY has no deadline unless the caller sets one (decision 6). `DEFAULT_PTY_TIMEOUT` stays exported as the SDK's value.
 
@@ -4331,18 +4333,11 @@ Expected: FAIL. The defaults are still `Some(60 s)`, so the header is `60000`.
 pub const DEFAULT_PTY_TIMEOUT: Duration = Duration::from_secs(60);
 ```
 
+Remove `impl Default for PtyOptions` and derive it instead, since every field now takes its own type's default:
+
 ```rust
-impl Default for PtyOptions {
-    fn default() -> Self {
-        Self {
-            envs: HashMap::new(),
-            cwd: None,
-            user: None,
-            timeout: None,
-            request_timeout: RequestTimeout::default(),
-        }
-    }
-}
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct PtyOptions {
 ```
 
 The `PtyOptions::timeout` rustdoc becomes:
@@ -4371,17 +4366,11 @@ The `PtyOptions::timeout` rustdoc becomes:
 
 `PtyOptions`' type-level example keeps `.timeout(None)`, which now restates the default; change it to `.timeout(Some(Duration::from_secs(3600)))` so the example shows a real choice.
 
-`PtyConnectOptions`:
+`PtyConnectOptions` derives `Default` the same way (remove its `impl Default`):
 
 ```rust
-impl Default for PtyConnectOptions {
-    fn default() -> Self {
-        Self {
-            timeout: None,
-            request_timeout: RequestTimeout::default(),
-        }
-    }
-}
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct PtyConnectOptions {
 ```
 
 Its `new()` doc becomes "The default options: no stream deadline (the SDKs use 60 s, [`DEFAULT_PTY_TIMEOUT`]) and the configured request timeout." Its `timeout` doc gains "No deadline by default; see [`PtyOptions::timeout`] for what a deadline does to the shell."
@@ -4452,7 +4441,7 @@ Expected: PASS, in about 70 s. Also rerun `clm_0047`, `clm_0048` and `clm_0049`,
 
 Gates: `just lint`, `just test`, `just doc`.
 
-`changelog/<ts>-m4-task-08-pty-no-default-deadline.md` lists:
+`changelog/<ts>-m4-task-08-no-pty-deadline.md` lists:
 - the new defaults;
 - the live result;
 - "Breaking changes": `PtyOptions::default()` and `PtyConnectOptions::default()` no longer set a 60 s deadline. A caller who relied on it adds `.timeout(Some(DEFAULT_PTY_TIMEOUT))`.
