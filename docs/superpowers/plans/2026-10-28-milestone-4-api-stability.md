@@ -1647,7 +1647,11 @@ In `tests/live_lifecycle.rs`, `clm_0146_filesystem_pause_cold_boots`: replace th
 and the first assertion (lines 963-966) with:
 
 ```rust
-    assert!(paused, "a running sandbox's filesystem pause returned false");
+    assert!(
+        paused,
+        "a freshly created, running sandbox's filesystem pause returned false: since issue \
+         #81 that means the server answered 409 \"already paused\", contradicting itself"
+    );
 ```
 
 Change the `.expect` message on the pause (line 956) to `"filesystem pause (HTTP 400 or 409 means the team or node lacks it)"`.

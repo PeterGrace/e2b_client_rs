@@ -984,7 +984,8 @@ async fn clm_0146_filesystem_pause_cold_boots() {
     // Assert
     assert!(
         paused,
-        "a running sandbox's filesystem pause returned false"
+        "a freshly created, running sandbox's filesystem pause returned false: since issue \
+         #81 that means the server answered 409 \"already paused\", contradicting itself"
     );
     assert!(
         !exists(&resumed, IN_MEMORY_MARKER).await,
