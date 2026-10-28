@@ -5,10 +5,10 @@
     "by": "server",
     "mac": "80261f8c67b21f251943875b9ba8147d4fdf77bb62c9e9154d90f913ce2d1786"
   },
-  "next_evidence_seq": 169,
+  "next_evidence_seq": 219,
   "next_evidence_seq_seal": {
     "by": "server",
-    "mac": "724ba6c6900073be93eba456e1ccce3deada5e267d4204ce898847da50e87490"
+    "mac": "06b2c657b5dab22da99a0ba38807ffd1d84695fbbeeee33788186c5a0ded22d0"
   },
   "claims": [
     {
@@ -51,13 +51,24 @@
             "by": "server",
             "mac": "3875b08692cb125525dbe0fb9cc6dad0216c7e192261716e2420ad909ea81080"
           }
+        },
+        {
+          "verdict": "not_enough_info",
+          "rationale": "At M3 close the Commands, Filesystem and wire-protocol branches (CLM-0003, 0004, 0005) are supported, and 26 of 30 lifecycle claims under CLM-0002 are, but CLM-0002 still waits on the egress proxy and IAM (CLM-0031, 0032, unscheduled) and on volumes being enabled for the team (CLM-0148, 0153), and publishability (CLM-0006: CLM-0118..0124, M4/M5) is not yet met.",
+          "auditor": "claude-code/claude-opus-5-5 (M3 coordinator)",
+          "evidence_ids": [],
+          "recorded_at": "2026-10-28T03:24:33.290664960Z",
+          "seal": {
+            "by": "server",
+            "mac": "302e602ffecad52c3ecf4f114cf3ccd82e3d878f7eca99bb120c57180d645101"
+          }
         }
       ],
       "created_at": "2026-10-26T22:09:06.855685366Z",
-      "updated_at": "2026-10-27T15:28:25.511615346Z",
+      "updated_at": "2026-10-28T03:24:33.290664960Z",
       "seal": {
         "by": "server",
-        "mac": "70b9a24ece90fc9580d18aab113146538907fa263ceb978f50b7aa8a4645061e"
+        "mac": "721d8a45d0cddf5086db6f7d2aa7cf9e4ff0acffd7a4c4458fec57e56261ee28"
       }
     },
     {
@@ -81,7 +92,32 @@
       "status": {
         "state": "active"
       },
-      "evidence": [],
+      "evidence": [
+        {
+          "id": "EVD-0217",
+          "kind": "analysis",
+          "locator": "claims.json: children of CLM-0002 @ M3 close",
+          "summary": "26 of 30 active children are supported, including the M3 gap claims CLM-0028, 0029, 0030 and the new CLM-0146, 0147, 0151. Not yet: CLM-0031 and CLM-0032 (egress proxy and IAM deferred), CLM-0148 and CLM-0153 (volumes environment limit on hosted E2B).",
+          "stance": "neutral",
+          "recorded_at": "2026-10-28T03:18:06.473863687Z",
+          "seal": {
+            "by": "server",
+            "mac": "c9741d5b42a8336c0f49849cea7e8f35ac63e3652160283a42648bf3e4d28ac2"
+          }
+        },
+        {
+          "id": "EVD-0218",
+          "kind": "analysis",
+          "locator": "claims.json: children of CLM-0002 @ M3 close (derived_from CLM-0002, active)",
+          "summary": "Corrects EVD-0217, which wrongly listed CLM-0147 (a child of CLM-0030) among CLM-0002's children. 26 of 30 active children are supported; the supported M3 ones are CLM-0028, 0029, 0030, 0146 and 0151. Not yet: CLM-0031 and CLM-0032 (egress proxy and IAM deferred), CLM-0148 and CLM-0153 (volumes environment limit on hosted E2B).",
+          "stance": "neutral",
+          "recorded_at": "2026-10-28T03:18:13.444940126Z",
+          "seal": {
+            "by": "server",
+            "mac": "9a029dcf5762f742989230f7d4cab3a84b8b6b28fc74003f3671114349eb48c4"
+          }
+        }
+      ],
       "verdicts": [
         {
           "verdict": "not_enough_info",
@@ -93,13 +129,26 @@
             "by": "server",
             "mac": "bff2f431dffd9cc3cb1ee4e8474a04922de08b6fb398e1f2799605a63230f69f"
           }
+        },
+        {
+          "verdict": "not_enough_info",
+          "rationale": "At M3 close, 26 of 30 lifecycle children are supported, including get_host, metrics, snapshots and fork (CLM-0028..0030), pause and resume modes (CLM-0146) and the list filters (CLM-0151). Parity still waits on CLM-0031 and CLM-0032 (egress proxy and IAM unscheduled) and CLM-0148 and CLM-0153 (volumes not enabled for the team on hosted E2B).",
+          "auditor": "claude-code/claude-opus-5-5 (M3 coordinator)",
+          "evidence_ids": [
+            "EVD-0218"
+          ],
+          "recorded_at": "2026-10-28T03:18:34.402519521Z",
+          "seal": {
+            "by": "server",
+            "mac": "5ebaf8a6d23b4fbcbb2ac4f9c8d435acf84eeb473f669a21ebd120b392293205"
+          }
         }
       ],
       "created_at": "2026-10-26T22:09:06.855685366Z",
-      "updated_at": "2026-10-26T23:03:32.360469285Z",
+      "updated_at": "2026-10-28T03:18:34.402519521Z",
       "seal": {
         "by": "server",
-        "mac": "2bdd43ccdb989c3fb32ff70677e0058e815f7ee535109a5c885f6a66fc56ddc2"
+        "mac": "811acfefb884195cc3fca61226ffb226de6bba034f8911d9eefccc0bb7c3130e"
       }
     },
     {
@@ -301,6 +350,18 @@
             "by": "server",
             "mac": "8a8547ab0222415e7d26c1b8c3805b1640ed76265d081fe5377e9d584642c803"
           }
+        },
+        {
+          "id": "EVD-0214",
+          "kind": "analysis",
+          "locator": "claims.json: active children of CLM-0005 @ M3 close; docs/verification/s4-evidence-map.md; just test @ 6db8faa",
+          "summary": "All 77 active child wire claims are supported by passing tests: the 63 from M1 and M2 and the 14 M3 claims CLM-0154..0167 at 6db8faa (just test: 343 passed, 0 failed). CLM-0152 is an S1 claim under CLM-0032, not a child of CLM-0005.",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T03:17:59.886719636Z",
+          "seal": {
+            "by": "server",
+            "mac": "eb4c1ad6ab86436c6d6e399e178bc68b600d88bb5feef45db5ac1802c5fc1891"
+          }
         }
       ],
       "verdicts": [
@@ -342,13 +403,26 @@
             "by": "server",
             "mac": "9adcad06d3ffe681f2279330618e7f5115931aee4f1292e4dcb04e6ab1840e16"
           }
+        },
+        {
+          "verdict": "supported",
+          "rationale": "Re-affirmed at M3 close: all 77 child wire claims, including the 14 added in M3 (CLM-0154..0167), are supported by passing tests.",
+          "auditor": "claude-code/claude-opus-5-5 (M3 coordinator)",
+          "evidence_ids": [
+            "EVD-0214"
+          ],
+          "recorded_at": "2026-10-28T03:18:14.997618823Z",
+          "seal": {
+            "by": "server",
+            "mac": "32d57401d04f295b5d0a99be38b8516517f945aa0d0b5f220222fddb691aaacc"
+          }
         }
       ],
       "created_at": "2026-10-26T22:09:06.855685366Z",
-      "updated_at": "2026-10-27T15:27:45.917050224Z",
+      "updated_at": "2026-10-28T03:18:14.997618823Z",
       "seal": {
         "by": "server",
-        "mac": "346800e8bee479d97663be54609121a9d95977b3839e18f3bd207b35ed5f4118"
+        "mac": "e0014591186294e6e5854a6053f444b28925ee4ef46691569dbffce3f7974aa2"
       }
     },
     {
@@ -1803,12 +1877,37 @@
       "artifacts": [],
       "tags": [
         "s1",
-        "gap"
+        "m3"
       ],
       "status": {
         "state": "active"
       },
-      "evidence": [],
+      "evidence": [
+        {
+          "id": "EVD-0169",
+          "kind": "demonstration",
+          "locator": "tests/live_lifecycle.rs::clm_0028_get_host_reaches_a_port_in_the_sandbox @ hosted, docs/verification/runs/20261028T012033Z-hosted-2696474.log (ebccc15)",
+          "summary": "Passed live on hosted E2B: with python3 -m http.server 8000 serving /tmp/www/hello.txt in the sandbox, GET https://{get_host(8000)}/hello.txt from outside returned \"hello from 8000\".",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T03:14:34.182263129Z",
+          "seal": {
+            "by": "server",
+            "mac": "bb52b094c3a301fcb2daf1bf5dc563fc5b9b9785a847e6eb33b4b9bd619cf692"
+          }
+        },
+        {
+          "id": "EVD-0186",
+          "kind": "demonstration",
+          "locator": "tests/live_lifecycle.rs::clm_0028_get_host_reaches_a_port_in_the_sandbox @ sandbawks, docs/verification/runs/20261028T012919Z-sandbawks-2784597.log and 20261028T013641Z-sandbawks-rerun-2828108.log (6871dbf); docs/verification/m3-live-results.md; gfd/sandbawks#678",
+          "summary": "Failed on sandbawks before get_host was reached: the setup write of /tmp/www/hello.txt got envd 404 \"No such file or directory\" because envd does not create parent directories (gfd/sandbawks#678). Says nothing about get_host; passes on hosted.",
+          "stance": "neutral",
+          "recorded_at": "2026-10-28T03:15:19.278602068Z",
+          "seal": {
+            "by": "server",
+            "mac": "ec3f9de818e0ce5a1cbb3b5698d7bc2fe2d04e32eeb64004c00ab68cc0cd0a26"
+          }
+        }
+      ],
       "verdicts": [
         {
           "verdict": "not_enough_info",
@@ -1820,13 +1919,26 @@
             "by": "server",
             "mac": "756772b073a457166f0eb8894db9b083e88459dbcbfe02903cfc1ffd9d8eb67d"
           }
+        },
+        {
+          "verdict": "supported",
+          "rationale": "The live test passed on hosted E2B (canonical), run 20261028T012033Z-hosted-2696474 at ebccc15: a service on port 8000 was reached at get_host(8000). The sandbawks failure (EVD-0186) is a setup-write defect (#678) that never reached get_host.",
+          "auditor": "claude-code/claude-opus-5-5 (M3 coordinator)",
+          "evidence_ids": [
+            "EVD-0169"
+          ],
+          "recorded_at": "2026-10-28T03:16:58.369380685Z",
+          "seal": {
+            "by": "server",
+            "mac": "0a612c7a962568ded8fea2b35ec52991d4218cb0dfbbc14244ae453acc5a846d"
+          }
         }
       ],
       "created_at": "2026-10-26T22:09:06.855685366Z",
-      "updated_at": "2026-10-26T23:03:06.866217643Z",
+      "updated_at": "2026-10-28T03:18:34.952963073Z",
       "seal": {
         "by": "server",
-        "mac": "1764c098db2229bccd1bc2bfcc6f181704dd5fcf14ce6491fdd92b4080bd12d7"
+        "mac": "a18352a57c2fe9b5f23d2759482e507039d0311510d73746319dc03f78a8e5bc"
       }
     },
     {
@@ -1842,12 +1954,37 @@
       "artifacts": [],
       "tags": [
         "s1",
-        "gap"
+        "m3"
       ],
       "status": {
         "state": "active"
       },
-      "evidence": [],
+      "evidence": [
+        {
+          "id": "EVD-0170",
+          "kind": "demonstration",
+          "locator": "tests/live_lifecycle.rs::clm_0029_get_metrics_reports_cpu_memory_and_disk @ hosted, docs/verification/runs/20261028T012033Z-hosted-2696474.log (ebccc15)",
+          "summary": "Passed live on hosted E2B: get_metrics returned a sample with cpu_count >= 1, 0 < mem_used <= mem_total, disk_used <= disk_total > 0, and a timestamp no earlier than 5 s before the sandbox started.",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T03:14:36.284987599Z",
+          "seal": {
+            "by": "server",
+            "mac": "49a3448e1ed5b899aaf92718dc1972b135a1dacb3f0a04f3784e98fd56c8b74e"
+          }
+        },
+        {
+          "id": "EVD-0187",
+          "kind": "demonstration",
+          "locator": "tests/live_lifecycle.rs::clm_0029_get_metrics_reports_cpu_memory_and_disk @ sandbawks, docs/verification/runs/20261028T012919Z-sandbawks-2784597.log and 20261028T013641Z-sandbawks-rerun-2828108.log (6871dbf); docs/verification/m3-live-results.md; gfd/sandbawks#668",
+          "summary": "Failed on sandbawks: GET /sandboxes/{id}/metrics is not served (bare 404, confirmed by a direct probe while the sandbox's detail answered 200), so the crate reports SandboxNotFound as the SDK would. Missing route, gfd/sandbawks#668; passes on hosted.",
+          "stance": "neutral",
+          "recorded_at": "2026-10-28T03:15:21.877929646Z",
+          "seal": {
+            "by": "server",
+            "mac": "3dccc460b0269c3f48aad553f4da174f414e25b449e2f9a93c763005a958ed6e"
+          }
+        }
+      ],
       "verdicts": [
         {
           "verdict": "not_enough_info",
@@ -1859,13 +1996,26 @@
             "by": "server",
             "mac": "137bc06b0dd7412076bba2e5b990e0bb9055ec78b9babd839f34afde4ff15605"
           }
+        },
+        {
+          "verdict": "supported",
+          "rationale": "The live test passed on hosted E2B, run 20261028T012033Z-hosted-2696474 at ebccc15, reading CPU, memory and disk from get_metrics. The sandbawks failure (EVD-0187) is the missing metrics route (#668).",
+          "auditor": "claude-code/claude-opus-5-5 (M3 coordinator)",
+          "evidence_ids": [
+            "EVD-0170"
+          ],
+          "recorded_at": "2026-10-28T03:17:00.520427360Z",
+          "seal": {
+            "by": "server",
+            "mac": "c67b530919c02f0911a4cf1ebefbbb04b461bd71b58ab549e8bef174fcbd723a"
+          }
         }
       ],
       "created_at": "2026-10-26T22:09:06.855685366Z",
-      "updated_at": "2026-10-26T23:03:08.107998675Z",
+      "updated_at": "2026-10-28T03:18:35.503867697Z",
       "seal": {
         "by": "server",
-        "mac": "136bc5fda9cf4b6df65b4cf0ea0017e42b5da00aa0fac96269ec3b97061ea7ec"
+        "mac": "3f8f184e9a194091219b0810e2892f09849100833e2a98291462187ffe5e3902"
       }
     },
     {
@@ -1881,12 +2031,49 @@
       "artifacts": [],
       "tags": [
         "s1",
-        "gap"
+        "m3"
       ],
       "status": {
         "state": "active"
       },
-      "evidence": [],
+      "evidence": [
+        {
+          "id": "EVD-0171",
+          "kind": "demonstration",
+          "locator": "tests/live_lifecycle.rs::clm_0030_snapshot_starts_sandboxes_with_its_files @ hosted, docs/verification/runs/20261028T012033Z-hosted-2696474.log (ebccc15)",
+          "summary": "Passed live on hosted E2B: a named snapshot of a sandbox holding /tmp/snapshot.txt started a new sandbox (template = snapshot id) that read the same text; the source stayed Running; after killing the copy, delete_snapshot returned true.",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T03:14:38.435745850Z",
+          "seal": {
+            "by": "server",
+            "mac": "ff844bd17365e90c431183164581a441544e8ecddf9d99b8c98729cf3d385f88"
+          }
+        },
+        {
+          "id": "EVD-0172",
+          "kind": "demonstration",
+          "locator": "tests/live_lifecycle.rs::clm_0030_fork_starts_running_copies @ hosted, docs/verification/runs/20261028T012033Z-hosted-2696474.log (ebccc15)",
+          "summary": "Passed live on hosted E2B: fork with count 2 and a 60 s timeout returned two started forks and no errors; each has its own id, is Running, reads /tmp/fork.txt from the source, and carries the source's run-id metadata; the source stayed Running.",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T03:14:40.437681836Z",
+          "seal": {
+            "by": "server",
+            "mac": "2f74a572786d1b4fd932547f439ff3b726771b862be84f6cc6d64deedb778ccb"
+          }
+        },
+        {
+          "id": "EVD-0188",
+          "kind": "demonstration",
+          "locator": "tests/live_lifecycle.rs::clm_0030_snapshot_starts_sandboxes_with_its_files; clm_0030_fork_starts_running_copies @ sandbawks, docs/verification/runs/20261028T012919Z-sandbawks-2784597.log and 20261028T013641Z-sandbawks-rerun-2828108.log (6871dbf); docs/verification/m3-live-results.md; gfd/sandbawks#669, #670",
+          "summary": "Both failed on sandbawks at their first call: POST /sandboxes/{id}/snapshots and POST /sandboxes/{id}/fork are not served (bare 404, read as SandboxNotFound). Missing routes, gfd/sandbawks#669 and #670; both pass on hosted.",
+          "stance": "neutral",
+          "recorded_at": "2026-10-28T03:15:24.577716875Z",
+          "seal": {
+            "by": "server",
+            "mac": "af1cf7d676e399233b21ef99329c66c196848c83a3ccbf2bbcdcdc0e5f42ef6d"
+          }
+        }
+      ],
       "verdicts": [
         {
           "verdict": "not_enough_info",
@@ -1898,13 +2085,27 @@
             "by": "server",
             "mac": "af2b5f62fbf2ecde2b49b6fa887142faad0cbaab5b69176d12cbbc58bfdee93f"
           }
+        },
+        {
+          "verdict": "supported",
+          "rationale": "Both live tests passed on hosted E2B at ebccc15: a snapshot started a new sandbox with the source's file, and a fork of count 2 started two running copies with it. Children CLM-0147, CLM-0160, CLM-0161 and CLM-0162 are supported too. The sandbawks failures (EVD-0188) are missing routes (#669, #670).",
+          "auditor": "claude-code/claude-opus-5-5 (M3 coordinator)",
+          "evidence_ids": [
+            "EVD-0171",
+            "EVD-0172"
+          ],
+          "recorded_at": "2026-10-28T03:17:02.921458449Z",
+          "seal": {
+            "by": "server",
+            "mac": "1ef65e4269a2a5074768fd4d65be68a27d58740bb2c4af42a40a4afc90ccac72"
+          }
         }
       ],
       "created_at": "2026-10-26T22:09:06.855685366Z",
-      "updated_at": "2026-10-26T23:03:09.155413979Z",
+      "updated_at": "2026-10-28T03:18:36.053765367Z",
       "seal": {
         "by": "server",
-        "mac": "82fb0237760ff95bd70e0ccafe746019bc49e96ca5d0114857910cb0003868ca"
+        "mac": "8b71eaedce855b2893e59b57e61015b906ed989adb22372c09db911ac38e485e"
       }
     },
     {
@@ -1920,12 +2121,25 @@
       "artifacts": [],
       "tags": [
         "s1",
-        "gap"
+        "m3"
       ],
       "status": {
         "state": "active"
       },
-      "evidence": [],
+      "evidence": [
+        {
+          "id": "EVD-0215",
+          "kind": "analysis",
+          "locator": "claims.json: children of CLM-0031 (CLM-0144) @ M3 close; docs/superpowers/plans/2026-10-27-milestone-3-lifecycle-parity.md (Scope, deferred)",
+          "summary": "The one child, CLM-0144 (update_network replaces egress without a restart), is supported live on hosted E2B. The SDK's network update also covers the egress proxy, which M3 deferred, so the parent's \"as the SDK does\" is not yet fully met.",
+          "stance": "neutral",
+          "recorded_at": "2026-10-28T03:18:02.134270130Z",
+          "seal": {
+            "by": "server",
+            "mac": "bc664e3409748e4016f5584004f331820953cfd34bd9e042a61842fc30ecd896"
+          }
+        }
+      ],
       "verdicts": [
         {
           "verdict": "not_enough_info",
@@ -1937,13 +2151,26 @@
             "by": "server",
             "mac": "2d61a1af040e1421f3865321348fde9cadfc0b338a6fac6ec6da2ca09baa0aa1"
           }
+        },
+        {
+          "verdict": "not_enough_info",
+          "rationale": "Implemented in M3: the supported child CLM-0144 covers update_network for allow_out, deny_out, dns_servers, rules and allow_internet_access. The egress proxy part of the SDK's network update is deferred (M3 plan, Scope), so parity is not yet shown.",
+          "auditor": "claude-code/claude-opus-5-5 (M3 coordinator)",
+          "evidence_ids": [
+            "EVD-0215"
+          ],
+          "recorded_at": "2026-10-28T03:18:16.947876153Z",
+          "seal": {
+            "by": "server",
+            "mac": "000e5e65d776aa21c1addd36034e6687e25d332b5334c4c6ad10d306fb7bcacf"
+          }
         }
       ],
       "created_at": "2026-10-26T22:09:06.855685366Z",
-      "updated_at": "2026-10-26T23:03:10.322944327Z",
+      "updated_at": "2026-10-28T03:18:36.555037838Z",
       "seal": {
         "by": "server",
-        "mac": "6824f9f8b3def1340d850e268d19dddf062767b05b4b4264c29ac18edb308b52"
+        "mac": "dc9c3a7a49a9efb51df3cda81958eae790c9a1ff2bff483d16e085c68f7c16aa"
       }
     },
     {
@@ -1959,12 +2186,25 @@
       "artifacts": [],
       "tags": [
         "s1",
-        "gap"
+        "m3"
       ],
       "status": {
         "state": "active"
       },
-      "evidence": [],
+      "evidence": [
+        {
+          "id": "EVD-0216",
+          "kind": "analysis",
+          "locator": "claims.json: children of CLM-0032 (CLM-0143, 0145, 0149, 0150, 0152) @ M3 close; docs/superpowers/plans/2026-10-27-milestone-3-lifecycle-parity.md (Scope, deferred)",
+          "summary": "Four children are supported: network (CLM-0143), lifecycle (CLM-0145), MCP (CLM-0150) and the idempotency key (CLM-0152). CLM-0149 (volume mounts) is not_enough_info on the volumes environment limit, and the egress proxy and secure/IAM create fields were deferred by the M3 plan.",
+          "stance": "neutral",
+          "recorded_at": "2026-10-28T03:18:04.634131976Z",
+          "seal": {
+            "by": "server",
+            "mac": "f4429080841440c3c3f4101e93999f526a06638848063e49b2567fe3b293e729"
+          }
+        }
+      ],
       "verdicts": [
         {
           "verdict": "not_enough_info",
@@ -1976,13 +2216,39 @@
             "by": "server",
             "mac": "4b2ad8956c2e93a21358b3f6116641de8451bb7ef4aa9f100ec4e231acc8e9cc"
           }
+        },
+        {
+          "verdict": "not_enough_info",
+          "rationale": "M3 added the network, lifecycle, MCP and idempotency-key create fields (supported children CLM-0143, 0145, 0150, 0152). Volume mounts (CLM-0149) await a team with volumes enabled, and the egress proxy and secure/IAM fields are deferred (M3 plan, Scope).",
+          "auditor": "claude-code/claude-opus-5-5 (M3 coordinator)",
+          "evidence_ids": [
+            "EVD-0216"
+          ],
+          "recorded_at": "2026-10-28T03:18:18.785945330Z",
+          "seal": {
+            "by": "server",
+            "mac": "c5709431a819d6d61696fa56ae385a87ff40000f4e5643514774b9d6934afba9"
+          }
+        },
+        {
+          "verdict": "not_enough_info",
+          "rationale": "Supersedes the previous M3 verdict, which wrongly called `secure` deferred: the M3 plan does not plan it because SDK 2.61 accepts and ignores it. M3 added the network, lifecycle, MCP and idempotency-key create fields (supported children CLM-0143, 0145, 0150, 0152). Volume mounts (CLM-0149) await a team with volumes enabled, and the egress proxy and IAM workload-identity fields are unscheduled (M3 plan, Scope).",
+          "auditor": "claude-code/claude-opus-5-5 (M3 coordinator)",
+          "evidence_ids": [
+            "EVD-0216"
+          ],
+          "recorded_at": "2026-10-28T03:18:32.100918244Z",
+          "seal": {
+            "by": "server",
+            "mac": "9e7887c646b5fd6098da71a066000bc6fe5a8f698b29e27bd94d0b73d943e865"
+          }
         }
       ],
       "created_at": "2026-10-26T22:09:06.855685366Z",
-      "updated_at": "2026-10-26T23:03:11.554455191Z",
+      "updated_at": "2026-10-28T03:18:36.996419650Z",
       "seal": {
         "by": "server",
-        "mac": "52120b36cd59eb9115372fc7cfcad08fc0a9433dac069ef5a9fef1593c288683"
+        "mac": "c0d77aad05c7fb0828ae587784ad33b56b854ddc1715d136458e3392297026b9"
       }
     },
     {
@@ -8725,13 +8991,52 @@
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0173",
+          "kind": "demonstration",
+          "locator": "tests/live_lifecycle.rs::clm_0143_create_network_allow_and_deny_lists_are_enforced @ hosted, docs/verification/runs/20261028T012033Z-hosted-2696474.log (ebccc15)",
+          "summary": "Passed live on hosted E2B: a sandbox created with deny_out [0.0.0.0/0] and allow_out [1.1.1.1] got an HTTP reply from 1.1.1.1 and none from 1.0.0.1. The other network fields' wire form is covered by CLM-0156's mock tests; header rules were echoed back live in clm_0153_get_info_reports_network.",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T03:14:42.988078301Z",
+          "seal": {
+            "by": "server",
+            "mac": "f0a388b05e441a678377060b11a5e68a55189429c8dfe2be05489431c787861e"
+          }
+        },
+        {
+          "id": "EVD-0189",
+          "kind": "demonstration",
+          "locator": "tests/live_lifecycle.rs::clm_0143_create_network_allow_and_deny_lists_are_enforced @ sandbawks, docs/verification/runs/20261028T013641Z-sandbawks-rerun-2828108.log (6871dbf); docs/verification/m3-live-results.md; gfd/sandbawks#667",
+          "summary": "Failed on sandbawks: create ignores the network object, so 1.0.0.1 replied despite deny_out [0.0.0.0/0] (gfd/sandbawks#667). Passes on hosted.",
+          "stance": "neutral",
+          "recorded_at": "2026-10-28T03:15:26.728296796Z",
+          "seal": {
+            "by": "server",
+            "mac": "0bf9f6c66d01f785defa61b20ad1030ce328aafadc64b64a069592114a4634e0"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "supported",
+          "rationale": "Enforcement passed live on hosted E2B at ebccc15 (allowed 1.1.1.1 replied, denied 1.0.0.1 did not); the wire form of every listed field and the header rules is pinned by CLM-0156's passing tests. The sandbawks failure (EVD-0189) is #667.",
+          "auditor": "claude-code/claude-opus-5-5 (M3 coordinator)",
+          "evidence_ids": [
+            "EVD-0173"
+          ],
+          "recorded_at": "2026-10-28T03:17:05.122334387Z",
+          "seal": {
+            "by": "server",
+            "mac": "f3c612d340e688ae682b70d0256ae43ece697387ef2bcd740dd6efc8a3726d5a"
+          }
+        }
+      ],
       "created_at": "2026-10-27T19:57:29.982344497Z",
-      "updated_at": "2026-10-27T19:58:18.439760966Z",
+      "updated_at": "2026-10-28T03:17:05.122334387Z",
       "seal": {
         "by": "server",
-        "mac": "ddb58b0cb44e1a01f500b5627adba9000f2e7dd65100fd9015408d96de7d4f73"
+        "mac": "242da719b7709454cf2c95e4a6c05b5bbd0c78e6d283de1133ba8cc25372dcdf"
       }
     },
     {
@@ -8752,13 +9057,52 @@
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0174",
+          "kind": "demonstration",
+          "locator": "tests/live_lifecycle.rs::clm_0144_update_network_replaces_egress_without_restart @ hosted, docs/verification/runs/20261028T012033Z-hosted-2696474.log (ebccc15)",
+          "summary": "Passed live on hosted E2B: with all egress denied at create, update_network(allow_internet_access(true)) alone opened egress to 1.1.1.1 (clearing deny_out), a second update_network(deny_out [0.0.0.0/0]) closed it again, and a /dev/shm marker written before both updates was still there (no restart).",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T03:14:45.538164004Z",
+          "seal": {
+            "by": "server",
+            "mac": "23f5e9cc810caf90a881590fe2a5e3ee1f369bda4379ce2acbe07df6c6eb57e6"
+          }
+        },
+        {
+          "id": "EVD-0190",
+          "kind": "demonstration",
+          "locator": "tests/live_lifecycle.rs::clm_0144_update_network_replaces_egress_without_restart @ sandbawks, docs/verification/runs/20261028T012919Z-sandbawks-2784597.log (6871dbf); docs/verification/m3-live-results.md; gfd/sandbawks#667",
+          "summary": "Failed on sandbawks before update_network was called: egress was already open despite deny_out at create, and PUT /sandboxes/{id}/network is not served (gfd/sandbawks#667). Passes on hosted.",
+          "stance": "neutral",
+          "recorded_at": "2026-10-28T03:15:28.878381977Z",
+          "seal": {
+            "by": "server",
+            "mac": "1614d3a58530c0de5843e7ff6b4296c32312545edfc2d517bbce9f869011dd19"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "supported",
+          "rationale": "The live test passed on hosted E2B at ebccc15: two update_network calls opened then closed egress, the first clearing the omitted deny_out, with an in-memory marker kept (no restart). Wire form in CLM-0157. The sandbawks failure (EVD-0190) is #667.",
+          "auditor": "claude-code/claude-opus-5-5 (M3 coordinator)",
+          "evidence_ids": [
+            "EVD-0174"
+          ],
+          "recorded_at": "2026-10-28T03:17:07.120879148Z",
+          "seal": {
+            "by": "server",
+            "mac": "7c4bab2e6e466dbc4ea108c0c11b1a506d61d7d1d529c5af72a0b7329c54fe47"
+          }
+        }
+      ],
       "created_at": "2026-10-27T19:57:29.982344497Z",
-      "updated_at": "2026-10-27T19:57:29.982344497Z",
+      "updated_at": "2026-10-28T03:17:07.120879148Z",
       "seal": {
         "by": "server",
-        "mac": "3be9839af17e03219493a5a2520b3ed63c96c993b76c9f9d0a6b1dc45793bedb"
+        "mac": "d78340353e687530307c73a4b2153a565492326f678f8c179b9d888a36b7d97d"
       }
     },
     {
@@ -8779,13 +9123,52 @@
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0175",
+          "kind": "demonstration",
+          "locator": "tests/live_lifecycle.rs::clm_0145_lifecycle_pause_with_full_snapshot_pauses_at_timeout @ hosted, docs/verification/runs/20261028T012033Z-hosted-2696474.log (ebccc15)",
+          "summary": "Passed live on hosted E2B: a sandbox created with a 15 s timeout and lifecycle on_timeout pause_with(Full), auto_resume(false) turned Paused (not killed) at its timeout; the detail reported lifecycle onTimeout pause, autoResume false, and pauseMode full. The kill form and the pre-request rejections are covered by CLM-0158's mock tests and clm_0153_get_info_reports_lifecycle.",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T03:14:48.237591403Z",
+          "seal": {
+            "by": "server",
+            "mac": "28cfbab19bfde06f3310088874fdf427fa91c1348e40e36d23884775aaa0b3ae"
+          }
+        },
+        {
+          "id": "EVD-0191",
+          "kind": "demonstration",
+          "locator": "tests/live_lifecycle.rs::clm_0145_lifecycle_pause_with_full_snapshot_pauses_at_timeout @ sandbawks, docs/verification/runs/20261028T012919Z-sandbawks-2784597.log (6871dbf); docs/verification/m3-live-results.md; gfd/sandbawks#665, #679",
+          "summary": "Failed on sandbawks: create ignores the lifecycle fields and pause is a no-op, so the sandbox never turned paused at its 15 s timeout (gfd/sandbawks#665, #679). Passes on hosted.",
+          "stance": "neutral",
+          "recorded_at": "2026-10-28T03:15:31.079346699Z",
+          "seal": {
+            "by": "server",
+            "mac": "e5ed625ee3ba4fa57075f353c80669c83551f95015fe2e4afae29c8b52c929d7"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "supported",
+          "rationale": "The live test passed on hosted E2B at ebccc15: a lifecycle pause with a full snapshot paused the sandbox at its timeout and was reported back. The other shapes and the pre-request rejections are pinned by CLM-0158's passing tests. The sandbawks failure (EVD-0191) is #665/#679.",
+          "auditor": "claude-code/claude-opus-5-5 (M3 coordinator)",
+          "evidence_ids": [
+            "EVD-0175"
+          ],
+          "recorded_at": "2026-10-28T03:17:09.172958703Z",
+          "seal": {
+            "by": "server",
+            "mac": "172f0578f5ab320de69cef1efe1710f9685467a1df1b414e88f2350deec59bbe"
+          }
+        }
+      ],
       "created_at": "2026-10-27T19:57:29.982344497Z",
-      "updated_at": "2026-10-27T19:57:29.982344497Z",
+      "updated_at": "2026-10-28T03:17:09.172958703Z",
       "seal": {
         "by": "server",
-        "mac": "61ad468ea885e816d1945741d2bbc9890a26be39e17d41b584cec788b171928c"
+        "mac": "eac0d7056b14817f10fdeb8232bc51e4f86b21949c4fe98083fb5c7262dfe702"
       }
     },
     {
@@ -8806,13 +9189,65 @@
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0176",
+          "kind": "demonstration",
+          "locator": "tests/live_lifecycle.rs::clm_0146_resume_restores_memory_or_reboots @ hosted, docs/verification/runs/20261028T012033Z-hosted-2696474.log (ebccc15)",
+          "summary": "Passed live on hosted E2B: after a full pause, connect_sandbox_with OnResume::Restore kept the /dev/shm (in-memory) marker; after a second full pause, OnResume::Reboot lost the in-memory marker and kept the /home/user (on-disk) one. Both pauses returned true.",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T03:14:50.588572755Z",
+          "seal": {
+            "by": "server",
+            "mac": "4abf8b9b089a6543544d1b2c84bca3b89d917ed7559a6eb186fe7ee1f8503809"
+          }
+        },
+        {
+          "id": "EVD-0177",
+          "kind": "demonstration",
+          "locator": "tests/live_lifecycle.rs::clm_0146_filesystem_pause_cold_boots @ hosted, docs/verification/runs/20261028T012033Z-hosted-2696474.log (ebccc15)",
+          "summary": "Passed live on hosted E2B: pause_with(SnapshotMode::Filesystem) on a running sandbox returned true (neither 400 nor 409), and after connect the in-memory marker was gone and the on-disk marker kept.",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T03:14:52.638858136Z",
+          "seal": {
+            "by": "server",
+            "mac": "2330e027f9174edb4ee2babc12f60b81163290c5a91905fa0c12860c8ce4f50a"
+          }
+        },
+        {
+          "id": "EVD-0192",
+          "kind": "demonstration",
+          "locator": "tests/live_lifecycle.rs::clm_0146_resume_restores_memory_or_reboots; clm_0146_filesystem_pause_cold_boots @ sandbawks, docs/verification/runs/20261028T013641Z-sandbawks-rerun-2828108.log and 20261028T025532Z-sandbawks-rerun2-3256660.log (6871dbf); docs/verification/m3-live-results.md (N1); gfd/sandbawks#688",
+          "summary": "Both failed on sandbawks before the pause: the compound-sandbox template has no /home/user, so writing the on-disk marker exits 1 (new defect N1, gfd/sandbawks#688; behind it #679 and #666). Both pass on hosted.",
+          "stance": "neutral",
+          "recorded_at": "2026-10-28T03:15:33.679339428Z",
+          "seal": {
+            "by": "server",
+            "mac": "5fc74ae33c18eb189179f08d47c23c78d314f3d105d897e11c5a733616385b15"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "supported",
+          "rationale": "Both live tests passed on hosted E2B at ebccc15: a full pause then restore kept memory, a reboot lost memory and kept disk, and a filesystem-only pause cold-booted with disk kept. The sandbawks failures (EVD-0192) stop before the pause on the template's missing /home/user (#688).",
+          "auditor": "claude-code/claude-opus-5-5 (M3 coordinator)",
+          "evidence_ids": [
+            "EVD-0176",
+            "EVD-0177"
+          ],
+          "recorded_at": "2026-10-28T03:17:11.424879499Z",
+          "seal": {
+            "by": "server",
+            "mac": "5a34b7512ed60e8ae3b61cd1a0952de8e9146ea9b69e570d97ecbadb91c71c09"
+          }
+        }
+      ],
       "created_at": "2026-10-27T19:57:29.982344497Z",
-      "updated_at": "2026-10-27T19:57:29.982344497Z",
+      "updated_at": "2026-10-28T03:17:11.424879499Z",
       "seal": {
         "by": "server",
-        "mac": "20a8c6b8854ab7e07bdd0f253094e1bb474fee24ce615bad995e089bc92cd31f"
+        "mac": "a02b8fdddf8b16a86358dfdb577c8abf2686b5c93247b6234fe7676713cd7132"
       }
     },
     {
@@ -8833,13 +9268,52 @@
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0178",
+          "kind": "demonstration",
+          "locator": "tests/live_lifecycle.rs::clm_0147_list_and_delete_snapshots @ hosted, docs/verification/runs/20261028T012033Z-hosted-2696474.log (ebccc15)",
+          "summary": "Passed live on hosted E2B: a named snapshot was listed by Sandbox::list_snapshots (filtered by its source sandbox) and by Client::list_snapshots filtered by name; delete_snapshot returned true, then false for the same id. Paging by x-next-token is covered by CLM-0161's mock tests.",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T03:14:54.739999788Z",
+          "seal": {
+            "by": "server",
+            "mac": "5a0a5eef5914adefb6b54c1cc8fe0acc70e23b6dd3f8010d3920a9f0657596dd"
+          }
+        },
+        {
+          "id": "EVD-0193",
+          "kind": "demonstration",
+          "locator": "tests/live_lifecycle.rs::clm_0147_list_and_delete_snapshots @ sandbawks, docs/verification/runs/20261028T012919Z-sandbawks-2784597.log and 20261028T013641Z-sandbawks-rerun-2828108.log (6871dbf); docs/verification/m3-live-results.md; gfd/sandbawks#669",
+          "summary": "Failed on sandbawks at the setup snapshot: POST /sandboxes/{id}/snapshots and GET /snapshots are not served (bare 404, gfd/sandbawks#669). Passes on hosted.",
+          "stance": "neutral",
+          "recorded_at": "2026-10-28T03:15:35.928726607Z",
+          "seal": {
+            "by": "server",
+            "mac": "3999b877fb708d3038aa7e81a736560aab07b5c5262ca0661f44bd6bd53b84bc"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "supported",
+          "rationale": "The live test passed on hosted E2B at ebccc15: a snapshot was listed by source sandbox and by name, deleted (true), and a second delete was false. Paging by x-next-token is pinned by CLM-0161's passing tests. The sandbawks failure (EVD-0193) is #669.",
+          "auditor": "claude-code/claude-opus-5-5 (M3 coordinator)",
+          "evidence_ids": [
+            "EVD-0178"
+          ],
+          "recorded_at": "2026-10-28T03:17:13.423009899Z",
+          "seal": {
+            "by": "server",
+            "mac": "d087612a048a02e02826503ef0c765830a80190ebf976373c4cf861e6cd09698"
+          }
+        }
+      ],
       "created_at": "2026-10-27T19:57:29.982344497Z",
-      "updated_at": "2026-10-27T19:57:29.982344497Z",
+      "updated_at": "2026-10-28T03:17:13.423009899Z",
       "seal": {
         "by": "server",
-        "mac": "3ca184dfe477115902dccca6f8a49a443303fffe6579e3aa14d724ff74e8c6ce"
+        "mac": "86502a7ecd64406239284e896c778fe3f2946cb30003b44ff5521870844e8402"
       }
     },
     {
@@ -8860,13 +9334,66 @@
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0179",
+          "kind": "demonstration",
+          "locator": "tests/live_lifecycle.rs::clm_0148_volume_create_get_list_destroy @ hosted, docs/verification/runs/20261028T012033Z-hosted-2696474.log (ebccc15)",
+          "summary": "Environment limit, not a result: the first call, POST /volumes, answered 403 \"use of volumes is not enabled\" for the team, so no volume was created and get, list and destroy of a real volume were not exercised.",
+          "stance": "neutral",
+          "recorded_at": "2026-10-28T03:15:00.132585160Z",
+          "seal": {
+            "by": "server",
+            "mac": "033d138376df8c010f574a6af08af18ab8dcf282bff9ecd0e27502bc310fa77f"
+          }
+        },
+        {
+          "id": "EVD-0180",
+          "kind": "demonstration",
+          "locator": "tests/live_lifecycle.rs::clm_0148_missing_volume_is_not_found_and_not_destroyed @ hosted, docs/verification/runs/20261028T012033Z-hosted-2696474.log (ebccc15)",
+          "summary": "Passed live on hosted E2B: for a UUID-shaped missing id, get_volume was Error::VolumeNotFound carrying the id and destroy_volume returned false. Covers only the missing-volume path.",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T03:15:02.133234131Z",
+          "seal": {
+            "by": "server",
+            "mac": "b852bd3df62088ed127d0aeb271124d1730f2c43a3307f5a5a9b1399dbda8d5a"
+          }
+        },
+        {
+          "id": "EVD-0194",
+          "kind": "demonstration",
+          "locator": "tests/live_lifecycle.rs::clm_0148_volume_create_get_list_destroy; clm_0148_missing_volume_is_not_found_and_not_destroyed @ sandbawks, docs/verification/runs/20261028T012919Z-sandbawks-2784597.log (6871dbf); docs/verification/m3-live-results.md; gfd/sandbawks#671",
+          "summary": "sandbawks serves no volume routes (bare 404, gfd/sandbawks#671): the create test failed at POST /volumes, and the missing-volume test passed only because every volume route answers 404. Decides nothing.",
+          "stance": "neutral",
+          "recorded_at": "2026-10-28T03:15:38.228681736Z",
+          "seal": {
+            "by": "server",
+            "mac": "acfb3fdc92d3db8b4033b21397c45d0e49fbd96f7eebd73252e9ff40f395a66e"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "not_enough_info",
+          "rationale": "Environment limit: hosted E2B answers POST /volumes with 403 \"use of volumes is not enabled\" for this team, so create, get, list and destroy of a real volume were never exercised live; only the missing-volume path passed. sandbawks has no volume routes (#671). The wire form is supported by CLM-0163's tests. Re-decide on a team with volumes enabled.",
+          "auditor": "claude-code/claude-opus-5-5 (M3 coordinator)",
+          "evidence_ids": [
+            "EVD-0179",
+            "EVD-0180",
+            "EVD-0194"
+          ],
+          "recorded_at": "2026-10-28T03:17:15.576168928Z",
+          "seal": {
+            "by": "server",
+            "mac": "d1ac98fbe4364748af4655afff1112a94eb8a5fbc645c4c60c689f299537844b"
+          }
+        }
+      ],
       "created_at": "2026-10-27T19:57:29.982344497Z",
-      "updated_at": "2026-10-27T19:57:29.982344497Z",
+      "updated_at": "2026-10-28T03:17:15.576168928Z",
       "seal": {
         "by": "server",
-        "mac": "a9e2e184ad7d1e33fbe4fd75356ae077a0e49679247affd6911228cc65d102f6"
+        "mac": "dc72ff843bcf19da68e509251e559dc405d31857fc40e1bb79290a01a3ea13ea"
       }
     },
     {
@@ -8887,13 +9414,53 @@
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0181",
+          "kind": "demonstration",
+          "locator": "tests/live_lifecycle.rs::clm_0149_volume_mount_persists_across_sandboxes @ hosted, docs/verification/runs/20261028T012033Z-hosted-2696474.log (ebccc15)",
+          "summary": "Environment limit, not a result: the setup call POST /volumes answered 403 \"use of volumes is not enabled\", so no sandbox mounted a volume.",
+          "stance": "neutral",
+          "recorded_at": "2026-10-28T03:15:03.938853114Z",
+          "seal": {
+            "by": "server",
+            "mac": "5a55908ed0e3fd69127e70ee516e0d6436e57bf244266b6a3e2bf4f2aee2e2a5"
+          }
+        },
+        {
+          "id": "EVD-0195",
+          "kind": "demonstration",
+          "locator": "tests/live_lifecycle.rs::clm_0149_volume_mount_persists_across_sandboxes @ sandbawks, docs/verification/runs/20261028T012919Z-sandbawks-2784597.log (6871dbf); docs/verification/m3-live-results.md; gfd/sandbawks#671",
+          "summary": "Failed on sandbawks at the setup call POST /volumes (bare 404, missing route gfd/sandbawks#671). Decides nothing.",
+          "stance": "neutral",
+          "recorded_at": "2026-10-28T03:15:40.281617083Z",
+          "seal": {
+            "by": "server",
+            "mac": "dc97374f8bfbdb7ea5bbd7a6cb1771be56c738b4d0cf68d2ff74913989240eff"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "not_enough_info",
+          "rationale": "Environment limit: volumes are not enabled for the team on hosted E2B (403) and sandbawks has no volume routes (#671), so no volume was mounted live. The mount wire form is supported by CLM-0164's tests. Re-decide on a team with volumes enabled.",
+          "auditor": "claude-code/claude-opus-5-5 (M3 coordinator)",
+          "evidence_ids": [
+            "EVD-0181",
+            "EVD-0195"
+          ],
+          "recorded_at": "2026-10-28T03:17:17.424792884Z",
+          "seal": {
+            "by": "server",
+            "mac": "e595fb96735942426c6b50953ce252ac3f10aed782632a06756d669a0324e64a"
+          }
+        }
+      ],
       "created_at": "2026-10-27T19:57:29.982344497Z",
-      "updated_at": "2026-10-27T19:57:29.982344497Z",
+      "updated_at": "2026-10-28T03:17:17.424792884Z",
       "seal": {
         "by": "server",
-        "mac": "0b8784f69398c8d183104e43decdf451e4fbaf1484d7021062b218ae1e1f7511"
+        "mac": "e8a886f906b7fd0bdb84aa099f1df4ee436e262f12f9bf1d65e511bb17d12686"
       }
     },
     {
@@ -8914,13 +9481,52 @@
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0182",
+          "kind": "demonstration",
+          "locator": "tests/live_lifecycle.rs::clm_0150_mcp_gateway_starts_and_exposes_url_and_token @ hosted, docs/verification/runs/20261028T012033Z-hosted-2696474.log (ebccc15)",
+          "summary": "Passed live on hosted E2B: create with MCP config {\"fetch\": {}} on the mcp-gateway template started the gateway; mcp_token() from create equals the token a connected handle reads from the token file; mcp_url() is https://50005-{id}.../mcp; an MCP initialize got 401 without a token, 401 with another UUID, and 200 with the token.",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T03:15:06.388413893Z",
+          "seal": {
+            "by": "server",
+            "mac": "606b29072a9b2cc4c4f6693a196af0a347799b4b58f18480a398728ceb03b309"
+          }
+        },
+        {
+          "id": "EVD-0196",
+          "kind": "demonstration",
+          "locator": "tests/live_lifecycle.rs::clm_0150_mcp_gateway_starts_and_exposes_url_and_token @ sandbawks, docs/verification/runs/20261028T012919Z-sandbawks-2784597.log and 20261028T013641Z-sandbawks-rerun-2828108.log (6871dbf); docs/verification/m3-live-results.md; gfd/sandbawks#680, #672",
+          "summary": "Failed on sandbawks: create answered running for the mcp-gateway template, then the gateway start got \"the sandbox failed (action_failure)\", the signature of an unknown template (gfd/sandbawks#680; the mcp create field goes with #672). Passes on hosted.",
+          "stance": "neutral",
+          "recorded_at": "2026-10-28T03:15:42.779180907Z",
+          "seal": {
+            "by": "server",
+            "mac": "94eea336e8404192d16d7fc0befc19ff0de3a871ceab9bdbaf7f47cd96c51d27"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "supported",
+          "rationale": "The live test passed on hosted E2B at ebccc15: the gateway started, the URL and token were exposed, and the token was required (401/401/200). The sandbawks failure (EVD-0196) is the missing mcp-gateway template (#680).",
+          "auditor": "claude-code/claude-opus-5-5 (M3 coordinator)",
+          "evidence_ids": [
+            "EVD-0182"
+          ],
+          "recorded_at": "2026-10-28T03:17:19.326588883Z",
+          "seal": {
+            "by": "server",
+            "mac": "020d296ce133c232ccbbb02234002779440e4d30f3626aaf06946ef13e63f7ea"
+          }
+        }
+      ],
       "created_at": "2026-10-27T19:57:29.982344497Z",
-      "updated_at": "2026-10-27T19:58:17.048297177Z",
+      "updated_at": "2026-10-28T03:17:19.326588883Z",
       "seal": {
         "by": "server",
-        "mac": "da85bde769e32e5cec1865f2ff0331b4aeb6218eade0c66e8690017bc6922d45"
+        "mac": "242c943843991118703184a6fa041104ee50385c47688f0cd3d201507f45e855"
       }
     },
     {
@@ -8941,13 +9547,52 @@
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0183",
+          "kind": "demonstration",
+          "locator": "tests/live_lifecycle.rs::clm_0151_list_filters_by_template_and_start_time_and_orders @ hosted, docs/verification/runs/20261028T012033Z-hosted-2696474.log (ebccc15)",
+          "summary": "Passed live on hosted E2B: for two sandboxes started 2 s apart, list_sandboxes filtered by the run's metadata and template listed both, in newest-first order for Descending and oldest-first for Ascending, and started_after(second's startedAt) listed the second but not the first.",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T03:15:08.634215633Z",
+          "seal": {
+            "by": "server",
+            "mac": "afb552351a4da5fcbf02c4507d5b15eb75d1f3d71205988fc76c2387f0bf9097"
+          }
+        },
+        {
+          "id": "EVD-0197",
+          "kind": "demonstration",
+          "locator": "tests/live_lifecycle.rs::clm_0151_list_filters_by_template_and_start_time_and_orders @ sandbawks, docs/verification/runs/20261028T012919Z-sandbawks-2784597.log and 20261028T013641Z-sandbawks-rerun-2828108.log (6871dbf); docs/verification/m3-live-results.md (N2); gfd/sandbawks#689",
+          "summary": "Failed on sandbawks: GET /v2/sandboxes ignores order, template and startedAfter (same list for asc and desc; confirmed by a direct probe), new defect N2, gfd/sandbawks#689. Passes on hosted.",
+          "stance": "neutral",
+          "recorded_at": "2026-10-28T03:15:45.128935556Z",
+          "seal": {
+            "by": "server",
+            "mac": "150fac1d1aad6a507a5494f3770215f27f7f445600290f11f668e9e35bb7af8b"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "supported",
+          "rationale": "The live test passed on hosted E2B at ebccc15: template filter, both orders and started_after behaved as the SDK's. The sandbawks failure (EVD-0197) is the server ignoring those parameters (#689).",
+          "auditor": "claude-code/claude-opus-5-5 (M3 coordinator)",
+          "evidence_ids": [
+            "EVD-0183"
+          ],
+          "recorded_at": "2026-10-28T03:17:21.276285852Z",
+          "seal": {
+            "by": "server",
+            "mac": "6d29305cf2d337e1eaf2f64b0eb48ae5425bab3e7155f3570e7aae09bb0abe0a"
+          }
+        }
+      ],
       "created_at": "2026-10-27T19:57:29.982344497Z",
-      "updated_at": "2026-10-27T19:57:29.982344497Z",
+      "updated_at": "2026-10-28T03:17:21.276285852Z",
       "seal": {
         "by": "server",
-        "mac": "e082a536d403e41994f6b59159e1a2d81955bc938dd5770a7befec5708fb9071"
+        "mac": "b5ca74651ba51719be6255531a8a13ef0212f8d248ee8589f9e13b5ed39f8671"
       }
     },
     {
@@ -8968,13 +9613,40 @@
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0199",
+          "kind": "test",
+          "locator": "tests/rest_lifecycle.rs::the_idempotency_key_is_sent_as_a_header; tests/rest_lifecycle.rs::no_idempotency_key_sends_no_header; tests/rest_lifecycle.rs::invalid_idempotency_keys_are_refused_before_any_request; tests/rest_lifecycle.rs::the_idempotency_key_is_checked_before_the_lifecycle; src/models.rs::tests::idempotency_key_accepts_1_to_255_of_lowercase_digits_and_hyphens; src/models.rs::tests::idempotency_key_refuses_bad_lengths_and_characters @ 6db8faa; docs/verification/s4-evidence-map.md",
+          "summary": "All pass at 6db8faa (just test: 343 passed, 0 failed): a 255-character key is sent as Idempotency-Key on POST /v2/sandboxes and not in the body; no key sends no header; empty, uppercase, underscore and 256-character keys are InvalidArgument with no request; the key is checked before the lifecycle; length is counted in characters before the character set.",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T03:16:00.397323538Z",
+          "seal": {
+            "by": "server",
+            "mac": "20207fe808f8bc287657f510c89a08e7140227ac5d39c0f5697d466747fe4c40"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "supported",
+          "rationale": "An S1 interface claim verified by tests (like CLM-0122): the evidence-map tests asserting the header and the pre-request validation pass at 6db8faa (just test: 343 passed, 0 failed).",
+          "auditor": "claude-code/claude-opus-5-5 (M3 coordinator)",
+          "evidence_ids": [
+            "EVD-0199"
+          ],
+          "recorded_at": "2026-10-28T03:17:22.975576154Z",
+          "seal": {
+            "by": "server",
+            "mac": "ec24fa87eac7a0ea2adb42372a91f85efda459f6713a84369a558f46fa336de0"
+          }
+        }
+      ],
       "created_at": "2026-10-27T19:57:29.982344497Z",
-      "updated_at": "2026-10-27T19:57:29.982344497Z",
+      "updated_at": "2026-10-28T03:17:22.975576154Z",
       "seal": {
         "by": "server",
-        "mac": "7bb50732464c644632c0424c6f4a39ddee46956a61fbe855efb0c9af1dd0fc38"
+        "mac": "140a4e34d8b35d6c907039a8d29e8e821e622d811d31f20e33c566de8cfac901"
       }
     },
     {
@@ -8995,13 +9667,66 @@
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0184",
+          "kind": "demonstration",
+          "locator": "tests/live_lifecycle.rs::clm_0153_get_info_reports_network; tests/live_lifecycle.rs::clm_0153_get_info_reports_lifecycle; tests/live_lifecycle.rs::clm_0145_lifecycle_pause_with_full_snapshot_pauses_at_timeout @ hosted, docs/verification/runs/20261028T012033Z-hosted-2696474.log (ebccc15)",
+          "summary": "Passed live on hosted E2B: get_info reported allow_internet_access Some(false) and the network (allow_out 1.1.1.1, dns_servers [1.1.1.1], the one.one.one.one rule's X-Probe header) as created; lifecycle onTimeout kill, autoResume false as created; and (clm_0145) pauseMode full once a lifecycle pause was taken.",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T03:15:11.582889069Z",
+          "seal": {
+            "by": "server",
+            "mac": "25bd38d17d58865fba8a101946dfe6b952252ea1386738c621cbbfc4c8773578"
+          }
+        },
+        {
+          "id": "EVD-0185",
+          "kind": "demonstration",
+          "locator": "tests/live_lifecycle.rs::clm_0153_get_info_reports_volume_mounts @ hosted, docs/verification/runs/20261028T012033Z-hosted-2696474.log (ebccc15)",
+          "summary": "Environment limit, not a result: the setup call POST /volumes answered 403 \"use of volumes is not enabled\", so get_info's volume-mounts read-back was not exercised live (its parsing is covered by CLM-0167's mock tests).",
+          "stance": "neutral",
+          "recorded_at": "2026-10-28T03:15:13.371914573Z",
+          "seal": {
+            "by": "server",
+            "mac": "eb9666c6677e9ef13829f28815a50934be08ea78085c979bdf51949c8c1ca1cd"
+          }
+        },
+        {
+          "id": "EVD-0198",
+          "kind": "demonstration",
+          "locator": "tests/live_lifecycle.rs::clm_0153_get_info_reports_network; _lifecycle; _volume_mounts @ sandbawks, docs/verification/runs/20261028T012919Z-sandbawks-2784597.log (6871dbf); docs/verification/m3-live-results.md; gfd/sandbawks#667, #665, #671",
+          "summary": "All three failed on sandbawks: its detail has no allowInternetAccess, network or lifecycle (create ignores them, #667, #665), and POST /volumes is not served (#671). The crate reads absent fields as None, as designed. The network and lifecycle parts pass on hosted.",
+          "stance": "neutral",
+          "recorded_at": "2026-10-28T03:15:47.418894682Z",
+          "seal": {
+            "by": "server",
+            "mac": "1ca4687077066483b286b582c7ee7d6143535b33d17a4893f815b73bd642b5d1"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "not_enough_info",
+          "rationale": "Network settings, allow_internet_access, lifecycle and pause mode were all reported live on hosted E2B at ebccc15, but the volume-mounts part hit the volumes environment limit (403), so the whole claim is not yet shown live. Parsing of every field is supported by CLM-0167's tests. Re-decide with volumes enabled.",
+          "auditor": "claude-code/claude-opus-5-5 (M3 coordinator)",
+          "evidence_ids": [
+            "EVD-0184",
+            "EVD-0185",
+            "EVD-0198"
+          ],
+          "recorded_at": "2026-10-28T03:17:25.312367400Z",
+          "seal": {
+            "by": "server",
+            "mac": "2e6b2ff63d58bc5f2c1dda1ac85c1ff68cd183f5785bb5df72e5631b076e0999"
+          }
+        }
+      ],
       "created_at": "2026-10-27T19:57:29.982344497Z",
-      "updated_at": "2026-10-27T19:57:29.982344497Z",
+      "updated_at": "2026-10-28T03:17:25.312367400Z",
       "seal": {
         "by": "server",
-        "mac": "79e95c1c580f4663231340e30ea27581581c46a7c52b16a304c67c41bb68088b"
+        "mac": "0c2c8ad57a5cb9d9e01d2098093fe99d3f4ab1d4ae946e5f0cde32a8292f317d"
       }
     },
     {
@@ -9022,13 +9747,40 @@
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0200",
+          "kind": "test",
+          "locator": "src/config.rs::tests::sandbox_host_uses_the_sandbox_domain_then_the_configured_one; src/sandbox.rs::tests::get_host_follows_the_reported_domain @ 6db8faa; docs/verification/s4-evidence-map.md",
+          "summary": "Both pass at 6db8faa (just test: 343 passed, 0 failed): the host is <port>-<id>.<domain>, using the sandbox's reported domain when given and the configured domain otherwise, through both the config helper and Sandbox::get_host.",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T03:16:02.499023322Z",
+          "seal": {
+            "by": "server",
+            "mac": "2589a2b415423b0cd03036ae8ab2bcc737bf946669462b801343b3294ec766ef"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "supported",
+          "rationale": "The evidence-map tests asserting the wire fact pass at 6db8faa (just test: 343 passed, 0 failed).",
+          "auditor": "claude-code/claude-opus-5-5 (M3 coordinator)",
+          "evidence_ids": [
+            "EVD-0200"
+          ],
+          "recorded_at": "2026-10-28T03:17:29.635836884Z",
+          "seal": {
+            "by": "server",
+            "mac": "3f3c051651c2d3a700be360a3ceb3cb6c1e01c16e2a5210c2fe66faba3798bb8"
+          }
+        }
+      ],
       "created_at": "2026-10-27T19:57:29.982344497Z",
-      "updated_at": "2026-10-27T19:57:29.982344497Z",
+      "updated_at": "2026-10-28T03:17:29.635836884Z",
       "seal": {
         "by": "server",
-        "mac": "2e2836a74ebc9c64291f3e887d04a5ad39b85b6f672f4cf06d6d1e713e498025"
+        "mac": "c3d1ac23b36a961c021cd136193cc7d0d2f34dbc32e1f901ec7bfba6dea6b088"
       }
     },
     {
@@ -9049,13 +9801,40 @@
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0201",
+          "kind": "test",
+          "locator": "tests/rest_metrics.rs::get_metrics_sends_start_and_end_as_unix_seconds; tests/rest_metrics.rs::get_metrics_without_a_range_sends_no_query; tests/rest_metrics.rs::get_metrics_with_a_null_body_is_empty; tests/rest_metrics.rs::get_metrics_of_a_missing_sandbox_is_not_found; src/metrics.rs::tests::query_sends_each_set_bound_as_unix_seconds; src/metrics.rs::tests::query_without_a_range_is_empty @ 6db8faa; docs/verification/s4-evidence-map.md",
+          "summary": "All pass at 6db8faa (just test: 343 passed, 0 failed): GET /sandboxes/{id}/metrics with start/end as whole Unix seconds only when set; every field of a sample decodes (timestamp, cpuCount, cpuUsedPct, memUsed, memTotal, memCache, diskUsed, diskTotal above u32::MAX); a null body is empty; 404 is SandboxNotFound.",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T03:16:05.850892376Z",
+          "seal": {
+            "by": "server",
+            "mac": "48431bb94e2d8d35e3a0ddf38cb89cae04ec48eeb172bbc9d15742e7c74ca223"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "supported",
+          "rationale": "The evidence-map tests asserting the wire fact pass at 6db8faa (just test: 343 passed, 0 failed).",
+          "auditor": "claude-code/claude-opus-5-5 (M3 coordinator)",
+          "evidence_ids": [
+            "EVD-0201"
+          ],
+          "recorded_at": "2026-10-28T03:17:31.085993583Z",
+          "seal": {
+            "by": "server",
+            "mac": "2048458022b79eef4b1d024e0f604403cc647dae515a7daec75c49e455b11ffa"
+          }
+        }
+      ],
       "created_at": "2026-10-27T19:57:29.982344497Z",
-      "updated_at": "2026-10-27T19:57:29.982344497Z",
+      "updated_at": "2026-10-28T03:17:31.085993583Z",
       "seal": {
         "by": "server",
-        "mac": "859667438118f112ffb2f3a65eda34a07fac09c8b655a95e993b5c80fac7bdda"
+        "mac": "090f66f74f712de038c980bca0f658b2918969f4a07e18cf051f3a97c0ba6939"
       }
     },
     {
@@ -9076,13 +9855,40 @@
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0202",
+          "kind": "test",
+          "locator": "tests/rest_network.rs::create_sends_the_network_object_in_camel_case; tests/rest_network.rs::create_sends_network_next_to_allow_internet_access; tests/rest_network.rs::create_leaves_out_a_network_with_nothing_set; src/network.rs::tests::deny_all_serializes_to_only_deny_out; src/network.rs::tests::rules_for_one_host_keep_their_order_and_an_empty_rule_is_an_empty_object @ 6db8faa; docs/verification/s4-evidence-map.md",
+          "summary": "All pass at 6db8faa (just test: 343 passed, 0 failed): the exact create body's network has allowOut, denyOut, dnsServers: [], rules {host: [{transform: {headers}}]}, allowPublicTraffic, maskRequestHost and httpsPorts; it is sent next to allow_internet_access; unset fields are omitted and an empty NetworkConfig leaves network out.",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T03:16:09.010706800Z",
+          "seal": {
+            "by": "server",
+            "mac": "47839b6bbd303da904f4d4197159cdd3b097bf4a1abdeb4fc051ea2036248e7d"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "supported",
+          "rationale": "The evidence-map tests asserting the wire fact pass at 6db8faa (just test: 343 passed, 0 failed).",
+          "auditor": "claude-code/claude-opus-5-5 (M3 coordinator)",
+          "evidence_ids": [
+            "EVD-0202"
+          ],
+          "recorded_at": "2026-10-28T03:17:32.486628978Z",
+          "seal": {
+            "by": "server",
+            "mac": "c445d6c88276e2dd88f980ab2f56ceeb2d179fdae7374f1926d27119f035f402"
+          }
+        }
+      ],
       "created_at": "2026-10-27T19:57:29.982344497Z",
-      "updated_at": "2026-10-27T19:57:29.982344497Z",
+      "updated_at": "2026-10-28T03:17:32.486628978Z",
       "seal": {
         "by": "server",
-        "mac": "b7e2578096e6299857a7301335d22100e516eeb89bdfeda2a1498b2d362a7e83"
+        "mac": "24d37497e079c3803685f7d12ca7598f827933f4f8c92c4d8d1110fbc985f911"
       }
     },
     {
@@ -9103,13 +9909,40 @@
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0203",
+          "kind": "test",
+          "locator": "tests/rest_network.rs::update_network_puts_the_egress_fields; tests/rest_network.rs::an_empty_update_sends_an_empty_object; tests/rest_network.rs::update_network_of_a_missing_sandbox_is_not_found; tests/rest_network.rs::update_network_refused_by_the_api_is_an_api_error; tests/rest_network.rs::sandbox_update_network_puts_to_its_own_id; src/network.rs::tests::update_sends_allow_internet_access_in_snake_case_next_to_camel_case_egress @ 6db8faa; docs/verification/s4-evidence-map.md",
+          "summary": "All pass at 6db8faa (just test: 343 passed, 0 failed): PUT /sandboxes/{id}/network with the exact body denyOut, allowOut, dnsServers, rules and snake_case allow_internet_access, answered 204 as success; an empty update is {}; 404 is SandboxNotFound; 400 is Error::Api; Sandbox::update_network puts to its own id.",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T03:16:12.152450449Z",
+          "seal": {
+            "by": "server",
+            "mac": "c060cf32c0b2ef05c1652d78005a7417b581af5ed4f110f608851b24474cfd74"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "supported",
+          "rationale": "The evidence-map tests asserting the wire fact pass at 6db8faa (just test: 343 passed, 0 failed).",
+          "auditor": "claude-code/claude-opus-5-5 (M3 coordinator)",
+          "evidence_ids": [
+            "EVD-0203"
+          ],
+          "recorded_at": "2026-10-28T03:17:33.936846547Z",
+          "seal": {
+            "by": "server",
+            "mac": "4fd75cc98d1e92d6a6cb44d6ad313c5962802b33ff8e2562677aca37932a5e44"
+          }
+        }
+      ],
       "created_at": "2026-10-27T19:57:29.982344497Z",
-      "updated_at": "2026-10-27T19:58:16.299749209Z",
+      "updated_at": "2026-10-28T03:17:33.936846547Z",
       "seal": {
         "by": "server",
-        "mac": "ec6b28bd2c6928625c5ff8ef126905c7935ee99293c57c4ec0a71752a65b2537"
+        "mac": "892a9ddb83404a78846c44ec38d73ee3e75afd6065fdee8fb53b9f5d467878a6"
       }
     },
     {
@@ -9130,13 +9963,40 @@
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0204",
+          "kind": "test",
+          "locator": "tests/rest_lifecycle.rs::pause_with_a_filesystem_snapshot_sends_auto_pause_memory_false; tests/rest_lifecycle.rs::pause_with_a_full_snapshot_sends_auto_pause_memory_true; tests/rest_lifecycle.rs::pause_without_a_mode_omits_auto_pause_memory; tests/rest_lifecycle.rs::kill_sends_auto_pause_false_only; tests/rest_lifecycle.rs::invalid_lifecycles_are_refused_before_any_request; src/lifecycle.rs::tests::unset_lifecycle_sends_nothing; src/lifecycle.rs::tests::valid_shapes_match_the_sdk_body; src/lifecycle.rs::tests::auto_resume_without_a_pause_is_refused; src/lifecycle.rs::tests::auto_resume_with_a_filesystem_pause_is_refused; src/lifecycle.rs::tests::the_last_on_timeout_wins; src/lifecycle.rs::tests::snapshot_mode_uses_the_sdk_spelling; src/models.rs::tests::auto_pause_is_shorthand_for_the_lifecycle_on_timeout @ 6db8faa; docs/verification/s4-evidence-map.md",
+          "summary": "All pass at 6db8faa (just test: 343 passed, 0 failed): exact create bodies send autoPause only with on_timeout, autoPauseMemory true/false only for a pause with a mode, autoResume {enabled}; a kill sends autoPause false only; auto_resume without a pause, with a kill or with a filesystem pause is InvalidArgument with no request; an unset lifecycle sends none of the fields.",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T03:16:17.002418159Z",
+          "seal": {
+            "by": "server",
+            "mac": "62bcc3ab931c857108f8275d2bc2b3faaf8f0f607711133609ad39b5da92f52f"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "supported",
+          "rationale": "The evidence-map tests asserting the wire fact pass at 6db8faa (just test: 343 passed, 0 failed).",
+          "auditor": "claude-code/claude-opus-5-5 (M3 coordinator)",
+          "evidence_ids": [
+            "EVD-0204"
+          ],
+          "recorded_at": "2026-10-28T03:17:35.336878741Z",
+          "seal": {
+            "by": "server",
+            "mac": "4b9e6c9e9931328dfb923b68b9a59337faebfb434b7a54bca87740b3b03c3ecb"
+          }
+        }
+      ],
       "created_at": "2026-10-27T19:57:29.982344497Z",
-      "updated_at": "2026-10-27T19:57:29.982344497Z",
+      "updated_at": "2026-10-28T03:17:35.336878741Z",
       "seal": {
         "by": "server",
-        "mac": "2c3adf267b79a072f20d01740cff7e68d2548da696240b733821be1861dee33a"
+        "mac": "0cb56e5b63f401f1d3437de2362b86602bfd223a4bf5fd06945e88e5c03347a5"
       }
     },
     {
@@ -9157,13 +10017,40 @@
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0205",
+          "kind": "test",
+          "locator": "tests/rest_lifecycle.rs::pause_sends_memory_from_the_mode; tests/rest_lifecycle.rs::connect_sends_memory_false_only_for_a_reboot; tests/rest_lifecycle.rs::the_v1_fallback_keeps_the_reboot_flag; tests/rest_lifecycle.rs::sandbox_pause_with_sends_the_mode; tests/rest_lifecycle.rs::pause_with_maps_status_codes_as_pause_does; src/lifecycle.rs::tests::pause_options_memory_follows_the_mode; src/lifecycle.rs::tests::connect_options_send_memory_false_only_for_a_reboot; src/lifecycle.rs::tests::connect_options_keep_the_timeout @ 6db8faa; docs/verification/s4-evidence-map.md",
+          "summary": "All pass at 6db8faa (just test: 343 passed, 0 failed): pause posts {memory: true} for Full, {memory: false} for Filesystem and {} with no mode; the v2 connect body has memory: false only for a reboot (with or without timeout), and the v1 fallback keeps it; pause_with maps 409/400/404 as pause does.",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T03:16:20.652722669Z",
+          "seal": {
+            "by": "server",
+            "mac": "52b89fc160763127defe8c591e0ffc8027d919cbdc916bbfe02688a42af4695c"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "supported",
+          "rationale": "The evidence-map tests asserting the wire fact pass at 6db8faa (just test: 343 passed, 0 failed).",
+          "auditor": "claude-code/claude-opus-5-5 (M3 coordinator)",
+          "evidence_ids": [
+            "EVD-0205"
+          ],
+          "recorded_at": "2026-10-28T03:17:36.787029979Z",
+          "seal": {
+            "by": "server",
+            "mac": "bb82cbc917f97744e91df853dd34343acee1b8ddbfd761b393c9b6b6c142839c"
+          }
+        }
+      ],
       "created_at": "2026-10-27T19:57:29.982344497Z",
-      "updated_at": "2026-10-27T19:58:15.250210221Z",
+      "updated_at": "2026-10-28T03:17:36.787029979Z",
       "seal": {
         "by": "server",
-        "mac": "0476bdb67adbaf0f4a58079fd30c196493124f14202616a06e60816df80a95fa"
+        "mac": "930a08ca7c6fbdc314eab08440dd668a4233c9b4191c7f94f678412cb1751c19"
       }
     },
     {
@@ -9184,13 +10071,40 @@
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0206",
+          "kind": "test",
+          "locator": "tests/rest_snapshots.rs::create_snapshot_posts_name_and_memory; tests/rest_snapshots.rs::create_snapshot_with_defaults_sends_an_empty_object; tests/rest_snapshots.rs::create_snapshot_of_a_missing_sandbox_is_not_found; tests/rest_snapshots.rs::create_snapshot_refused_is_an_api_error; tests/rest_snapshots.rs::sandbox_create_snapshot_posts_to_its_own_id; src/snapshots.rs::tests::body_sends_the_name_and_the_memory_flag_only_when_set; src/snapshots.rs::tests::body_leaves_out_an_empty_name; src/snapshots.rs::tests::snapshot_info_reads_missing_or_null_names_as_empty @ 6db8faa; docs/verification/s4-evidence-map.md",
+          "summary": "All pass at 6db8faa (just test: 343 passed, 0 failed): POST /sandboxes/{id}/snapshots with the exact body {name, memory} (each only when set; defaults send {}), the 201 {snapshotID, names} read back; 404 is SandboxNotFound; 400/409 are Error::Api.",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T03:16:24.353583121Z",
+          "seal": {
+            "by": "server",
+            "mac": "89def2a4b6d213bac0a6549978e5c1442e2a72d3ad87058f8b7522faac129a1a"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "supported",
+          "rationale": "The evidence-map tests asserting the wire fact pass at 6db8faa (just test: 343 passed, 0 failed).",
+          "auditor": "claude-code/claude-opus-5-5 (M3 coordinator)",
+          "evidence_ids": [
+            "EVD-0206"
+          ],
+          "recorded_at": "2026-10-28T03:17:38.186025810Z",
+          "seal": {
+            "by": "server",
+            "mac": "6d7b789dc52f440ec08546ff2fa23a0f39e4b45b88d381f0b129a80ab133feba"
+          }
+        }
+      ],
       "created_at": "2026-10-27T19:57:29.982344497Z",
-      "updated_at": "2026-10-27T19:57:29.982344497Z",
+      "updated_at": "2026-10-28T03:17:38.186025810Z",
       "seal": {
         "by": "server",
-        "mac": "d89fb960999cc05585ede04a53a617a3c0fdf8c205debd93a0e2567d7875c063"
+        "mac": "8c09edfbc378b85d5f6058a56ee1e38836fcfe5fd0653dc61e97376b6990ba13"
       }
     },
     {
@@ -9211,13 +10125,40 @@
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0207",
+          "kind": "test",
+          "locator": "tests/rest_snapshots.rs::list_snapshots_sends_filters_and_reads_the_next_token; tests/rest_snapshots.rs::list_snapshots_without_filters_sends_no_query; tests/rest_snapshots.rs::list_snapshots_reads_a_null_body_as_an_empty_page; tests/rest_snapshots.rs::list_snapshots_refused_is_an_api_error; tests/rest_snapshots.rs::sandbox_list_snapshots_filters_by_its_own_id; tests/rest_snapshots.rs::delete_snapshot_encodes_the_id_as_one_segment; tests/rest_snapshots.rs::delete_snapshot_refused_is_an_api_error; src/snapshots.rs::tests::query_keeps_the_sdk_order_whatever_the_setter_order; src/snapshots.rs::tests::query_leaves_out_empty_strings_and_a_zero_limit @ 6db8faa; docs/verification/s4-evidence-map.md",
+          "summary": "All pass at 6db8faa (just test: 343 passed, 0 failed): GET /snapshots with sandboxID, name, limit and nextToken (none when unset), the next token read from x-next-token; DELETE /templates/team%2Fmy-snap:v1 sends the id as one encoded segment, 204 is true and 404 false.",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T03:16:28.204308592Z",
+          "seal": {
+            "by": "server",
+            "mac": "ebd6275d7a1a5c753ef4be7277677207d8c5e051c931007a287c428a9cbc9543"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "supported",
+          "rationale": "The evidence-map tests asserting the wire fact pass at 6db8faa (just test: 343 passed, 0 failed).",
+          "auditor": "claude-code/claude-opus-5-5 (M3 coordinator)",
+          "evidence_ids": [
+            "EVD-0207"
+          ],
+          "recorded_at": "2026-10-28T03:17:39.637619713Z",
+          "seal": {
+            "by": "server",
+            "mac": "71483e8dbd9e90db04840ee1bb449530c564018ad3e5aab22b8c153e902cefa7"
+          }
+        }
+      ],
       "created_at": "2026-10-27T19:57:29.982344497Z",
-      "updated_at": "2026-10-27T19:57:29.982344497Z",
+      "updated_at": "2026-10-28T03:17:39.637619713Z",
       "seal": {
         "by": "server",
-        "mac": "cdcbb7583cb025be33996840d6784f7f846a13f853a8becf55d554527fd7ce42"
+        "mac": "16de40caff932a8ba86ea35c5cef7fa60d5ce0ac49e224a92d8d015d9833e1f3"
       }
     },
     {
@@ -9238,13 +10179,40 @@
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0208",
+          "kind": "test",
+          "locator": "tests/rest_fork.rs::fork_returns_one_result_per_fork; tests/rest_fork.rs::fork_with_defaults_sends_an_empty_object; tests/rest_fork.rs::fork_counts_outside_1_to_20_are_refused_before_any_request; tests/rest_fork.rs::fork_of_a_missing_sandbox_is_not_found; tests/rest_fork.rs::fork_refused_is_an_api_error; tests/rest_fork.rs::fork_reads_a_malformed_entry_as_that_forks_error_and_a_null_body_as_decode; tests/rest_fork.rs::sandbox_fork_posts_to_its_own_id; src/models.rs::tests::fork_body_sends_only_what_is_set_in_whole_seconds; src/models.rs::tests::fork_body_refuses_counts_outside_1_to_20_with_the_count @ 6db8faa; docs/verification/s4-evidence-map.md",
+          "summary": "All pass at 6db8faa (just test: 343 passed, 0 failed): POST /sandboxes/{id}/fork with the exact body {timeout, count} (defaults {}); the 201 array reads into one result per fork, in order, sandbox or error; counts 0 and 21 are InvalidArgument with no request; a whole-request 404 is SandboxNotFound.",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T03:16:32.053793971Z",
+          "seal": {
+            "by": "server",
+            "mac": "6d157d091dea0aa938d73977906da17ac728c9a6b1d73af040e8efcd0795b1f3"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "supported",
+          "rationale": "The evidence-map tests asserting the wire fact pass at 6db8faa (just test: 343 passed, 0 failed).",
+          "auditor": "claude-code/claude-opus-5-5 (M3 coordinator)",
+          "evidence_ids": [
+            "EVD-0208"
+          ],
+          "recorded_at": "2026-10-28T03:17:41.036322423Z",
+          "seal": {
+            "by": "server",
+            "mac": "6101730b2600f74e7a29518f98d3365d7a1e7eaea0fe23beecd7f1892bc75342"
+          }
+        }
+      ],
       "created_at": "2026-10-27T19:57:29.982344497Z",
-      "updated_at": "2026-10-27T19:57:29.982344497Z",
+      "updated_at": "2026-10-28T03:17:41.036322423Z",
       "seal": {
         "by": "server",
-        "mac": "1b6943ba77304e7590ac85ce7f8037c1a20575f741f65bddd8123b26151c7540"
+        "mac": "6e86b7688bbcad3eac80e05b91b2da865ba611f94d168525dc3d59f71bb4b56a"
       }
     },
     {
@@ -9265,13 +10233,40 @@
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0209",
+          "kind": "test",
+          "locator": "tests/rest_volumes.rs::create_volume_posts_its_name_and_keeps_the_token_secret; tests/rest_volumes.rs::create_volume_refused_is_an_api_error; tests/rest_volumes.rs::get_volume_reads_the_domain_and_maps_404; tests/rest_volumes.rs::get_volume_refused_is_an_api_error_not_not_found; tests/rest_volumes.rs::list_volumes_reads_ids_and_names; tests/rest_volumes.rs::list_volumes_reads_a_null_body_as_none_and_maps_errors; tests/rest_volumes.rs::destroy_volume_reports_whether_it_existed; src/volumes.rs::tests::volume_reads_the_wire_shape_and_hides_the_token_from_debug; src/volumes.rs::tests::a_missing_null_or_empty_domain_reads_as_none; src/volumes.rs::tests::new_volume_body_is_just_the_name; src/error.rs::tests::is_not_found_covers_each_family @ 6db8faa; docs/verification/s4-evidence-map.md",
+          "summary": "All pass at 6db8faa (just test: 343 passed, 0 failed): POST /volumes {name} reads 201 {volumeID, name, token, domain?} with the token hidden from Debug; GET /volumes reads [{volumeID, name}]; GET /volumes/{id} 404 is VolumeNotFound; DELETE /volumes/{id} is true for 204 and false for 404.",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T03:16:36.254924443Z",
+          "seal": {
+            "by": "server",
+            "mac": "50e30156c06d7273591d42e4ae1ebcbb782a81a2a6ad64532f727c0b8ca9e71b"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "supported",
+          "rationale": "The evidence-map tests asserting the wire fact pass at 6db8faa (just test: 343 passed, 0 failed). Hosted E2B's 403 for this team confirms the route exists but does not exercise the success shapes; those are pinned by the mock tests.",
+          "auditor": "claude-code/claude-opus-5-5 (M3 coordinator)",
+          "evidence_ids": [
+            "EVD-0209"
+          ],
+          "recorded_at": "2026-10-28T03:17:42.886148082Z",
+          "seal": {
+            "by": "server",
+            "mac": "e7d015b65734b297f248358984e1843fba972b0dcd5e47a490d1f7d203eea61c"
+          }
+        }
+      ],
       "created_at": "2026-10-27T19:57:29.982344497Z",
-      "updated_at": "2026-10-27T19:57:29.982344497Z",
+      "updated_at": "2026-10-28T03:17:42.886148082Z",
       "seal": {
         "by": "server",
-        "mac": "e01dcb5b233b9eeff2265287048d8865a6a6b2655996f5336cf55fc507d6a554"
+        "mac": "e7db6fa48a4646c3fac2c6414c9b9dc918776e55e066a9de2fa95732a23f7ab4"
       }
     },
     {
@@ -9292,13 +10287,40 @@
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0210",
+          "kind": "test",
+          "locator": "tests/rest_volumes.rs::create_sends_volume_mounts_and_info_reads_them; tests/rest_volumes.rs::list_entries_read_volume_mounts; src/models.rs::tests::volume_mounts_keep_their_order_and_a_second_mount_at_a_path_replaces_the_first; src/models.rs::tests::create_body_omits_unset_optionals @ 6db8faa; docs/verification/s4-evidence-map.md",
+          "summary": "All pass at 6db8faa (just test: 343 passed, 0 failed): the exact create body carries volumeMounts [{name, path}] in call order (a second mount at a path replaces the first; none leaves the field out), and both get_info and list entries read volumeMounts back.",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T03:16:39.005951215Z",
+          "seal": {
+            "by": "server",
+            "mac": "8efb5d587f32d82f29fe929561d8c86f1d2294c329dcbd9778c65ec2e3017f4c"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "supported",
+          "rationale": "The evidence-map tests asserting the wire fact pass at 6db8faa (just test: 343 passed, 0 failed).",
+          "auditor": "claude-code/claude-opus-5-5 (M3 coordinator)",
+          "evidence_ids": [
+            "EVD-0210"
+          ],
+          "recorded_at": "2026-10-28T03:17:44.336846353Z",
+          "seal": {
+            "by": "server",
+            "mac": "d6e72f94d93e566d5bc26de1cbe3de9e8e9b87985b7c75dc29370d1d6b9ad64c"
+          }
+        }
+      ],
       "created_at": "2026-10-27T19:57:29.982344497Z",
-      "updated_at": "2026-10-27T19:57:29.982344497Z",
+      "updated_at": "2026-10-28T03:17:44.336846353Z",
       "seal": {
         "by": "server",
-        "mac": "a116143908e0c8e3d059d36bf434a606ed68182cb9c8fc02f016e511f2222704"
+        "mac": "ac15cd4f32c7e370e2287fe9396f069afb913bfd92f2d84e979ca460dde5aef2"
       }
     },
     {
@@ -9319,13 +10341,40 @@
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0211",
+          "kind": "test",
+          "locator": "tests/rest_mcp.rs::create_with_mcp_uses_the_gateway_template_and_starts_it_as_root; tests/rest_mcp.rs::an_explicit_template_wins_over_the_gateway_default; tests/rest_mcp.rs::an_empty_mcp_config_is_left_out_of_the_body_but_starts_the_gateway; tests/rest_mcp.rs::create_without_mcp_starts_no_gateway; tests/rest_mcp.rs::a_failed_gateway_kills_the_sandbox_and_reports_stderr; tests/rest_mcp.rs::a_failed_gateway_call_kills_the_sandbox_and_a_failed_kill_is_ignored; tests/rest_mcp.rs::a_connected_handle_reads_the_token_file_as_root; tests/rest_mcp.rs::a_failed_token_read_is_not_cached; src/mcp.rs::tests::shell_quote_matches_shlex_quote; src/mcp.rs::tests::gateway_command_quotes_the_json_config; src/mcp.rs::tests::gateway_command_escapes_a_single_quote_in_the_config; src/models.rs::tests::template_is_the_given_one_else_the_mcp_default_else_base; src/models.rs::tests::create_body_sends_the_mcp_config_and_leaves_out_an_empty_one; src/sandbox.rs::tests::debug_output_omits_the_api_key_and_access_tokens @ 6db8faa; docs/verification/s4-evidence-map.md",
+          "summary": "All pass at 6db8faa (just test: 343 passed, 0 failed): with MCP and no template, create uses mcp-gateway, sends mcp, then starts mcp-gateway --config '<compact JSON>' as root with only GATEWAY_ACCESS_TOKEN (a v4 UUID) set; a failed start kills the sandbox; the URL is https://50005-<id>.<domain>/mcp; a connected handle reads the token file as root once; Debug omits the token.",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T03:16:44.605012482Z",
+          "seal": {
+            "by": "server",
+            "mac": "4b64bbe6ce2ceed3dbce8259c2ad8d5193d92af764b8627b40489e60e36f496e"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "supported",
+          "rationale": "The evidence-map tests asserting the wire fact pass at 6db8faa (just test: 343 passed, 0 failed).",
+          "auditor": "claude-code/claude-opus-5-5 (M3 coordinator)",
+          "evidence_ids": [
+            "EVD-0211"
+          ],
+          "recorded_at": "2026-10-28T03:17:45.785900949Z",
+          "seal": {
+            "by": "server",
+            "mac": "b551caf136b738688b5bf2d7980bf92e08c80a9e6916f10d89f19939fc3316ef"
+          }
+        }
+      ],
       "created_at": "2026-10-27T19:57:29.982344497Z",
-      "updated_at": "2026-10-27T19:58:17.949132496Z",
+      "updated_at": "2026-10-28T03:17:45.785900949Z",
       "seal": {
         "by": "server",
-        "mac": "e714c30a52bd43896292dde7c617ea16779c2544180970949253f60b3c5434c5"
+        "mac": "6584f2bf52518aa4fb7c7a805ea5b6cea2ddebac932b4de7bb2646ed150e5482"
       }
     },
     {
@@ -9346,13 +10395,40 @@
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0212",
+          "kind": "test",
+          "locator": "tests/rest_list.rs::list_sends_order_started_after_and_template; tests/rest_list.rs::list_omits_unset_filters; src/models.rs::tests::list_query_orders_new_filters_like_the_sdk; src/models.rs::tests::isoformat_matches_python_for_whole_milli_micro_and_nanosecond_times @ 6db8faa; docs/verification/s4-evidence-map.md",
+          "summary": "All pass at 6db8faa (just test: 343 passed, 0 failed): GET /v2/sandboxes sends order=desc/asc, startedAfter=2026-10-27T12:00:00+00:00 (Python isoformat form) and template=base, and none of the three when unset, in the SDK's pair order.",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T03:16:47.202965067Z",
+          "seal": {
+            "by": "server",
+            "mac": "1e030bfa840d90e398feec277bfb6e551a631c6065895318bf0623e662219fef"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "supported",
+          "rationale": "The evidence-map tests asserting the wire fact pass at 6db8faa (just test: 343 passed, 0 failed).",
+          "auditor": "claude-code/claude-opus-5-5 (M3 coordinator)",
+          "evidence_ids": [
+            "EVD-0212"
+          ],
+          "recorded_at": "2026-10-28T03:17:47.186356794Z",
+          "seal": {
+            "by": "server",
+            "mac": "10092729d361022c4fba25097d8ab00f7828ada5424bc7135a5388f65d41c394"
+          }
+        }
+      ],
       "created_at": "2026-10-27T19:57:29.982344497Z",
-      "updated_at": "2026-10-27T19:57:29.982344497Z",
+      "updated_at": "2026-10-28T03:17:47.186356794Z",
       "seal": {
         "by": "server",
-        "mac": "6f69f8c47e35e240c4a8fea398addca679c7df2a02928397c4d5d7b5fbb74b8e"
+        "mac": "f94bc0572925c70809132a8e1047932216662536239cd1ea1e85b8be5e00c5c3"
       }
     },
     {
@@ -9373,13 +10449,40 @@
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0213",
+          "kind": "test",
+          "locator": "tests/rest_network.rs::get_info_reads_network_and_internet_access; tests/rest_network.rs::get_info_reads_null_network_fields_as_none; tests/rest_network.rs::get_info_without_network_fields_reads_none; src/network.rs::tests::info_reads_null_fields_as_empty_or_none; src/network.rs::tests::rule_reads_null_transform_and_null_headers_as_empty; tests/rest_lifecycle.rs::get_info_reads_lifecycle_and_pause_mode; tests/rest_lifecycle.rs::get_info_without_lifecycle_fields_reads_none; src/lifecycle.rs::tests::lifecycle_info_reads_a_missing_or_null_action_as_unknown; tests/rest_volumes.rs::create_sends_volume_mounts_and_info_reads_them; tests/rest_volumes.rs::get_info_without_volume_mounts_reads_none; src/models.rs::tests::sandbox_info_reads_missing_or_null_volume_mounts_as_empty @ 6db8faa; docs/verification/s4-evidence-map.md",
+          "summary": "All pass at 6db8faa (just test: 343 passed, 0 failed): SandboxInfo reads allowInternetAccess, every network field, lifecycle {onTimeout, autoResume}, pauseMode full/filesystem and volumeMounts when present; null or absent fields read as None or empty, and unknown values do not fail the detail.",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T03:16:51.199850759Z",
+          "seal": {
+            "by": "server",
+            "mac": "f1f638de1f15ab6a5516ca2839ad85b4a01c47aa7ac4c4bbfcf5602b8b96acbb"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "supported",
+          "rationale": "The evidence-map tests asserting the wire fact pass at 6db8faa (just test: 343 passed, 0 failed).",
+          "auditor": "claude-code/claude-opus-5-5 (M3 coordinator)",
+          "evidence_ids": [
+            "EVD-0213"
+          ],
+          "recorded_at": "2026-10-28T03:17:48.480015450Z",
+          "seal": {
+            "by": "server",
+            "mac": "852a0bfd9408a64ffaa8b058c9450825076bf79bc6f3198c3290a27cfdd85147"
+          }
+        }
+      ],
       "created_at": "2026-10-27T19:57:29.982344497Z",
-      "updated_at": "2026-10-27T19:57:29.982344497Z",
+      "updated_at": "2026-10-28T03:17:48.480015450Z",
       "seal": {
         "by": "server",
-        "mac": "1d8a95e64811912c4936f3142631e74e7a3d021f929bd02168a89f56c204e482"
+        "mac": "05771f208341d4c04c5464fe4991d28ce0d831976be397d992f9377735c45c7d"
       }
     }
   ]
