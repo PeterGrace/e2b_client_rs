@@ -1,9 +1,9 @@
 {
   "schema_version": 2,
-  "next_claim_seq": 168,
+  "next_claim_seq": 182,
   "next_claim_seq_seal": {
     "by": "server",
-    "mac": "80261f8c67b21f251943875b9ba8147d4fdf77bb62c9e9154d90f913ce2d1786"
+    "mac": "aa5a465b8e88b71dbc1a03e1e4c4a5b3833663cd88247fba24784462b2661d2d"
   },
   "next_evidence_seq": 219,
   "next_evidence_seq_seal": {
@@ -7684,7 +7684,7 @@
       ],
       "tags": [
         "s5",
-        "gap"
+        "m4"
       ],
       "status": {
         "state": "active"
@@ -7704,10 +7704,10 @@
         }
       ],
       "created_at": "2026-10-26T22:12:45.325766859Z",
-      "updated_at": "2026-10-26T23:03:23.065931750Z",
+      "updated_at": "2026-10-28T11:54:11.147223950Z",
       "seal": {
         "by": "server",
-        "mac": "528d12892fc0b92e2bac9c3e24fe7e8693152693dcc547ccbd478cf3b2af32ce"
+        "mac": "58d634c17367ff7f426cf2d1b63898c08eef4de6d6af1206d3178633f3beecfd"
       }
     },
     {
@@ -7725,7 +7725,7 @@
       ],
       "tags": [
         "s5",
-        "gap"
+        "m4"
       ],
       "status": {
         "state": "active"
@@ -7745,10 +7745,10 @@
         }
       ],
       "created_at": "2026-10-26T22:12:45.325766859Z",
-      "updated_at": "2026-10-26T23:03:24.308577603Z",
+      "updated_at": "2026-10-28T11:54:11.163090446Z",
       "seal": {
         "by": "server",
-        "mac": "de8efea27878117574b2293c735a3dc06c27ed994b80b7ed48099296ed061f24"
+        "mac": "e8dd535a66953f9962f01e4a79eb1dc448415acd386cc42dbb256807fa4c2163"
       }
     },
     {
@@ -7767,7 +7767,7 @@
       ],
       "tags": [
         "s5",
-        "gap"
+        "m4"
       ],
       "status": {
         "state": "active"
@@ -7787,10 +7787,10 @@
         }
       ],
       "created_at": "2026-10-26T22:12:45.325766859Z",
-      "updated_at": "2026-10-26T23:03:25.560108724Z",
+      "updated_at": "2026-10-28T11:54:11.182102495Z",
       "seal": {
         "by": "server",
-        "mac": "a1edfd7bdb168e5d951ac141e07eceb4df0874203cd9d9fd9422224721961c59"
+        "mac": "7d5a9857963f2e7c977dee501c9be6b0f8fa43402dab950b070355812287abda"
       }
     },
     {
@@ -10483,6 +10483,417 @@
       "seal": {
         "by": "server",
         "mac": "05771f208341d4c04c5464fe4991d28ce0d831976be397d992f9377735c45c7d"
+      }
+    },
+    {
+      "id": "CLM-0168",
+      "statement": "connect_sandbox sends only POST /v2/sandboxes/{id}/connect; a 404 there is Error::SandboxNotFound and no second request is made (the v1 route is not used).",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "spec#decisions 5; plan M4 Task 1",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/client.rs"
+      ],
+      "tags": [
+        "s4",
+        "m4"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-28T11:54:04.781576457Z",
+      "updated_at": "2026-10-28T11:54:04.781576457Z",
+      "seal": {
+        "by": "server",
+        "mac": "94bdf01e61dc573b9a2ae617e0b1e91feccf72ce8c94e7663bcb5db5242ef3cf"
+      }
+    },
+    {
+      "id": "CLM-0169",
+      "statement": "Error::status() returns the HTTP status of Api and Envd errors, and the classifiers follow SDK 2.61's error maps: is_auth for HTTP 401 or Unauthenticated, is_rate_limited for 429 or ResourceExhausted, is_service_busy for a REST 503, is_not_enough_space for an envd 507, is_sandbox_unreachable for an envd 502 or Unavailable, is_timeout for client deadlines, DeadlineExceeded and Canceled, and is_retryable for rate limiting, a busy service or a connection that never reached the server.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: api/__init__.py:155-213; py: envd/api.py:24-33; py: envd/rpc.py:26-40; plan M4 Task 2",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/error.rs"
+      ],
+      "tags": [
+        "s4",
+        "m4"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-28T11:54:04.781576457Z",
+      "updated_at": "2026-10-28T11:55:19.520082930Z",
+      "seal": {
+        "by": "server",
+        "mac": "c6b68f06a13ca4d7fdc6b5aa1993085be8af24021818843e33135986ea89f2ff"
+      }
+    },
+    {
+      "id": "CLM-0170",
+      "statement": "No reqwest type appears in the public API: Error::Transport holds an opaque crate type that keeps the cause as its source; secrecy is re-exported; and the README's semver policy lists every public dependency.",
+      "kind": "constraint",
+      "level": "unit",
+      "verification_method": "inspection",
+      "source": "spec#milestones M4 (error taxonomy); plan M4 Task 2",
+      "derived_from": [
+        "CLM-0006"
+      ],
+      "artifacts": [
+        "src/error.rs",
+        "src/lib.rs",
+        "README.md"
+      ],
+      "tags": [
+        "s5",
+        "m4"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-28T11:54:04.781576457Z",
+      "updated_at": "2026-10-28T11:54:04.781576457Z",
+      "seal": {
+        "by": "server",
+        "mac": "9ea3c885c7d55a0e612c51abcea218b514fe7fac4236fa0ffa209b1875b38791"
+      }
+    },
+    {
+      "id": "CLM-0171",
+      "statement": "A pause that asks for a SnapshotMode returns Error::Api with status 409 when the API refuses it, and Ok(false) only when the 409 message says the sandbox is already paused; a pause without a mode keeps SDK 2.61's Ok(false) for every 409.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "issue #81; plan M4 Task 3",
+      "derived_from": [
+        "CLM-0002"
+      ],
+      "artifacts": [
+        "src/client.rs"
+      ],
+      "tags": [
+        "s1",
+        "m4"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-28T11:54:04.781576457Z",
+      "updated_at": "2026-10-28T11:54:04.781576457Z",
+      "seal": {
+        "by": "server",
+        "mac": "c58900870852c14150877ab66285aaf8ade1af3513c223b1e89a310c0ce38609"
+      }
+    },
+    {
+      "id": "CLM-0172",
+      "statement": "A zero duration on any stream deadline or request timeout (commands, PTY, stream input, watch, and the per-call request timeout) means no limit, as SDK 2.61's timeout=0 does: no Connect-Timeout-Ms header and no client-side deadline.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: envd/utils.py:15-24; issue #52; plan M4 Task 4",
+      "derived_from": [
+        "CLM-0005"
+      ],
+      "artifacts": [
+        "src/envd/connect.rs"
+      ],
+      "tags": [
+        "s4",
+        "m4"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-28T11:54:04.781576457Z",
+      "updated_at": "2026-10-28T11:54:04.781576457Z",
+      "seal": {
+        "by": "server",
+        "mac": "6623887abcd999dab92453fe2382650dbb297f19fef713a49cf0536ac97e8c82"
+      }
+    },
+    {
+      "id": "CLM-0173",
+      "statement": "Every Filesystem call takes an options value with the user and a per-call request timeout that overrides the configured one, as the SDK's user and request_timeout arguments do.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: sandbox_async/filesystem/filesystem.py:116-650; plan M4 Task 5",
+      "derived_from": [
+        "CLM-0004"
+      ],
+      "artifacts": [
+        "src/filesystem.rs"
+      ],
+      "tags": [
+        "s3",
+        "m4"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-28T11:54:04.781576457Z",
+      "updated_at": "2026-10-28T11:54:04.781576457Z",
+      "seal": {
+        "by": "server",
+        "mac": "c698a433b0e1b7519e1e73b59b78c04de23b211d345854d03604b41bfd3b4bfc"
+      }
+    },
+    {
+      "id": "CLM-0174",
+      "statement": "Commands::connect and Pty::connect take options structs; those structs, CommandOptions and PtyOptions carry a per-call request timeout that overrides the configured one; and Commands::connect defaults to SDK 2.61's 60 s deadline.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: sandbox_async/commands/command.py:346-350; py: sandbox_async/commands/pty.py:207-212; issue #54; plan M4 Task 7",
+      "derived_from": [
+        "CLM-0003"
+      ],
+      "artifacts": [
+        "src/commands.rs",
+        "src/pty.rs"
+      ],
+      "tags": [
+        "s2",
+        "m4"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-28T11:54:04.781576457Z",
+      "updated_at": "2026-10-28T11:55:20.416253637Z",
+      "seal": {
+        "by": "server",
+        "mac": "2ac590d415277c525146bd06e3289a60e7b0cb637380b30082b22586a8369ee2"
+      }
+    },
+    {
+      "id": "CLM-0175",
+      "statement": "A PTY session opened with default options has no deadline: more than 60 s after it opened it still echoes input.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "issue #55; plan M4 Task 8",
+      "derived_from": [
+        "CLM-0003"
+      ],
+      "artifacts": [
+        "src/pty.rs"
+      ],
+      "tags": [
+        "s2",
+        "m4"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-28T11:54:04.781576457Z",
+      "updated_at": "2026-10-28T11:54:04.781576457Z",
+      "seal": {
+        "by": "server",
+        "mac": "3779e47bcd048c75076d8a5a36dbaeb685e7b36187113485196be16f57afe733"
+      }
+    },
+    {
+      "id": "CLM-0176",
+      "statement": "write_files with the octet-stream or gzip encoding keeps at most WriteOptions::max_concurrency uploads in flight (8 by default), returns results in input order, and fails on the first error.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "issue #53; plan M4 Task 9",
+      "derived_from": [
+        "CLM-0004"
+      ],
+      "artifacts": [
+        "src/filesystem.rs"
+      ],
+      "tags": [
+        "s3",
+        "m4"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-28T11:54:04.781576457Z",
+      "updated_at": "2026-10-28T11:54:04.781576457Z",
+      "seal": {
+        "by": "server",
+        "mac": "034f5e56d78f0882f3e81c671f435d67a908f1200b91ad1fd957ea372397f725"
+      }
+    },
+    {
+      "id": "CLM-0177",
+      "statement": "list and get_info report FileType::Symlink for a symbolic link, both when envd sets is_symlink with the target's type and when it reports type symlink.",
+      "kind": "functional",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "py: sandbox/filesystem/filesystem.py:130-148; py: envd/filesystem/filesystem_pb.py:240, 299-303; issue #30; plan M4 Task 10",
+      "derived_from": [
+        "CLM-0004"
+      ],
+      "artifacts": [
+        "src/filesystem.rs",
+        "src/envd/filesystem_pb.rs"
+      ],
+      "tags": [
+        "s3",
+        "m4"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-28T11:54:04.781576457Z",
+      "updated_at": "2026-10-28T11:54:04.781576457Z",
+      "seal": {
+        "by": "server",
+        "mac": "a6020b5c6e7553ac92afd02296392e6b76c8de87f1977d33a8c92712b5e530fb"
+      }
+    },
+    {
+      "id": "CLM-0178",
+      "statement": "Pty::connect's rustdoc states what connecting to the pid of a PTY that has exited returns on hosted E2B, and a live test pins that behaviour.",
+      "kind": "documentation",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "issue #56; plan M4 Task 11",
+      "derived_from": [
+        "CLM-0003"
+      ],
+      "artifacts": [
+        "src/pty.rs"
+      ],
+      "tags": [
+        "s2",
+        "m4"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-28T11:54:04.781576457Z",
+      "updated_at": "2026-10-28T11:54:04.781576457Z",
+      "seal": {
+        "by": "server",
+        "mac": "e888b6e82fc1d0d312a2227e3170f603a427285f2fe5ba3d8bc76bb93c9543fb"
+      }
+    },
+    {
+      "id": "CLM-0179",
+      "statement": "Client, Sandbox, Commands, Pty, Filesystem and every public options and result type are Send and Sync, the stream handles are Send, and every public type implements Debug.",
+      "kind": "constraint",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "Rust API Guidelines C-SEND-SYNC, C-DEBUG; plan M4 Task 12",
+      "derived_from": [
+        "CLM-0006"
+      ],
+      "artifacts": [
+        "tests/api_traits.rs"
+      ],
+      "tags": [
+        "s5",
+        "m4"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-28T11:54:04.781576457Z",
+      "updated_at": "2026-10-28T11:54:04.781576457Z",
+      "seal": {
+        "by": "server",
+        "mac": "e64106f483c5a458c36cbf0be7b0040db32032c34ace2676dfde2ef7e8ddd8b5"
+      }
+    },
+    {
+      "id": "CLM-0180",
+      "statement": "docs/api-review.md records a Rust API Guidelines review of every public item, and the public API follows the naming, conversion and common-trait guidelines or the review records why not.",
+      "kind": "documentation",
+      "level": "unit",
+      "verification_method": "inspection",
+      "source": "spec#milestones M4 (naming and builder consistency); plan M4 Task 12",
+      "derived_from": [
+        "CLM-0006"
+      ],
+      "artifacts": [
+        "docs/api-review.md",
+        "src/"
+      ],
+      "tags": [
+        "s5",
+        "m4"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-28T11:54:04.781576457Z",
+      "updated_at": "2026-10-28T11:54:04.781576457Z",
+      "seal": {
+        "by": "server",
+        "mac": "dfc4b68e542cfeb269f85bc4de36df17640f95734a5a2e7392c68529abaebdac"
+      }
+    },
+    {
+      "id": "CLM-0181",
+      "statement": "just test-live-paced runs the live tests one at a time with a configurable gap, reruns once each test that failed on server readiness, and labels every result in the run log.",
+      "kind": "non_functional",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "issue #57; plan M4 Task 15",
+      "derived_from": [
+        "CLM-0006"
+      ],
+      "artifacts": [
+        "justfile"
+      ],
+      "tags": [
+        "s5",
+        "m4"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-28T11:54:04.781576457Z",
+      "updated_at": "2026-10-28T11:54:04.781576457Z",
+      "seal": {
+        "by": "server",
+        "mac": "2a5f26f3a73497d37626ad79a23e2d3631223921e934ddb38e18b3560a791053"
       }
     }
   ]
