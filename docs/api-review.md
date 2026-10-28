@@ -22,7 +22,7 @@ CLM-0180 (this record). The item list is the re-exports in `src/lib.rs` as of
 | C-SEND-SYNC | Clients, service handles, options, results and errors are `Send + Sync`; stream handles are `Send` | `tests/api_traits.rs` |
 | C-GOOD-ERR | One `Error` enum, `#[non_exhaustive]`, struct variants `#[non_exhaustive]`, `Send + Sync + 'static`, with classifiers instead of exception classes (decision 1). A variant that wraps a source error does not repeat it in its `Display` (see "Error display" below) | `tests/api_traits.rs`; `tests/error_taxonomy.rs` |
 | C-NON-EXHAUSTIVE / C-STRUCT-PRIVATE | Options and handles have private fields. Result types have public fields and are `#[non_exhaustive]` (callers read them, the API may add fields). Enums that mirror an API or protobuf enum that can grow are `#[non_exhaustive]` | review |
-| C-STABLE (public dependencies) | No reqwest type is public (`TransportError`); `secrecy` is re-exported; the public dependencies are listed in the README (Task 13) | review; CLM-0170 |
+| C-STABLE (public dependencies) | No reqwest type is public (`TransportError`); `secrecy` is re-exported; the public dependencies are listed in the README (Task 13) | review; CLM-0170; README 'Versioning' |
 | C-FAILURE | Every fallible public function documents `# Errors` | `clippy::missing_errors_doc` and `missing_panics_doc`: no warnings on 2026-10-28 |
 | C-EXAMPLE | Every public type and every public async method has an `# Examples` section | `tests/doc_examples.rs` (Task 14) |
 | Docs | Every public item has rustdoc | `missing_docs` in `Cargo.toml` |

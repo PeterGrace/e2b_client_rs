@@ -27,3 +27,18 @@ jobs:
         run: just test
       - name: Docs
         run: just doc
+
+  msrv:
+    # The minimum supported Rust version in Cargo.toml (`rust-version`).
+    # `--locked` checks the committed Cargo.lock, which is what users of a
+    # git dependency get.
+    name: MSRV (Rust 1.89)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.89"
+      - uses: Swatinem/rust-cache@v2
+      - name: Check on the MSRV
+        run: cargo check --all-targets --locked

@@ -5892,6 +5892,8 @@ git commit -m "feat: API review: non_exhaustive events and signals, new() on eve
 - Modify: `docs/api-review.md` (link the policy), if Task 12 has landed; otherwise Task 12 adds the link
 - Create: `changelog/<ts>-m4-task-13-msrv-and-semver.md`
 
+> **Corrected (issue #96, 2026-10-28).** The changelog entry shipped as `changelog/<ts>-m4-task-13-msrv-semver.md` (the issue's name). Everything else landed as written: 1.88 fails on `uuid@1.29.0 requires rustc 1.89.0`, 1.89 builds, and every "Where it appears" cell matched the signatures.
+
 - [ ] **Step 1: Confirm the floor before pinning it**
 
 Run: `cargo +1.89 check --all-targets --locked`
@@ -5996,7 +5998,7 @@ Expected: all PASS (the README is a doctest, so a broken code fence fails `just 
 
 - [ ] **Step 6: Changelog and commit**
 
-`changelog/<ts>-m4-task-13-msrv-and-semver.md`: the MSRV and how it was found (Step 1's output), the CI job, the policy text, and the public-dependency list.
+`changelog/<ts>-m4-task-13-msrv-semver.md`: the MSRV and how it was found (Step 1's output), the CI job, the policy text, and the public-dependency list.
 
 ```bash
 git add Cargo.toml .github/workflows/ci.yml README.md CONTRIBUTING.md docs/api-review.md changelog/
