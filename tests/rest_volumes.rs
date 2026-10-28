@@ -48,25 +48,31 @@ async fn create_volume_posts_its_name_and_keeps_the_token_secret() {
 
 #[tokio::test]
 async fn create_volume_refused_is_an_api_error() {
-    // Arrange
-    let server = MockServer::start().await;
-    Mock::given(method("POST"))
-        .and(path("/volumes"))
-        .respond_with(ResponseTemplate::new(400).set_body_json(error_json(400, "bad name")))
-        .mount(&server)
-        .await;
+    // A 400 for a name the API refuses, and the 403 hosted E2B gives a team
+    // without volumes (live, 2026-10-28), each with its own server.
+    for (status, message) in [(400, "bad name"), (403, "use of volumes is not enabled")] {
+        // Arrange
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/volumes"))
+            .respond_with(ResponseTemplate::new(status).set_body_json(error_json(status, message)))
+            .mount(&server)
+            .await;
 
-    // Act
-    let error = client_for(&server)
-        .create_volume("Bad Name")
-        .await
-        .expect_err("refused");
+        // Act
+        let error = client_for(&server)
+            .create_volume("data")
+            .await
+            .expect_err("refused");
 
-    // Assert
-    assert!(
-        matches!(&error, Error::Api { status: 400, message } if message == "bad name"),
-        "{error:?}"
-    );
+        // Assert
+        assert!(
+            matches!(&error, Error::Api { status: got, message: text }
+                if *got == status && text == message),
+            "{status}: {error:?}"
+        );
+        assert!(!error.is_not_found(), "{status}");
+    }
 }
 
 #[tokio::test]
