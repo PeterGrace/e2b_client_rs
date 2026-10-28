@@ -1,10 +1,15 @@
 //! Lifecycle create options, the idempotency key, and the pause and resume
-//! modes (Task 7) against a mock server.
+//! modes against a mock server.
 
 mod common;
 
+use std::time::Duration;
+
 use common::{SANDBOX_ID, client_for, detail_json, sandbox_json};
-use e2b_client::{CreateSandboxParams, Error, Lifecycle, OnTimeout, SnapshotMode, TimeoutAction};
+use e2b_client::{
+    ConnectOptions, CreateSandboxParams, Error, Lifecycle, OnResume, OnTimeout, PauseOptions,
+    SnapshotMode, TimeoutAction,
+};
 use serde_json::{Value, json};
 use wiremock::matchers::{body_json, header, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
@@ -354,4 +359,206 @@ async fn get_info_without_lifecycle_fields_reads_none() {
         assert_eq!(info.lifecycle, None, "{info:?}");
         assert_eq!(info.pause_mode, None, "{info:?}");
     }
+}
+
+/// Mounts a mock answering `template` to one `POST` on `route` whose JSON body
+/// is exactly `body`, named `label` so a failed expectation says which.
+async fn expect_post(
+    server: &MockServer,
+    route: String,
+    body: Value,
+    template: ResponseTemplate,
+    label: &str,
+) {
+    Mock::given(method("POST"))
+        .and(path(route))
+        .and(body_json(body))
+        .respond_with(template)
+        .expect(1)
+        .named(label)
+        .mount(server)
+        .await;
+}
+
+#[tokio::test]
+async fn pause_sends_memory_from_the_mode() {
+    // Arrange: one mock per body; a request with any other body gets
+    // wiremock's 404, which `pause_sandbox_with` reports as not found.
+    let server = MockServer::start().await;
+    for (body, label) in [
+        (json!({"memory": true}), "full"),
+        (json!({"memory": false}), "filesystem"),
+        (json!({}), "default"),
+    ] {
+        expect_post(
+            &server,
+            format!("/sandboxes/{SANDBOX_ID}/pause"),
+            body,
+            ResponseTemplate::new(204),
+            label,
+        )
+        .await;
+    }
+    let client = client_for(&server);
+    let full = PauseOptions::new().mode(SnapshotMode::Full);
+    let filesystem = PauseOptions::new().mode(SnapshotMode::Filesystem);
+
+    // Act and Assert: each call matches only its own mock.
+    assert!(
+        client
+            .pause_sandbox_with(SANDBOX_ID, &full)
+            .await
+            .expect("full")
+    );
+    assert!(
+        client
+            .pause_sandbox_with(SANDBOX_ID, &filesystem)
+            .await
+            .expect("filesystem")
+    );
+    assert!(client.pause_sandbox(SANDBOX_ID).await.expect("default"));
+}
+
+#[tokio::test]
+async fn pause_with_maps_status_codes_as_pause_does() {
+    // Arrange: 409 is "already paused" for every mode, as in the SDK; 400
+    // (a refused filesystem-only pause) is an API error; 404 is not found.
+    let server = MockServer::start().await;
+    for (id, status) in [("already", 409), ("refused", 400), ("missing", 404)] {
+        Mock::given(method("POST"))
+            .and(path(format!("/sandboxes/{id}/pause")))
+            .respond_with(
+                ResponseTemplate::new(status)
+                    .set_body_json(json!({"code": status, "message": "nope"})),
+            )
+            .expect(1)
+            .mount(&server)
+            .await;
+    }
+    let client = client_for(&server);
+    let filesystem = PauseOptions::new().mode(SnapshotMode::Filesystem);
+
+    // Act
+    let already = client.pause_sandbox_with("already", &filesystem).await;
+    let refused = client.pause_sandbox_with("refused", &filesystem).await;
+    let missing = client.pause_sandbox_with("missing", &filesystem).await;
+
+    // Assert
+    assert!(!already.expect("409 is already paused"));
+    assert!(
+        matches!(refused, Err(Error::Api { status: 400, ref message }) if message == "nope"),
+        "{refused:?}"
+    );
+    assert!(
+        matches!(missing, Err(Error::SandboxNotFound(ref id)) if id == "missing"),
+        "{missing:?}"
+    );
+}
+
+#[tokio::test]
+async fn sandbox_pause_with_sends_the_mode() {
+    let server = MockServer::start().await;
+    let sandbox = common::sandbox(&server).await;
+    expect_post(
+        &server,
+        format!("/sandboxes/{SANDBOX_ID}/pause"),
+        json!({"memory": false}),
+        ResponseTemplate::new(204),
+        "filesystem",
+    )
+    .await;
+
+    let paused = sandbox
+        .pause_with(&PauseOptions::new().mode(SnapshotMode::Filesystem))
+        .await
+        .expect("pause");
+
+    assert!(paused);
+}
+
+#[tokio::test]
+async fn connect_sends_memory_false_only_for_a_reboot() {
+    // Arrange
+    let server = MockServer::start().await;
+    for (body, label) in [
+        (json!({"timeout": 60, "memory": false}), "reboot"),
+        (json!({"timeout": 90}), "restore with a timeout"),
+        (json!({}), "restore"),
+    ] {
+        expect_post(
+            &server,
+            format!("/v2/sandboxes/{SANDBOX_ID}/connect"),
+            body,
+            ResponseTemplate::new(200).set_body_json(sandbox_json("0.5.7")),
+            label,
+        )
+        .await;
+    }
+    let client = client_for(&server);
+    let reboot = ConnectOptions::new()
+        .timeout(Duration::from_secs(60))
+        .on_resume(OnResume::Reboot);
+    let restore_with_timeout = ConnectOptions::new()
+        .timeout(Duration::from_secs(90))
+        .on_resume(OnResume::Restore);
+    let restore = ConnectOptions::new().on_resume(OnResume::Restore);
+
+    // Act and Assert: each call matches only its own mock.
+    let sandbox = client
+        .connect_sandbox_with(SANDBOX_ID, &reboot)
+        .await
+        .expect("reboot");
+    assert_eq!(sandbox.sandbox_id(), SANDBOX_ID);
+    client
+        .connect_sandbox_with(SANDBOX_ID, &restore_with_timeout)
+        .await
+        .expect("restore with a timeout");
+    client
+        .connect_sandbox_with(SANDBOX_ID, &restore)
+        .await
+        .expect("restore");
+}
+
+#[tokio::test]
+async fn the_v1_fallback_keeps_the_reboot_flag() {
+    // Arrange: the v2 route is missing, so both calls fall back to v1.
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path(format!("/v2/sandboxes/{SANDBOX_ID}/connect")))
+        .respond_with(ResponseTemplate::new(404))
+        .expect(2)
+        .mount(&server)
+        .await;
+    for (body, label) in [
+        // No timeout: v1 requires one, so the 300 s default is sent.
+        (
+            json!({"timeout": 300, "memory": false}),
+            "reboot, default timeout",
+        ),
+        (
+            json!({"timeout": 45, "memory": false}),
+            "reboot, given timeout",
+        ),
+    ] {
+        expect_post(
+            &server,
+            format!("/sandboxes/{SANDBOX_ID}/connect"),
+            body,
+            ResponseTemplate::new(200).set_body_json(sandbox_json("0.5.7")),
+            label,
+        )
+        .await;
+    }
+    let client = client_for(&server);
+    let reboot = ConnectOptions::new().on_resume(OnResume::Reboot);
+
+    // Act and Assert
+    client
+        .connect_sandbox_with(SANDBOX_ID, &reboot)
+        .await
+        .expect("reboot, default timeout");
+    client
+        .connect_sandbox_with(SANDBOX_ID, &reboot.timeout(Duration::from_secs(45)))
+        .await
+        .expect("reboot, given timeout");
 }

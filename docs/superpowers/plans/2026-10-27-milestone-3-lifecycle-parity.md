@@ -2508,6 +2508,12 @@ git commit -m "feat: lifecycle and idempotency key options at sandbox create"
 - Modify: `src/models.rs` (`PauseBody` and `ConnectBody` replace `EmptyBody`), `src/client.rs` (`pause_sandbox_with`, `connect_sandbox_with`), `src/sandbox.rs` (`pause_with`), `src/lib.rs`
 - Modify: `tests/rest_lifecycle.rs`, `tests/live_lifecycle.rs`, `docs/protocol-notes.md` (the "Pause" and "Connect" rows), `docs/verification/s4-evidence-map.md`
 
+> **Corrected (issue #66, 2026-10-27).** What shipped differs from the steps below in four ways; the live-test code is fixed inline.
+> - **The on-disk marker is `/home/user/on-disk`, not `/tmp/on-disk`.** On hosted E2B `/tmp` is on the ext4 root disk, but the `base` template's systemd `tmpfiles.d/tmp.conf` has `D /tmp 1777 root root -`, which empties `/tmp` at every boot. The first run of both live tests failed with "lost the on-disk file". A probe showed `/home/user` and `/var/tmp` surviving a reboot, `/tmp` and `/dev/shm` emptied, and `/proc/sys/kernel/random/boot_id` changing (live, 2026-10-28 UTC). The `/dev/shm` check held as planned: a restore kept the tmpfs file and a reboot lost it. The markers are written by a `write_markers` helper as `touch ... && sync`, because the API says a cold boot may lose writes not flushed before the pause (`py: api/client/models/connect_sandbox_v2.py:18-22`).
+> - **400/409 for a filesystem-only pause are the SDK's snapshot refusals, not documented for pause.** `PauseOptions::mode` no longer claims them; `Client::pause_sandbox_with`'s `# Errors` says a 400 is `Error::Api` and a 409 is read as "already paused" (`Ok(false)`), since the SDK reads every pause 409 that way (`py: sandbox_async/sandbox_api.py:420-422`). `clm_0146_filesystem_pause_cold_boots` therefore reports a node refusal as `paused == false`. Hosted E2B accepted the filesystem pause.
+> - `TimeoutBody` stays, for `set_sandbox_timeout` (its doc now names `SandboxTimeoutRequest`); only `EmptyBody` is removed.
+> - Extra tests beyond the plan: `pause_with_maps_status_codes_as_pause_does`, `sandbox_pause_with_sends_the_mode`, a restore with a timeout in `connect_sends_memory_false_only_for_a_reboot`, a given timeout in `the_v1_fallback_keeps_the_reboot_flag`, and three `src/lifecycle.rs` unit tests. Read `src/lifecycle.rs`, `src/client.rs` and `tests/rest_lifecycle.rs` for the shipped code.
+
 - [ ] **Step 1: Write the failing mock tests**
 
 Append to `tests/rest_lifecycle.rs` (add `ConnectOptions`, `OnResume`, `PauseOptions` and `std::time::Duration` to its imports):
@@ -2848,9 +2854,29 @@ Expected: PASS, including the existing `connect_sandbox_*` and `pause_sandbox_ma
 
 - [ ] **Step 5: Live tests**
 
-Add a helper to `tests/live_lifecycle.rs`:
+Add helpers to `tests/live_lifecycle.rs` (corrected, issue #66):
 
 ```rust
+/// A file on `/dev/shm`, a tmpfs: a memory restore keeps it and a cold boot
+/// loses it.
+const IN_MEMORY_MARKER: &str = "/dev/shm/in-memory";
+/// A file in the user's home, on disk: it survives both. Not `/tmp`, which
+/// the template's `tmpfiles.d` empties at every boot.
+const ON_DISK_MARKER: &str = "/home/user/on-disk";
+
+/// Writes both markers, then `sync`s so the on-disk one is flushed.
+async fn write_markers(sandbox: &Sandbox) {
+    let result = sandbox
+        .commands()
+        .run(
+            &format!("touch {IN_MEMORY_MARKER} {ON_DISK_MARKER} && sync"),
+            &CommandOptions::default(),
+        )
+        .await
+        .expect("markers");
+    assert_eq!(result.exit_code, 0, "{result:?}");
+}
+
 /// Whether `path` exists in `sandbox`.
 async fn exists(sandbox: &Sandbox, path: &str) -> bool {
     sandbox
@@ -2863,7 +2889,7 @@ async fn exists(sandbox: &Sandbox, path: &str) -> bool {
 }
 ```
 
-`/dev/shm` is a tmpfs, so a file there lives in memory: a memory restore keeps it and a cold boot loses it. A file in `/tmp` is on disk and survives both.
+`/dev/shm` is a tmpfs, so a file there lives in memory: a memory restore keeps it and a cold boot loses it. A file in `/home/user` is on disk and survives both. (Corrected, issue #66: `/tmp` is on disk too, but emptied at every boot.)
 
 ```rust
 #[tokio::test]
@@ -2872,11 +2898,7 @@ async fn clm_0146_resume_restores_memory_or_reboots() {
     // Arrange
     let sandbox = LiveSandbox::create(&params().timeout(Duration::from_secs(240))).await;
     let client = sandbox.client();
-    sandbox
-        .commands()
-        .run("touch /dev/shm/in-memory /tmp/on-disk", &CommandOptions::default())
-        .await
-        .expect("markers");
+    write_markers(&sandbox).await;
     let full = PauseOptions::new().mode(SnapshotMode::Full);
     let resume = |on_resume| ConnectOptions::new().timeout(Duration::from_secs(120)).on_resume(on_resume);
 
@@ -2886,7 +2908,7 @@ async fn clm_0146_resume_restores_memory_or_reboots() {
         .connect_sandbox_with(sandbox.sandbox_id(), &resume(OnResume::Restore))
         .await
         .expect("restore");
-    let kept_after_restore = exists(&restored, "/dev/shm/in-memory").await;
+    let kept_after_restore = exists(&restored, IN_MEMORY_MARKER).await;
 
     // Act 2: another full pause, then a reboot.
     assert!(restored.pause_with(&full).await.expect("second pause"));
@@ -2897,8 +2919,8 @@ async fn clm_0146_resume_restores_memory_or_reboots() {
 
     // Assert
     assert!(kept_after_restore, "a restore lost the in-memory file");
-    assert!(!exists(&rebooted, "/dev/shm/in-memory").await, "a reboot kept the in-memory file");
-    assert!(exists(&rebooted, "/tmp/on-disk").await, "a reboot lost the on-disk file");
+    assert!(!exists(&rebooted, IN_MEMORY_MARKER).await, "a reboot kept the in-memory file");
+    assert!(exists(&rebooted, ON_DISK_MARKER).await, "a reboot lost the on-disk file");
 }
 
 #[tokio::test]
@@ -2906,18 +2928,15 @@ async fn clm_0146_resume_restores_memory_or_reboots() {
 async fn clm_0146_filesystem_pause_cold_boots() {
     // Arrange
     let sandbox = LiveSandbox::create(&params().timeout(Duration::from_secs(180))).await;
-    sandbox
-        .commands()
-        .run("touch /dev/shm/in-memory /tmp/on-disk", &CommandOptions::default())
-        .await
-        .expect("markers");
+    write_markers(&sandbox).await;
 
-    // Act: hosted E2B may refuse this for the team (400) or node (409); that
-    // is an environment limit, recorded as such in the results (Task 12).
+    // Act: hosted E2B may refuse this for the team (400, an error) or node
+    // (409, which reads as "already paused": `false` here); that is an
+    // environment limit, recorded as such in the results (Task 12).
     let paused = sandbox
         .pause_with(&PauseOptions::new().mode(SnapshotMode::Filesystem))
         .await
-        .expect("filesystem pause (400 or 409 means the team or node lacks it)");
+        .expect("filesystem pause (HTTP 400 means the team lacks it)");
     let resumed = sandbox
         .client()
         .connect_sandbox(sandbox.sandbox_id(), Some(Duration::from_secs(120)))
@@ -2926,8 +2945,8 @@ async fn clm_0146_filesystem_pause_cold_boots() {
 
     // Assert
     assert!(paused);
-    assert!(!exists(&resumed, "/dev/shm/in-memory").await, "a filesystem pause kept memory");
-    assert!(exists(&resumed, "/tmp/on-disk").await, "a filesystem pause lost the disk");
+    assert!(!exists(&resumed, IN_MEMORY_MARKER).await, "a filesystem pause kept memory");
+    assert!(exists(&resumed, ON_DISK_MARKER).await, "a filesystem pause lost the disk");
 }
 ```
 
@@ -3180,7 +3199,9 @@ impl SnapshotOptions {
 
     /// What the snapshot keeps. Sandboxes made from a
     /// [`SnapshotMode::Filesystem`] snapshot cold-boot. The API may refuse
-    /// that mode with 400 or 409, as for [`crate::PauseOptions::mode`].
+    /// that mode with 400 (not enabled for the team) or 409 (the node is too
+    /// old), `py: sandbox_async/main.py:905`. (Corrected, issue #66:
+    /// `PauseOptions::mode` does not document these, so don't point to it.)
     ///
     /// # Arguments
     ///

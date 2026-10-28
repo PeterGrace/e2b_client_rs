@@ -6,9 +6,10 @@ use std::collections::HashSet;
 use std::time::{Duration, Instant};
 
 use e2b_client::{
-    ALL_TRAFFIC, CommandOptions, EnvdVersion, Error, Lifecycle, ListSandboxesParams, MetricsParams,
-    NetworkConfig, NetworkRule, NetworkUpdate, OnTimeout, SandboxInfo, SandboxState, SnapshotMode,
-    SortOrder, TimeoutAction,
+    ALL_TRAFFIC, CommandOptions, ConnectOptions, EnvdVersion, Error, Lifecycle,
+    ListSandboxesParams, MetricsParams, NetworkConfig, NetworkRule, NetworkUpdate, OnResume,
+    OnTimeout, PauseOptions, Sandbox, SandboxInfo, SandboxState, SnapshotMode, SortOrder,
+    TimeoutAction,
 };
 use live_support::{
     LiveSandbox, RUN_METADATA_KEY, client, http_reply, no_http_reply_twice, params, poll_until,
@@ -31,6 +32,42 @@ async fn list_all(params: &ListSandboxesParams) -> Vec<SandboxInfo> {
             None => return sandboxes,
         }
     }
+}
+
+/// A file on `/dev/shm`, a tmpfs: it lives in memory, so a memory restore
+/// keeps it and a cold boot loses it.
+const IN_MEMORY_MARKER: &str = "/dev/shm/in-memory";
+/// A file in the user's home, on the sandbox's disk: it survives a restore
+/// and a cold boot alike. Not `/tmp`: that is on the same disk, but the
+/// template's systemd `tmpfiles.d/tmp.conf` (`D /tmp`) empties it at every
+/// boot (hosted E2B, 2026-10-28).
+const ON_DISK_MARKER: &str = "/home/user/on-disk";
+
+/// Writes both markers in `sandbox`, then `sync`s so the on-disk one is
+/// flushed: the API says a cold boot may lose writes not flushed before the
+/// pause (`e2b/api/client/models/connect_sandbox_v2.py:18-22`).
+async fn write_markers(sandbox: &Sandbox) {
+    let result = sandbox
+        .commands()
+        .run(
+            &format!("touch {IN_MEMORY_MARKER} {ON_DISK_MARKER} && sync"),
+            &CommandOptions::default(),
+        )
+        .await
+        .expect("markers");
+    assert_eq!(result.exit_code, 0, "{result:?}");
+}
+
+/// Whether `path` exists in `sandbox`.
+async fn exists(sandbox: &Sandbox, path: &str) -> bool {
+    // `run` reports a non-zero exit in the result, not as an error.
+    sandbox
+        .commands()
+        .run(&format!("test -e {path}"), &CommandOptions::default())
+        .await
+        .expect("test -e")
+        .exit_code
+        == 0
 }
 
 /// The ids of `sandboxes`, in listing order.
@@ -856,4 +893,81 @@ async fn clm_0153_get_info_reports_lifecycle() {
     let reported = info.lifecycle.expect("lifecycle in the detail");
     assert_eq!(reported.on_timeout, TimeoutAction::Kill, "{info:?}");
     assert!(!reported.auto_resume, "{info:?}");
+}
+
+#[tokio::test]
+#[ignore = "live: run with `just test-live <target>`"]
+async fn clm_0146_resume_restores_memory_or_reboots() {
+    // Arrange
+    let sandbox = LiveSandbox::create(&params().timeout(Duration::from_secs(240))).await;
+    let client = sandbox.client();
+    write_markers(&sandbox).await;
+    let full = PauseOptions::new().mode(SnapshotMode::Full);
+    let resume = |on_resume| {
+        ConnectOptions::new()
+            .timeout(Duration::from_secs(120))
+            .on_resume(on_resume)
+    };
+
+    // Act 1: a full pause, then a restore.
+    assert!(sandbox.pause_with(&full).await.expect("first pause"));
+    let restored = client
+        .connect_sandbox_with(sandbox.sandbox_id(), &resume(OnResume::Restore))
+        .await
+        .expect("restore");
+    let kept_after_restore = exists(&restored, IN_MEMORY_MARKER).await;
+
+    // Act 2: another full pause, then a reboot.
+    assert!(restored.pause_with(&full).await.expect("second pause"));
+    let rebooted = client
+        .connect_sandbox_with(sandbox.sandbox_id(), &resume(OnResume::Reboot))
+        .await
+        .expect("reboot");
+
+    // Assert
+    assert!(kept_after_restore, "a restore lost the in-memory file");
+    assert!(
+        !exists(&rebooted, IN_MEMORY_MARKER).await,
+        "a reboot kept the in-memory file"
+    );
+    assert!(
+        exists(&rebooted, ON_DISK_MARKER).await,
+        "a reboot lost the on-disk file"
+    );
+}
+
+#[tokio::test]
+#[ignore = "live: run with `just test-live <target>`"]
+async fn clm_0146_filesystem_pause_cold_boots() {
+    // Arrange
+    let sandbox = LiveSandbox::create(&params().timeout(Duration::from_secs(180))).await;
+    write_markers(&sandbox).await;
+
+    // Act: hosted E2B may refuse a filesystem-only pause for the team (400,
+    // an error here) or the node (409, which reads as "already paused", so
+    // `false` on this running sandbox); that is an environment limit, to be
+    // recorded as such, not worked around.
+    let paused = sandbox
+        .pause_with(&PauseOptions::new().mode(SnapshotMode::Filesystem))
+        .await
+        .expect("filesystem pause (HTTP 400 means the team lacks it)");
+    let resumed = sandbox
+        .client()
+        .connect_sandbox(sandbox.sandbox_id(), Some(Duration::from_secs(120)))
+        .await
+        .expect("resume");
+
+    // Assert
+    assert!(
+        paused,
+        "a running sandbox's pause answered 409: the node refused a filesystem-only pause"
+    );
+    assert!(
+        !exists(&resumed, IN_MEMORY_MARKER).await,
+        "a filesystem pause kept memory"
+    );
+    assert!(
+        exists(&resumed, ON_DISK_MARKER).await,
+        "a filesystem pause lost the disk"
+    );
 }
