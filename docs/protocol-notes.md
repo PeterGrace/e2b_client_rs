@@ -67,8 +67,7 @@ All JSON. Request/response models are the generated OpenAPI models under
 | Lifecycle checks | before any request, `InvalidArgument`: `auto_resume: true` without `on_timeout` pause (unset counts as kill), and `auto_resume: true` with mode `filesystem`. The SDK's third check, a mode on a kill, cannot be written here: `OnTimeout::Kill` has no mode | `py: sandbox/sandbox_api.py:1095-1114` |
 | Idempotency key | `Idempotency-Key` header on `POST /v2/sandboxes`, only when given; 1-255 characters, then only `[a-z0-9-]`, else `InvalidArgument` before any request; checked before the lifecycle | `py: api/client/api/sandboxes/post_v2_sandboxes.py:17-21`; `py: retry.py:29-44`; `py: sandbox_async/sandbox_api.py:228-232`; `js: 5568` |
 | Created sandbox | `templateID`, `sandboxID`, `clientID`, `envdVersion`, `envdAccessToken?`, `trafficAccessToken?`, `domain?` | `py: api/client/models/sandbox.py:85-115` |
-| Connect / resume | `POST /v2/sandboxes/{id}/connect` body `{timeout?, memory?}`, 200 or 201 → `Sandbox`; `memory: false` only for `on_resume` reboot (cold boot from disk, any memory snapshot ignored), and left out for restore, the API's default | `py: api/client/api/sandboxes/post_v_2_sandboxes_sandbox_id_connect.py:22-23, 37-44`; `py: api/client/models/connect_sandbox_v2.py:13-42`; `py: sandbox/sandbox_api.py:761-791`; `py: sandbox_async/sandbox_api.py:498-520`; `js: 5609-5621` |
-| Connect v1 (fallback) | `POST /sandboxes/{id}/connect`, body `{timeout, memory?}`, `timeout` required (300 s sent when the caller set none); `memory: false` for a reboot, as on v2 | `py: api/client/api/sandboxes/post_sandboxes_sandbox_id_connect.py:22-23`; `py: api/client/models/connect_sandbox.py:13-43` |
+| Connect / resume | `POST /v2/sandboxes/{id}/connect` body `{timeout?, memory?}`, 200 or 201 → `Sandbox`; `memory: false` only for `on_resume` reboot (cold boot from disk, any memory snapshot ignored), and left out for restore, the API's default; 404 → not found, with no other route tried | `py: api/client/api/sandboxes/post_v_2_sandboxes_sandbox_id_connect.py:22-23, 37-44`; `py: api/client/models/connect_sandbox_v2.py:13-42`; `py: sandbox/sandbox_api.py:761-791`; `py: sandbox_async/sandbox_api.py:498-520`; `js: 5609-5621` |
 | Default sandbox timeout 300 s | | `py: sandbox/main.py:30` |
 | Get | `GET /sandboxes/{id}` → `SandboxDetail`; 404 → not found | `py: api/client/api/sandboxes/get_sandboxes_sandbox_id.py:17-18`; `py: sandbox_async/sandbox_api.py:118-135`; `js: 5289` |
 | Detail fields | `startedAt`, `endAt`, `cpuCount`, `memoryMB`, `diskSizeMB`, `state`, `metadata`, `domain`, `volumeMounts` (see "Volumes"), ... | `py: api/client/models/sandbox_detail.py:174-250` |
@@ -416,20 +415,15 @@ the download URL with its `signature` pair removed with a 4xx.
 
 ## Deliberate differences from the SDKs
 
-- **Connect v1 fallback.** If `POST /v2/sandboxes/{id}/connect` answers 404,
-  the client retries the v1 route `POST /sandboxes/{id}/connect` (still in the
-  E2B OpenAPI spec the SDK is generated from) before reporting the sandbox
-  missing. Servers that implement only the v1 route keep working; against
-  hosted E2B a missing sandbox costs one extra request.
 - **Non-zero exit is not an error.** The SDKs raise `CommandExitException`
   from `run`; this crate returns `CommandResult` with `exit_code` and a
   `success()` helper, which is the idiomatic Rust shape.
 - **`wait()` does not replay consumed output.** The SDK handle buffers all
   output; here `next_event()` hands chunks to the caller and `wait()` only
   collects what is left, so output is held once.
-- **Not implemented yet.** Milestone 4: the `is_symlink` file type (#30),
-  dropping the v1 connect fallback, a refused filesystem-only pause (409)
-  that reads as "already paused" (#81), and the API review (#52 to #57).
+- **Not implemented yet.** Milestone 4: the `is_symlink` file type (#30), a
+  refused filesystem-only pause (409) that reads as "already paused" (#81),
+  and the API review (#52 to #57).
   Deferred from milestone 3 and unscheduled: the SOCKS5 egress proxy, IAM
   workload identity (`iam.tokens` and identity placeholders in rule
   transforms), and the volume content API. Also unscheduled: sandbox health
@@ -490,8 +484,8 @@ Findings that affect how the crate talks to servers:
   still complete, but no data flows. A probe for this setting must send a
   request and check for a response, not just open a connection.
 - **sandbawks and v2 connect.** The v2 connect route has been served since
-  sandbawks 0.1.28. The v1 connect fallback (above) is therefore no longer
-  needed by any known server, and M4 removes it.
+  sandbawks 0.1.28. The v1 connect fallback was therefore removed in M4
+  (Task 1): a v2 404 is the sandbox missing.
 - **sandbawks and envd version gates.** sandbawks reports its release number
   as `envdVersion` (gfd/sandbawks#675), so envd version gates such as
   `close_stdin`, the default user, octet-stream and gzip uploads, and file

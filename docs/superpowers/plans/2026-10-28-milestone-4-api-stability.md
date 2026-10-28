@@ -330,6 +330,8 @@ Task 2 touches every file that converts a reqwest error (`.map_err(Error::transp
 - Modify: `tests/rest_lifecycle.rs` (remove `the_v1_fallback_keeps_the_reboot_flag`, lines 522-565)
 - Modify: `docs/protocol-notes.md` (the "Connect v1 (fallback)" row, line 71; "Deliberate differences", lines 419-423 and 430-432; "Verification against a live server", lines 491-493)
 - Modify: `docs/verification/s4-evidence-map.md` (intro line; rows CLM-0087, CLM-0159; new row CLM-0168)
+
+> **Corrected (issue #91, 2026-10-28).** Row CLM-0073 also named the v1 connect fallback ("all nine REST requests"); Task 1 corrects it to eight. `src/models.rs` (`ConnectBody` rustdoc, which cited the v1 `ConnectSandbox` body) is modified too. Step 5's live check ran `clm_0015` only, at the coordinator's direction; `clm_0014` is left to Task 16's recorded run.
 - Create: `changelog/<ts>-m4-task-01-drop-v1-connect-fallback.md`
 
 The spec's decision 5: the fallback only made up for sandbawks before 0.1.28 (Verified facts). After this task, a v2 404 is `Error::SandboxNotFound` straight away, with no second request. CLM-0087 is retired in Task 18 and superseded by CLM-0168.

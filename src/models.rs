@@ -465,10 +465,8 @@ pub(crate) struct PauseBody {
     pub(crate) memory: Option<bool>,
 }
 
-/// `ConnectSandboxV2` and v1 `ConnectSandbox` body: `{timeout?, memory?}`
-/// (`e2b/api/client/models/connect_sandbox_v2.py:25-49`,
-/// `e2b/api/client/models/connect_sandbox.py:24-50`). The v1 route requires
-/// the timeout, so the caller always sets it there.
+/// `ConnectSandboxV2` body: `{timeout?, memory?}`
+/// (`e2b/api/client/models/connect_sandbox_v2.py:25-49`).
 #[derive(Debug, Serialize)]
 pub(crate) struct ConnectBody {
     #[serde(skip_serializing_if = "Option::is_none")]

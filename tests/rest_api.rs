@@ -161,28 +161,39 @@ async fn connect_sandbox_without_timeout_sends_empty_body() {
 }
 
 #[tokio::test]
-async fn connect_sandbox_falls_back_to_v1_route() {
+async fn connect_sandbox_v2_404_is_not_found_without_a_v1_request() {
+    // Arrange: the v1 route would succeed, so any request to it shows up as
+    // a wrong `Ok` and as a broken `.expect(0)`.
     let server = MockServer::start().await;
     Mock::given(method("POST"))
         .and(path(format!("/v2/sandboxes/{SANDBOX_ID}/connect")))
-        .respond_with(ResponseTemplate::new(404))
+        .respond_with(
+            ResponseTemplate::new(404).set_body_json(json!({"code": 404, "message": "nope"})),
+        )
         .expect(1)
         .mount(&server)
         .await;
     Mock::given(method("POST"))
         .and(path(format!("/sandboxes/{SANDBOX_ID}/connect")))
-        .and(body_json(json!({"timeout": 300})))
         .respond_with(ResponseTemplate::new(201).set_body_json(sandbox_json("0.5.7")))
-        .expect(1)
+        .expect(0)
+        .named("v1 connect")
         .mount(&server)
         .await;
 
-    let sandbox = client_for(&server)
+    // Act
+    let err = client_for(&server)
         .connect_sandbox(SANDBOX_ID, None)
         .await
-        .expect("connect");
+        .expect_err("a v2 404 is not found");
 
-    assert_eq!(sandbox.sandbox_id(), SANDBOX_ID);
+    // Assert
+    assert!(
+        matches!(err, Error::SandboxNotFound(ref id) if id == SANDBOX_ID),
+        "{err:?}"
+    );
+    let requests = server.received_requests().await.expect("recording");
+    assert_eq!(requests.len(), 1, "one request, no v1 retry");
 }
 
 #[tokio::test]
@@ -192,7 +203,7 @@ async fn connect_missing_sandbox_is_not_found() {
         .respond_with(
             ResponseTemplate::new(404).set_body_json(json!({"code": 404, "message": "nope"})),
         )
-        .expect(2)
+        .expect(1)
         .mount(&server)
         .await;
 
@@ -468,7 +479,7 @@ async fn every_rest_request_carries_the_api_key() {
 
     // Act: `let _ =` discards each call's result on purpose.
     let _ = client.create_sandbox(&CreateSandboxParams::default()).await;
-    // v2 connect, then the v1 fallback after its 404.
+    // v2 connect only: a 404 is not found, with no v1 retry.
     let _ = client.connect_sandbox(SANDBOX_ID, None).await;
     let _ = client.get_sandbox_info(SANDBOX_ID).await;
     let _ = client.list_sandboxes(&ListSandboxesParams::new()).await;
@@ -479,7 +490,7 @@ async fn every_rest_request_carries_the_api_key() {
 
     // Assert
     let requests = server.received_requests().await.expect("recording");
-    assert_eq!(requests.len(), 9, "one request per call, two for connect");
+    assert_eq!(requests.len(), 8, "one request per call");
     for request in &requests {
         assert_eq!(
             request
