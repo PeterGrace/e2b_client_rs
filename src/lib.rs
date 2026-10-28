@@ -23,19 +23,37 @@
 //!   ([`CreateSandboxParams::volume_mount`]). Start an MCP gateway in a new
 //!   sandbox ([`CreateSandboxParams::mcp`]) and reach it at
 //!   [`Sandbox::mcp_url`] with [`Sandbox::mcp_token`].
-//! - **envd process service** ([`Commands`]): start commands, stream their
-//!   stdout and stderr to an exit code, send stdin (one write at a time or
-//!   as an ordered [`InputStream`]), signal, list processes.
+//! - **envd process service** ([`Commands`]): start commands
+//!   ([`CommandOptions`]), stream their stdout and stderr to an exit code,
+//!   attach to a running one ([`CommandConnectOptions`], with the SDKs' 60 s
+//!   stream deadline by default), send stdin (one write at a time or as an
+//!   ordered [`InputStream`]), signal, list processes.
 //! - **envd PTY sessions** ([`Pty`]): interactive terminals with their own
-//!   output stream ([`PtyHandle`]), input, resize and kill.
+//!   output stream ([`PtyHandle`]), input, resize and kill. A PTY has no
+//!   deadline unless you set one ([`PtyOptions`], [`PtyConnectOptions`]).
 //! - **envd filesystem service** ([`Filesystem`]): read and write files
 //!   (one at a time or in a batch, multipart, octet-stream or gzip, with
-//!   optional metadata, see [`WriteOptions`]), stream uploads from an `AsyncRead` and downloads as
-//!   chunks ([`FileStream`]), list directories, stat, make directories, move
-//!   and remove, and watch a directory for changes ([`WatchHandle`]).
+//!   optional metadata and at most [`DEFAULT_UPLOAD_CONCURRENCY`] uploads in
+//!   flight by default, see [`WriteOptions`]), stream uploads from an
+//!   `AsyncRead` and downloads as chunks ([`FileStream`]), list directories
+//!   ([`ListOptions`]), stat, make directories, move and remove
+//!   ([`FileOptions`]), and watch a directory for changes ([`WatchHandle`]).
 //! - **Signed file URLs** ([`Sandbox::upload_url`], [`Sandbox::download_url`]):
 //!   plain HTTP upload and download links, signed with the sandbox's envd
 //!   access token, optionally expiring ([`FileUrlOptions`]).
+//! - **Errors** ([`Error`]): one variant per protocol, and the SDKs'
+//!   categories as classifiers: [`Error::status`], [`Error::is_not_found`],
+//!   [`Error::is_auth`], [`Error::is_rate_limited`],
+//!   [`Error::is_service_busy`], [`Error::is_not_enough_space`],
+//!   [`Error::is_sandbox_unreachable`], [`Error::is_timeout`] and
+//!   [`Error::is_retryable`]. Transport failures are an opaque
+//!   [`TransportError`], so no HTTP client type is part of the API.
+//!
+//! Every call that takes a `*Options` type takes it by reference, and each
+//! `*Options` type has `new()`, `Default` and builder setters, so adding an
+//! option later is not a breaking change. Their `request_timeout` setters
+//! bound that one call. A zero stream deadline or request timeout means no limit,
+//! as in the SDKs.
 //!
 //! # Quick start
 //!
@@ -67,6 +85,13 @@
 //! until you `.await` it inside an async runtime such as tokio (the
 //! equivalent of `asyncio.run`). Fallible calls return [`Result`]; the `?`
 //! operator propagates the error the way an uncaught exception would.
+//!
+//! # Versioning
+//!
+//! The crate follows semver, needs Rust 1.89 or newer, and lists the
+//! dependencies whose types appear in its API; see the README's
+//! [Versioning](https://github.com/PeterGrace/e2b_client_rs#versioning)
+//! section.
 
 mod client;
 mod commands;
