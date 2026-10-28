@@ -65,7 +65,10 @@ async fn kill_leftover_sandboxes(client: &Client) -> usize {
 async fn sweep_leftover_snapshots_of_this_run() {
     // Snapshots are persistent and billed, and outlive their sandbox, so a
     // test that panics before its own delete would leak one. The live tests
-    // name theirs with `resource_name`, so the run's prefix finds them.
+    // name theirs with `resource_name`, so the run's prefix finds them in
+    // `names`. Nothing else ties a snapshot to the run, so an unnamed one
+    // (empty `names`) is invisible here: every live test must name its
+    // snapshots this way.
     //
     // Hosted E2B refuses to delete a snapshot while a sandbox made from it
     // runs, so the run's sandboxes go first. The sandbox sweep may run at

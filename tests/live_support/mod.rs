@@ -151,7 +151,8 @@ pub fn params_from(template: &str) -> CreateSandboxParams {
 /// A name for a snapshot or volume this run creates, with the run id in it
 /// so the sweep finds it. Lowercase, since the API's names are.
 /// `resource_name("")` is the prefix every such name of this run starts
-/// with, ending in `-`.
+/// with, ending in `-`. The sweep finds leftovers only by this prefix, so
+/// every snapshot and volume a live test creates must be named with it.
 pub fn resource_name(slug: &str) -> String {
     format!("e2b-client-test-{}-{slug}", run_id().to_ascii_lowercase())
 }
