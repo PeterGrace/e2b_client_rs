@@ -141,6 +141,11 @@ The ledger holds 126 claims (CLM-0001 to CLM-0126).
 | M4 API stability | `#[non_exhaustive]` review, error taxonomy pass, drop the v1 connect fallback, naming and builder consistency (Rust API Guidelines), pinned MSRV, rustdoc examples | M2, M3 |
 | M5 Release | Live CI job (hosted only, behind secrets, manual or nightly trigger), README coverage table from the ledger audit, CHANGELOG, `publish = true`, 0.2.0 on crates.io | M4 |
 
+**M4 outcome (2026-10-28).** Closed by epic #90: the v1 connect fallback is
+gone (decision 5 done); the API review is recorded in `docs/api-review.md`;
+MSRV 1.89. Not revisited: regenerating the REST models from OpenAPI (kept
+hand-written and cited).
+
 M2 and M3 are independent and may run in parallel. M4 waits for both, so
 the API review happens once, after the surface stops growing. Each of M2 to
 M5 gets its own short design and plan when it starts; this spec does not

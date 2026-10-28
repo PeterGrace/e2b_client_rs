@@ -55,22 +55,23 @@ async fn main() -> e2b_client::Result<()> {
 | Area | API |
 |---|---|
 | Configuration | `ConnectionConfig::builder()` / `from_env()`: API key, API URL, domain, sandbox URL, request timeout (`E2B_API_KEY`, `E2B_API_URL`, `E2B_DOMAIN`, `E2B_SANDBOX_URL`) |
-| Lifecycle (REST) | `Client::{create_sandbox, connect_sandbox, get_sandbox_info, list_sandboxes, pause_sandbox, kill_sandbox, set_sandbox_timeout, refresh_sandbox}` and the same on `Sandbox`; `ListSandboxesParams::{metadata, state, template, started_after, order}` |
+| Lifecycle (REST) | `Client::{create_sandbox, connect_sandbox, get_sandbox_info, list_sandboxes, pause_sandbox, kill_sandbox, set_sandbox_timeout, refresh_sandbox}` and the same on `Sandbox`; one method per operation: `connect_sandbox(id, &ConnectOptions)` (v2 connect only: a 404 is `Error::SandboxNotFound`) and `pause_sandbox(id, &PauseOptions)` / `Sandbox::pause(&PauseOptions)`; `ListSandboxesParams::{metadata, state, template, started_after, order}` |
 | Hosts and metrics | `Sandbox::get_host(port)` gives the host name that reaches a port inside the sandbox; `Sandbox::get_metrics` / `Client::get_sandbox_metrics` read CPU, memory and disk samples (`MetricsParams::{start, end}`) |
 | Network | `CreateSandboxParams::network(NetworkConfig)`: `allow_out`, `deny_out` (`ALL_TRAFFIC`), `dns_servers`, per-host header `rule`s, `allow_public_traffic`, `mask_request_host`, `https_ports`; `Sandbox::update_network(NetworkUpdate)` and `Client::update_sandbox_network` replace a running sandbox's egress without a restart |
 | Lifecycle settings | `CreateSandboxParams::lifecycle(Lifecycle)`: `on_timeout` (`OnTimeout::Kill`, or a pause with a `SnapshotMode`) and `auto_resume`; `idempotency_key`; `Client::pause_sandbox(id, &PauseOptions)` / `Sandbox::pause(&PauseOptions)` and `Client::connect_sandbox(id, &ConnectOptions)` choose a full or filesystem-only snapshot and a restore or a reboot (`OnResume`) |
 | Snapshots and fork | `Sandbox::{create_snapshot, list_snapshots, fork}`, `Client::{create_snapshot, list_snapshots, delete_snapshot, fork_sandbox}`; a snapshot ID is a template, so `CreateSandboxParams::new(snapshot_id)` starts a sandbox from it; `fork` returns one result per copy (up to `MAX_FORK_COUNT`) |
 | Volumes | `Client::{create_volume, get_volume, list_volumes, destroy_volume}` (the volume token stays a `SecretString`); `CreateSandboxParams::volume_mount(name, path)` |
 | MCP gateway | `CreateSandboxParams::mcp(config)` starts the gateway (on the `mcp-gateway` template unless one is given); `Sandbox::{mcp_url, mcp_token}` |
-| Processes (envd) | `Commands::{start, run, connect, list, send_stdin, close_stdin, stream_input, send_signal, kill}`; `CommandHandle::{next_event, wait}` streams stdout/stderr to an exit code; `InputStream::{send, close}` streams stdin in order over one call |
-| PTY sessions (envd) | `Pty::{create, connect, send_stdin, stream_input, resize, kill}`; `PtyHandle::{next_event, wait}` streams terminal output to an exit code |
-| Files (envd) | `Filesystem::{read, read_to_string, read_stream, write, write_files, write_stream, list, get_info, exists, make_dir, rename, remove, watch_dir}`; every call takes an options value: `FileOptions::{user, request_timeout}`, `ListOptions::{depth, user, request_timeout}`, and `request_timeout` on `WriteOptions` and `WatchOptions`; `WriteOptions` selects multipart, octet-stream or gzip uploads and attaches metadata; `FileStream::next_chunk` and `WatchHandle::next_event` stream downloads and directory events |
+| Processes (envd) | `Commands::{start, run, connect, list, send_stdin, close_stdin, stream_input, send_signal, kill}`; `Commands::connect(pid, &CommandConnectOptions)` with the SDKs' 60 s stream deadline by default; `request_timeout` on `CommandOptions` and `CommandConnectOptions`; a zero timeout means no limit; `CommandHandle::{next_event, wait}` streams stdout/stderr to an exit code; `InputStream::{send, close}` streams stdin in order over one call |
+| PTY sessions (envd) | `Pty::{create, connect, send_stdin, stream_input, resize, kill}`; `Pty::connect(pid, &PtyConnectOptions)`; `PtyOptions` and `PtyConnectOptions` set no deadline by default (`DEFAULT_PTY_TIMEOUT` is the SDKs' 60 s, to opt in) and take a `request_timeout`; `PtyHandle::{next_event, wait}` streams terminal output to an exit code |
+| Files (envd) | `Filesystem::{read, read_to_string, read_stream, write, write_files, write_stream, list, get_info, exists, make_dir, rename, remove, watch_dir}`; every call takes an options value: `FileOptions::{user, request_timeout}`, `ListOptions::{depth, user, request_timeout}`, and `request_timeout` on `WriteOptions` and `WatchOptions`; `WriteOptions` selects multipart, octet-stream or gzip uploads, attaches metadata and caps uploads in flight (`max_concurrency`, `DEFAULT_UPLOAD_CONCURRENCY` 8); a symlink is `FileType::Symlink` on every envd version; `FileStream::next_chunk` and `WatchHandle::next_event` stream downloads and directory events |
 | Signed URLs | `Sandbox::{upload_url, download_url}` with `FileUrlOptions::{user, expires_in}`: plain HTTP links signed with the sandbox's envd access token |
 | Errors | `Error` (`thiserror`): REST status + E2B message, Connect error codes, envd HTTP errors, protocol, timeout, transport (`TransportError`, with `is_timeout`/`is_connect`), invalid argument; `status()` and the SDK's categories as `is_not_found`, `is_auth`, `is_rate_limited`, `is_service_busy`, `is_not_enough_space`, `is_sandbox_unreachable`, `is_timeout`, `is_retryable` |
 
 Out of scope by design: code interpreter, template building, and a blocking
-API. Not implemented yet: the SOCKS5 egress proxy and IAM workload identity
-in network settings, the volume content API (files in a volume without a
+API. Not implemented yet: per-call request timeouts on REST calls and on
+pid-only process calls, the SOCKS5 egress proxy and IAM workload identity in
+network settings, the volume content API (files in a volume without a
 sandbox), sandbox logs, secrets and git.
 
 ## Network, lifecycle and snapshots
@@ -250,23 +251,30 @@ Every wire detail, with citations into the official SDK sources, is in
 Every behaviour listed above is backed by a claim in `claims.json`, the claims
 ledger. Each claim has a recorded verdict and the evidence behind it.
 
-As of 2026-10-28 (milestone 3):
+As of 2026-10-28 (milestone 4):
 
-- **Hosted E2B:** 72 of the 75 live tests passed (46 from milestone 1, 11
-  from milestone 2, 18 from milestone 3). The 3 that did not are the volume
+- **Hosted E2B:** 76 of the 79 live tests passed (46 from milestone 1, 11
+  from milestone 2, 18 from milestone 3, 4 from milestone 4) in run
+  `20261028T153214Z-hosted-761165`. The 3 that did not are the volume
   tests: volumes are not enabled for the test team (403), so those claims
   stay `not_enough_info` rather than refuted.
-- **Wire-protocol claims:** all 77 are backed by passing mock and unit tests,
+- **Wire-protocol claims:** all 79 are backed by passing mock and unit tests,
   as are CLM-0122 (`Debug` output never shows secrets) and CLM-0152 (the
   idempotency key).
+- **Ledger:** 179 active claims: 169 supported, 10 `not_enough_info`, 0
+  refuted, 0 unverified. <!-- LEDGER: confirm -->
 - **Refuted claims:** 0. Two were refuted during M1 and fixed: empty config
   values, and the envd version gate on `close_stdin`.
 - **Not yet shown:** the egress proxy and IAM (unscheduled), volumes on a
-  team that has them, and publishability (milestones 4 and 5) are tracked as
-  `not_enough_info` claims.
-- **E2B-compatible servers:** a self-hosted sandbawks server passes 30 of the
-  75; every failure there is a server defect or a route it does not serve
-  yet, filed upstream.
+  team that has them, and the release itself (milestone 5: a live CI job and
+  a publish dry run) are tracked as `not_enough_info` claims.
+- **E2B-compatible servers:** a self-hosted sandbawks server passes 29 of the
+  79 in one paced run, `20261028T154205Z-sandbawks-paced-913873`, with no
+  failure on capacity; every failure there is a server defect or a route it
+  does not serve yet, filed upstream.
+- **API:** the API milestone 4 settled is the one 0.2.0 will ship. Its
+  breaking changes, old call to new call, are listed in
+  `changelog/2026-10-28T18-39-36Z-m4-milestone.md`.
 
 Live results are in `docs/verification/`. The road to a crates.io release is
 in `docs/superpowers/specs/2026-10-26-claims-audit-and-publishability-design.md`.

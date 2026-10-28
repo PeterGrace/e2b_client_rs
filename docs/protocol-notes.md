@@ -464,20 +464,28 @@ the SDKs' exception classes with methods on `Error`.
   caps them, `DEFAULT_UPLOAD_CONCURRENCY` (8) by default; results stay in
   entry order and the first error still fails the batch (issue #53).
   `max_concurrency(entries.len())` gives the SDK's behaviour.
-- **Not implemented yet.** Milestone 4: the `is_symlink` file type (#30)
-  and the API review (#52 to #57).
+- **Not implemented yet.** Milestone 5: a live CI job (hosted E2B only)
+  and the crates.io publish. Not scheduled yet: a per-call request timeout
+  on REST calls and on the pid-only process calls (`send_stdin`, `kill`,
+  `resize`, `list`, ...), which use the configured request timeout.
   Deferred from milestone 3 and unscheduled: the SOCKS5 egress proxy, IAM
   workload identity (`iam.tokens` and identity placeholders in rule
   transforms), and the volume content API. Also unscheduled: sandbox health
   probing on transport errors, sandbox logs, secrets and git. Not planned:
-  batch metrics, callable egress selectors and transforms, and the
-  deprecated `secure` and `keep_memory` flags. Out of scope by design:
-  template builds and a sync API.
+  batch metrics, callable egress selectors and transforms, the deprecated
+  `secure` and `keep_memory` flags, regenerating the REST models from
+  OpenAPI (they stay hand-written and cited), one error type per SDK
+  exception class (see "Classifier methods, not exception classes"), and a
+  PTY keep-alive (a PTY has no deadline unless one is set). Out of scope by
+  design: the code interpreter, template builds, a sync API, and anything
+  only sandbawks serves.
 
 ## Verification against a live server
 
 Every v0.1 behaviour was verified live on 2026-10-26 by the M1 suite, the
-M2 behaviours on 2026-10-27, and the M3 behaviours on 2026-10-28 (`tests/live_*.rs`, `just test-live <target>`). Each test is named after the
+M2 behaviours on 2026-10-27, and the M3 and M4 behaviours on 2026-10-28
+(`tests/live_*.rs`, `just test-live <target>`, and `just test-live-paced
+<target>` for sandbawks from M4). Each test is named after the
 claim it backs in `claims.json`. The wire details in this file are covered by
 mock and unit tests instead; `docs/verification/s4-evidence-map.md` maps each
 one to its tests.
@@ -519,6 +527,22 @@ one to its tests.
   `mcp-gateway` template (#680), the template's missing `/home/user` (#688),
   or list parameters it ignores (#689). Details are in
   `docs/verification/m3-live-results.md`.
+- **Hosted E2B, M4:** 76 of 79 live tests (M1 to M3's 75 through the M4
+  signatures, plus 4 for M4) passed in run `20261028T153214Z-hosted-761165`
+  at `bf65ca8`. All 4 M4 tests passed. The 3 failures are the volume tests
+  again (`POST /volumes` 403, `use of volumes is not enabled`).
+- **sandbawks, M4:** 29 of 79 passed in one paced run,
+  `20261028T154205Z-sandbawks-paced-913873` at `3cedbc3` (120 s between
+  tests, readiness failures rerun once): 49 failed and 1 was still not
+  ready, none on capacity. M1 to M3's tests give 28 passes. CLM-0010 and
+  CLM-0025 now fail on a new defect, `startedAt` reported as the warm-pool
+  start time rather than the create time (gfd/sandbawks#690); every other
+  failure is one M3 recorded, against its filed issue. Of the M4 tests,
+  `clm_0175` passes; `clm_0171` (#679, a pause of a paused sandbox answers
+  200 and leaves it running), `clm_0177` (#678) and `clm_0178` (#677) fail.
+  The not-ready result is `clm_0150`, the missing `mcp-gateway` template
+  (#680), whose message matches a readiness marker. Details are in
+  `docs/verification/m4-live-results.md`.
 
 Findings that affect how the crate talks to servers:
 
