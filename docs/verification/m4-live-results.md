@@ -303,7 +303,8 @@ and the one readiness failure was rerun once by the recipe. Rows are sorted
 by claim number, and a claim's tests keep their source order.
 
 **Classes:** **pass**; **sandbawks** (a sandbawks defect or missing route:
-the filed gfd/sandbawks issue, or **new** with an N-number below);
+the filed gfd/sandbawks issue; **new** marks the one this run found,
+M4-N1 below, since filed);
 **capacity** (`FAIL-READINESS (rerun)`: says nothing about the feature). No
 failure is a crate bug or a test bug: every one passed on hosted (above) or,
 for the volume tests, failed there on the 403 environment limit.
@@ -313,7 +314,7 @@ for the volume tests, failed there on the 403 environment limit.
 | clm_0007_create_returns_running_sandbox | CLM-0007 | PASS | pass | pass | |
 | clm_0008_create_metadata_is_visible_in_info | CLM-0008 | PASS | pass | pass | |
 | clm_0009_create_env_vars_reach_commands | CLM-0009 | FAIL | pass | sandbawks ([sandbawks#681](https://git.gfpd.us/gfd/sandbawks/issues/681)) | `left: "\n"` `right: "hi from create\n"` |
-| clm_0010_create_timeout_sets_end_at | CLM-0010 | FAIL | pass | sandbawks, **new N1** | `end_at - started_at = 211s, want about 90` |
+| clm_0010_create_timeout_sets_end_at | CLM-0010 | FAIL | pass | sandbawks, **new M4-N1** ([sandbawks#690](https://git.gfpd.us/gfd/sandbawks/issues/690)) | `end_at - started_at = 211s, want about 90` |
 | clm_0011_auto_pause_pauses_at_timeout | CLM-0011 | FAIL | pass | sandbawks ([sandbawks#679](https://git.gfpd.us/gfd/sandbawks/issues/679), [sandbawks#665](https://git.gfpd.us/gfd/sandbawks/issues/665)) | `timed out after 120s waiting for auto-pause at timeout` |
 | clm_0012_internet_access_false_blocks_outbound | CLM-0012 | FAIL | pass | sandbawks ([sandbawks#667](https://git.gfpd.us/gfd/sandbawks/issues/667)) | `sandbox without internet access got an HTTP reply from 1.1.1.1:80` |
 | clm_0013_connect_running_sandbox_runs_commands | CLM-0013 | PASS | pass | pass | |
@@ -328,7 +329,7 @@ for the volume tests, failed there on the 403 environment limit.
 | clm_0022_kill_unknown_sandbox_is_false | CLM-0022 | PASS | pass | pass | |
 | clm_0023_pause_running_sandbox | CLM-0023 | FAIL | pass | sandbawks ([sandbawks#679](https://git.gfpd.us/gfd/sandbawks/issues/679)) | `left: Running` `right: Paused` |
 | clm_0024_pause_paused_sandbox_is_false | CLM-0024 | FAIL | pass | sandbawks ([sandbawks#679](https://git.gfpd.us/gfd/sandbawks/issues/679)) | `assertion failed: !second` |
-| clm_0025_set_timeout_moves_end_at | CLM-0025 | FAIL | pass | sandbawks, **new N1** | `end_at - started_at = 843s, want 238..=242 (240 s from the set_timeout call)` |
+| clm_0025_set_timeout_moves_end_at | CLM-0025 | FAIL | pass | sandbawks, **new M4-N1** ([sandbawks#690](https://git.gfpd.us/gfd/sandbawks/issues/690)) | `end_at - started_at = 843s, want 238..=242 (240 s from the set_timeout call)` |
 | clm_0026_refresh_extends_end_at | CLM-0026 | PASS | pass | pass | |
 | clm_0027_is_running_tracks_kill | CLM-0027 | FAIL | pass | sandbawks ([sandbawks#679](https://git.gfpd.us/gfd/sandbawks/issues/679)) | `want Ok(false) after kill, got Err(Envd { status: 404, message: "sandboxes.sandbawks.dev \"sbx-compound-pool-hsgkl\" not found" })` |
 | clm_0028_get_host_reaches_a_port_in_the_sandbox | CLM-0028 | FAIL | pass | sandbawks ([sandbawks#678](https://git.gfpd.us/gfd/sandbawks/issues/678)), before `get_host` is reached | `write: Envd { status: 404, message: "No such file or directory (os error 2)" }` |
@@ -398,8 +399,12 @@ fail, 1 still not ready`. By binary: lifecycle 10/40, commands 12/19, files
 
 - **M1 to M3's 75 tests:** 28 pass, against 30 after M3's reruns. The two
   that passed in M3 and fail now are CLM-0010 and CLM-0025, both on the new
-  defect N1 (below). Every other failure is the one M3 recorded, with the
-  same first line, against the same gfd/sandbawks issue.
+  defect M4-N1 ([sandbawks#690](https://git.gfpd.us/gfd/sandbawks/issues/690),
+  below). Every other failure fails at the same check as in M3, against the same gfd/sandbawks issue; the first lines match apart
+  from sandbox ids, list contents and line numbers. `clm_0151` differs
+  most: M3's last attempt failed the ascending-order check (then
+  `tests/live_lifecycle.rs:718`, 3 ids), this run fails at `:754` with 4
+  pool ids, on the same #689 and #676.
   `clm_0150` ended `FAIL-READINESS (rerun)` here and `fail` (#680) in M3:
   the message is the same in both.
 - **M4's 4 tests:** 1 passes (`clm_0175`) and 3 fail on known defects:
@@ -466,12 +471,15 @@ was never reached; whether sandbawks's 409 will contain `already paused` can
 only be checked once #679 makes it send one. `docs/protocol-notes.md`'s
 "Pause" row now says so.
 
-### New sandbawks defects, for the coordinator to file
+### New sandbawks defects
 
-One, under epic [sandbawks#673](https://git.gfpd.us/gfd/sandbawks/issues/673).
+One, filed by the coordinator under epic [sandbawks#673](https://git.gfpd.us/gfd/sandbawks/issues/673)
+as [sandbawks#690](https://git.gfpd.us/gfd/sandbawks/issues/690), "POST /sandboxes reports the warm-pool start time as startedAt".
+It is labelled M4-N1 here, because `m3-live-results.md`'s N1 and N2 are
+other defects (#688, #689).
 
-**N1. `startedAt` is when the warm-pool sandbox started, not when create
-handed it out** (CLM-0010, CLM-0025). Both tests passed on hosted in this
+**M4-N1. `startedAt` is when the warm-pool sandbox started, not when create
+handed it out** (CLM-0010, CLM-0025). Filed: [sandbawks#690](https://git.gfpd.us/gfd/sandbawks/issues/690). Both tests passed on hosted in this
 milestone and on sandbawks in M3.
 
 - Client calls: `create_sandbox(&SandboxParams::new("compound-sandbox").timeout(90 s))`
@@ -515,14 +523,14 @@ milestone and on sandbawks in M3.
 
 The v0.1 tests are CLM-0007 to CLM-0027 and CLM-0033 to CLM-0063: 52 tests
 (`clm_0028` to `clm_0030` are M3's). In this run 26 pass and 26 fail, and
-**none ends at capacity**. 24 of the 26 failures are filed sandbawks defects
-(#664, #665, #667, #675 to #679, #681, #682, #684, #687, #688; the table above).
-The other 2, CLM-0010 and CLM-0025, are N1, which is not filed yet.
+**none ends at capacity**. All 26 failures are filed sandbawks defects
+(#664, #665, #667, #675 to #679, #681, #682, #684, #687, #688, and
+[sandbawks#690](https://git.gfpd.us/gfd/sandbawks/issues/690) for CLM-0010
+and CLM-0025, M4-N1; the table above).
 
-So the run settles CLM-0118 **once N1 is filed**: then every v0.1 test ends
-as pass or as a filed sandbawks defect, with no capacity result, and the
-coordinator can decide CLM-0118 and close #27 (Task 18 Step 5). Until N1 is
-filed, two v0.1 failures have no issue.
+So the run **settles CLM-0118**: every v0.1 test ends as pass or as a filed
+sandbawks defect, with no capacity result, and the coordinator can decide
+CLM-0118 and close #27 (Task 18 Step 5).
 
 ### M4 claims on sandbawks
 
@@ -548,4 +556,4 @@ filed, two v0.1 failures have no issue.
   last line `run log: target/live-logs/20261028T154205Z-sandbawks-paced-913873.log`.
 
 Per Task 18 Step 1, each sandbawks failure has stance `neutral` and names its
-gfd/sandbawks issue (N1 once filed); none refutes its claim.
+gfd/sandbawks issue (#690 for M4-N1); none refutes its claim.
