@@ -170,14 +170,16 @@ async fn fork_refused_is_an_api_error() {
 
 #[tokio::test]
 async fn fork_reads_a_malformed_entry_as_that_forks_error_and_a_null_body_as_decode() {
-    // Arrange: the second entry's sandbox has no `sandboxID`.
+    // Arrange: the second entry's sandbox has no `sandboxID`; the third has
+    // one, but an `envdVersion` that is not a string.
     let server = MockServer::start().await;
     Mock::given(method("POST"))
         .and(path(fork_path()))
-        .and(body_json(json!({"count": 2})))
+        .and(body_json(json!({"count": 3})))
         .respond_with(ResponseTemplate::new(201).set_body_json(json!([
             {"sandbox": sandbox_json("0.5.7")},
-            {"sandbox": {"templateID": "base"}}
+            {"sandbox": {"templateID": "base"}},
+            {"sandbox": {"sandboxID": "sbx-broken", "envdVersion": 7}}
         ])))
         .mount(&server)
         .await;
@@ -191,7 +193,7 @@ async fn fork_reads_a_malformed_entry_as_that_forks_error_and_a_null_body_as_dec
 
     // Act
     let results = client
-        .fork_sandbox(SANDBOX_ID, &ForkOptions::new().count(2))
+        .fork_sandbox(SANDBOX_ID, &ForkOptions::new().count(3))
         .await
         .expect("fork");
     let null_body = client
@@ -199,13 +201,19 @@ async fn fork_reads_a_malformed_entry_as_that_forks_error_and_a_null_body_as_dec
         .await
         .expect_err("null body");
 
-    // Assert: the started fork is still handed back, so it can be killed.
-    assert_eq!(results.len(), 2);
+    // Assert: the started fork is still handed back, and the undecodable
+    // entry with an ID names it, so both can be killed.
+    assert_eq!(results.len(), 3);
     assert!(results[0].is_ok(), "{:?}", results[0]);
     assert!(
         matches!(&results[1], Err(Error::Decode(_))),
         "{:?}",
         results[1]
+    );
+    assert!(
+        matches!(&results[2], Err(Error::Protocol(message)) if message.contains("sbx-broken")),
+        "{:?}",
+        results[2]
     );
     assert!(matches!(null_body, Error::Decode(_)), "{null_body:?}");
 }

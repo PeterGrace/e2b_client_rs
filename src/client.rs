@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use reqwest::header::{HeaderMap, HeaderValue};
 use reqwest::{Method, RequestBuilder, StatusCode};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::config::ConnectionConfig;
 use crate::envd::json_message_or_text;
@@ -713,12 +713,16 @@ impl Client {
     /// One result per fork the API reports, in its order: a handle to a
     /// running fork, or why that fork failed. Forks succeed or fail
     /// independently. A per-fork error is [`Error::Api`] with the code and
-    /// message the API gave for that fork (a per-fork 404 stays an
-    /// [`Error::Api`]: it is about something that fork needed, not the
-    /// source), an entry with neither a sandbox nor an error is
-    /// [`Error::Protocol`], and an entry that cannot be decoded is
-    /// [`Error::Decode`], without failing the other entries. Every `Ok`
-    /// fork is a billed sandbox: kill it when done.
+    /// message the API gave for that fork. A per-fork 404 stays an
+    /// [`Error::Api`], not [`Error::SandboxNotFound`]: it is about something
+    /// that fork needed, not the source. [`Error::is_not_found`] is still
+    /// `true` for it, as for any API 404, so check the source's existence
+    /// by the call's own `Err`, not by a fork's. An entry with neither a
+    /// sandbox nor an error is [`Error::Protocol`]. An entry that cannot be
+    /// decoded is [`Error::Decode`], or [`Error::Protocol`] naming the
+    /// sandbox when it has a `sandbox.sandboxID`, so a fork that may have
+    /// started can still be killed; either way the other entries are
+    /// unaffected. Every `Ok` fork is a billed sandbox: kill it when done.
     ///
     /// # Errors
     ///
@@ -778,11 +782,31 @@ impl Client {
     ///
     /// # Errors
     ///
-    /// [`Error::Decode`] for an entry that is not a `SandboxForkResult`,
-    /// [`Error::Api`] for a per-fork error, [`Error::Protocol`] for an entry
-    /// with neither field.
+    /// [`Error::Protocol`] naming the sandbox for an entry that cannot be
+    /// decoded but has a `sandbox.sandboxID`, [`Error::Decode`] for any other
+    /// entry that is not a `SandboxForkResult`, [`Error::Api`] for a per-fork
+    /// error, [`Error::Protocol`] for an entry with neither field.
     fn fork_result(&self, entry: serde_json::Value) -> Result<Sandbox> {
-        let result: ForkResultWire = serde_json::from_value(entry)?;
+        // `deserialize(&entry)` decodes from a borrow, so `entry` is still
+        // there to read the sandbox ID from when decoding fails.
+        let result = match ForkResultWire::deserialize(&entry) {
+            Ok(result) => result,
+            Err(error) => {
+                let started = entry
+                    .get("sandbox")
+                    .and_then(|sandbox| sandbox.get("sandboxID"))
+                    .and_then(serde_json::Value::as_str);
+                return Err(match started {
+                    // The fork may be running and billed: keep its ID so
+                    // the caller can kill it.
+                    Some(sandbox_id) => Error::Protocol(format!(
+                        "the fork result for sandbox {sandbox_id} could not be decoded \
+                         ({error}); if it started, kill it with `kill_sandbox`"
+                    )),
+                    None => Error::Decode(error),
+                });
+            }
+        };
         match (result.sandbox, result.error) {
             (_, Some(error)) => Err(Error::Api {
                 status: error.code,
