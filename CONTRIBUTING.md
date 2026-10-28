@@ -12,9 +12,15 @@ You need a stable Rust toolchain (with `rustfmt` and `clippy`) and
 | `just test` | Unit, mock-server and doc tests |
 | `just doc` | Build the docs with warnings as errors |
 | `just test-live <target>` | Live tests against `hosted` E2B or `sandbawks` (see below) |
+| `cargo +1.89 check --all-targets --locked` | Check the minimum supported Rust version (CI job `msrv`) |
 
 CI (`.github/workflows/ci.yml`) runs `just lint`, `just test` and `just doc` on
-every pull request and on `main`.
+every pull request and on `main`, and its `msrv` job checks the crate on Rust
+1.89.
+
+The crate's semver, MSRV and public-dependency policy is in the README's
+"Versioning" section. A change that adds a public dependency, changes a
+public signature or raises `rust-version` must say so in its changelog entry.
 
 Coding rules for this repository are in [.claude/CLAUDE.md](.claude/CLAUDE.md).
 Each change gets a dated entry under `changelog/`.

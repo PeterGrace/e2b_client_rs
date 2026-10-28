@@ -2,6 +2,9 @@
 name = "e2b-client"
 version = "0.1.0"
 edition = "2024"
+# Minimum supported Rust version (CLM-0121): uuid 1.29 needs 1.89. CI checks
+# it (`msrv` job); raising it is a minor release (README, "Versioning").
+rust-version = "1.89"
 description = "Async client for the E2B sandbox API: REST sandbox lifecycle plus envd process and filesystem services"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/PeterGrace/e2b_client_rs"

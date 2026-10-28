@@ -5,8 +5,8 @@ sandbox lifecycle and envd's process and filesystem services. It speaks the
 standard E2B API the official Python and JavaScript SDKs use, so it works with
 hosted E2B and with E2B-compatible servers.
 
-The crate is `e2b-client` (library `e2b_client`). It is not on crates.io yet;
-depend on it from git:
+The crate is `e2b-client` (library `e2b_client`). It is not on crates.io yet,
+and needs Rust 1.89 or newer; depend on it from git:
 
 ```toml
 [dependencies]
@@ -210,6 +210,40 @@ async fn tour(sandbox: &Sandbox) -> e2b_client::Result<()> {
 
 Every wire detail, with citations into the official SDK sources, is in
 [docs/protocol-notes.md](docs/protocol-notes.md).
+
+## Versioning
+
+- **Semver.** `e2b-client` follows [Semantic Versioning](https://semver.org).
+  Before 1.0, a minor release (0.2 to 0.3) may break the API and a patch
+  release (0.2.0 to 0.2.1) never does. Each release's breaking changes are
+  listed in its changelog entry.
+- **Minimum supported Rust version: 1.89.** It is `rust-version` in
+  `Cargo.toml` and is checked in CI. Raising it is a minor release, never a
+  patch release. CI checks this repository's `Cargo.lock`, which Cargo
+  ignores when the crate is a dependency: your own lockfile picks the
+  transitive versions. On Rust 1.89 exactly, a newer transitive release may
+  need a newer Rust. Cargo's MSRV-aware resolver (resolver 3, the default for
+  edition 2024) avoids that by preferring versions that build on your
+  `rust-version`, or on your toolchain when none is set. With an older
+  resolver, pin the offending crate with `cargo update <crate> --precise <version>`.
+- **Public dependencies.** These crates' types or traits appear in the API,
+  so a breaking release of one of them (a new major version, or a new minor
+  version before 1.0) is a breaking release of this crate too:
+
+  | Crate | Where it appears |
+  |---|---|
+  | `bytes` 1 | `Bytes` in `CommandEvent`, `PtyEvent`, `FileStream::next_chunk`, `WriteEntry::new`, `InputStream::send`, `Filesystem::read` |
+  | `chrono` 0.4 | `DateTime<Utc>` in `SandboxInfo`, `EntryInfo`, `SandboxMetrics`, `MetricsParams`, `ListSandboxesParams::started_after` |
+  | `secrecy` 0.10 | `SecretString` from `Sandbox::traffic_access_token`, `Sandbox::mcp_token` and `Volume::token`; re-exported as `e2b_client::secrecy`, so use that path to name the matching version |
+  | `serde` 1 | `Serialize`/`Deserialize` impls on `SandboxState`, `SnapshotMode`, `NetworkConfig`, `NetworkUpdate`, `NetworkRule`, `VolumeMount` and the result types |
+  | `serde_json` 1 | `Error::Decode`, `CreateSandboxParams::mcp` (`serde_json::Map`) |
+  | `tokio` 1 | `tokio::io::AsyncRead` in `Filesystem::write_stream`; every future needs a tokio runtime |
+  | `url` 2 | `ConnectionConfig::api_url` |
+
+  Every other dependency (reqwest, base64, sha2, async-compression, ...) is
+  private: upgrading it is not a breaking change. That is why
+  `Error::Transport` holds this crate's `TransportError` rather than a
+  `reqwest::Error`.
 
 ## Verification status
 
