@@ -4,7 +4,9 @@
 //! The test reads the crate's source, so it needs no network. "Public type"
 //! means a `pub struct` or `pub enum` at the top level of a file whose name
 //! `src/lib.rs` re-exports; "public async method" means any `pub async fn`
-//! (crate-private helpers are `pub(crate)` and are skipped).
+//! (crate-private helpers are `pub(crate)` and are skipped). A re-exported
+//! type name the scan never finds as such a declaration fails the test too,
+//! so a type cannot drop out of the check unnoticed.
 
 use std::collections::BTreeSet;
 use std::fs;
@@ -22,11 +24,19 @@ use std::path::{Path, PathBuf};
 /// The re-exported names (modules too, which never match a type).
 fn reexported_names(lib: &str) -> BTreeSet<String> {
     let mut names = BTreeSet::new();
-    let mut rest = lib;
-    while let Some(start) = rest.find("pub use ") {
-        let after = &rest[start + "pub use ".len()..];
-        let end = after.find(';').expect("a `pub use` ends with `;`");
-        let path = &after[..end];
+    let mut lines = lib.lines();
+    while let Some(line) = lines.next() {
+        // Only a line that starts with `pub use ` opens a statement, so prose
+        // in the crate docs that mentions `pub use` is never parsed.
+        let Some(first) = line.trim_start().strip_prefix("pub use ") else {
+            continue;
+        };
+        // A grouped `use` can span lines: read on until its `;`.
+        let mut statement = first.to_owned();
+        while !statement.contains(';') {
+            statement.push_str(lines.next().expect("a `pub use` ends with `;`"));
+        }
+        let path = &statement[..statement.find(';').expect("the loop found a `;`")];
         let items = match (path.find('{'), path.rfind('}')) {
             (Some(open), Some(close)) => &path[open + 1..close],
             _ => path
@@ -41,7 +51,6 @@ fn reexported_names(lib: &str) -> BTreeSet<String> {
                 .filter(|name| !name.is_empty())
                 .map(str::to_owned),
         );
-        rest = &after[end..];
     }
     names
 }
@@ -114,6 +123,7 @@ fn reexported_names_reads_single_and_grouped_uses() {
         "pub use client::Client;\n",
         "pub use error::{ConnectCode, Error,\n    Result};\n",
         "pub use secrecy;\n",
+        "//! Prose that names `pub use secrecy` without a semicolon.\n",
     );
 
     // Act
@@ -166,6 +176,7 @@ fn every_public_type_and_async_method_has_an_example() {
 
     // Act
     let mut missing = Vec::new();
+    let mut seen = BTreeSet::new();
     for file in &files {
         let text = fs::read_to_string(file).expect("read a source file");
         let lines: Vec<&str> = text.lines().collect();
@@ -173,6 +184,9 @@ fn every_public_type_and_async_method_has_an_example() {
             let Some((kind, name)) = declared_item(line) else {
                 continue;
             };
+            if kind == "type" {
+                seen.insert(name.to_owned());
+            }
             let checked = kind == "async fn" || exported.contains(name);
             if checked && !has_examples(&lines, index) {
                 let shown = file.strip_prefix(&src).unwrap_or(file);
@@ -185,7 +199,22 @@ fn every_public_type_and_async_method_has_an_example() {
         }
     }
 
+    // A re-exported type the scan never found (declared in an inline module,
+    // by a macro, or in another shape) would otherwise pass unchecked.
+    // PascalCase names are types; SCREAMING_SNAKE_CASE ones are constants.
+    // `Result` is a `pub type` alias, which the rule does not cover.
+    let unseen: Vec<&String> = exported
+        .iter()
+        .filter(|name| name.starts_with(char::is_uppercase))
+        .filter(|name| name.contains(char::is_lowercase))
+        .filter(|name| !seen.contains(*name) && name.as_str() != "Result")
+        .collect();
+
     // Assert
+    assert!(
+        unseen.is_empty(),
+        "re-exported but never found as a top-level `pub struct` or `pub enum`: {unseen:?}"
+    );
     assert!(
         missing.is_empty(),
         "{} item(s) lack an `# Examples` section:\n{}",

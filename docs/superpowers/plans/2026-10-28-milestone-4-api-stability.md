@@ -6019,7 +6019,7 @@ After pushing, confirm the new job ran on the PR: `gh pr checks <PR>` lists `MSR
 - Modify: `docs/api-review.md` (coverage numbers)
 - Create: `changelog/<ts>-m4-task-14-rustdoc-examples.md`
 
-> **Corrected (issue #97, 2026-10-28).** `has_examples` (and Step 5's counter) also look through plain `//` comments: `CreateSandboxParams`, `PtyOptions` and `PtyConnectOptions` keep an example above a `//` comment on their `#[derive]`, so the planned helper listed them as missing. Step 2 then listed 93 items, 90 of them real (39 types, 51 async functions); `has_examples_looks_through_attributes_only` gains a third case for it, its `lib` literal is a `concat!` to stay within 100 columns, and `declared_item` ends with `?` (clippy `question_mark`). Step 3 skipped every item that already had an example on 89218d1: `Client::connect_sandbox`, `Client::pause_sandbox`, `Commands::connect`, `Pty::connect`, `Sandbox::pause`, `CommandConnectOptions`, `PtyConnectOptions`, `PtyOptions`, `FileOptions`, `ListOptions`, `TransportError` and `CreateSandboxParams`. Every other block landed as given, except that the `CommandHandle::send_stdin` and `Sandbox::create_snapshot` examples are wrapped to 100 columns. `ConnectCode::from_plain_http_status(404)` is `NotFound`, as the block asserts. Coverage went from 28 of 67 re-exported types and 18 of 69 async functions to all of both; `docs/api-review.md` records it as a table. No later task changes.
+> **Corrected (issue #97, 2026-10-28).** `has_examples` (and Step 5's counter) also look through plain `//` comments: `CreateSandboxParams`, `PtyOptions` and `PtyConnectOptions` keep an example above a `//` comment on their `#[derive]`, so the planned helper listed them as missing. Step 2 then listed 93 items, 90 of them real (39 types, 51 async functions); `has_examples_looks_through_attributes_only` gains a third case for it, its `lib` literal is a `concat!` to stay within 100 columns, and `declared_item` ends with `?` (clippy `question_mark`). From review (brooke-reviews on PR #114), `reexported_names` parses only lines that start with `pub use `, so prose in the crate docs cannot break it, and the main test also fails on a re-exported PascalCase name it never finds as a top-level `pub struct` or `pub enum` (`Result`, a `pub type`, excepted), so a type cannot drop out of the check unnoticed. Step 3 skipped every item that already had an example on 89218d1: `Client::connect_sandbox`, `Client::pause_sandbox`, `Commands::connect`, `Pty::connect`, `Sandbox::pause`, `CommandConnectOptions`, `PtyConnectOptions`, `PtyOptions`, `FileOptions`, `ListOptions`, `TransportError` and `CreateSandboxParams`. Every other block landed as given, except that the `CommandHandle::send_stdin` and `Sandbox::create_snapshot` examples are wrapped to 100 columns. `ConnectCode::from_plain_http_status(404)` is `NotFound`, as the block asserts. Coverage went from 28 of 67 re-exported types and 18 of 69 async functions to all of both; `docs/api-review.md` records it as a table. No later task changes.
 
 "Non-trivial use" in CLM-0120 is made concrete: **every public type re-exported from `lib.rs`, and every `pub async fn`**, has an `# Examples` section. Builder setters and accessors are covered by their type's example. The test makes the rule permanent.
 
@@ -6034,7 +6034,9 @@ Create `tests/doc_examples.rs`:
 //! The test reads the crate's source, so it needs no network. "Public type"
 //! means a `pub struct` or `pub enum` at the top level of a file whose name
 //! `src/lib.rs` re-exports; "public async method" means any `pub async fn`
-//! (crate-private helpers are `pub(crate)` and are skipped).
+//! (crate-private helpers are `pub(crate)` and are skipped). A re-exported
+//! type name the scan never finds as such a declaration fails the test too,
+//! so a type cannot drop out of the check unnoticed.
 
 use std::collections::BTreeSet;
 use std::fs;
@@ -6052,11 +6054,19 @@ use std::path::{Path, PathBuf};
 /// The re-exported names (modules too, which never match a type).
 fn reexported_names(lib: &str) -> BTreeSet<String> {
     let mut names = BTreeSet::new();
-    let mut rest = lib;
-    while let Some(start) = rest.find("pub use ") {
-        let after = &rest[start + "pub use ".len()..];
-        let end = after.find(';').expect("a `pub use` ends with `;`");
-        let path = &after[..end];
+    let mut lines = lib.lines();
+    while let Some(line) = lines.next() {
+        // Only a line that starts with `pub use ` opens a statement, so prose
+        // in the crate docs that mentions `pub use` is never parsed.
+        let Some(first) = line.trim_start().strip_prefix("pub use ") else {
+            continue;
+        };
+        // A grouped `use` can span lines: read on until its `;`.
+        let mut statement = first.to_owned();
+        while !statement.contains(';') {
+            statement.push_str(lines.next().expect("a `pub use` ends with `;`"));
+        }
+        let path = &statement[..statement.find(';').expect("the loop found a `;`")];
         let items = match (path.find('{'), path.rfind('}')) {
             (Some(open), Some(close)) => &path[open + 1..close],
             _ => path
@@ -6071,7 +6081,6 @@ fn reexported_names(lib: &str) -> BTreeSet<String> {
                 .filter(|name| !name.is_empty())
                 .map(str::to_owned),
         );
-        rest = &after[end..];
     }
     names
 }
@@ -6144,6 +6153,7 @@ fn reexported_names_reads_single_and_grouped_uses() {
         "pub use client::Client;\n",
         "pub use error::{ConnectCode, Error,\n    Result};\n",
         "pub use secrecy;\n",
+        "//! Prose that names `pub use secrecy` without a semicolon.\n",
     );
 
     // Act
@@ -6196,6 +6206,7 @@ fn every_public_type_and_async_method_has_an_example() {
 
     // Act
     let mut missing = Vec::new();
+    let mut seen = BTreeSet::new();
     for file in &files {
         let text = fs::read_to_string(file).expect("read a source file");
         let lines: Vec<&str> = text.lines().collect();
@@ -6203,6 +6214,9 @@ fn every_public_type_and_async_method_has_an_example() {
             let Some((kind, name)) = declared_item(line) else {
                 continue;
             };
+            if kind == "type" {
+                seen.insert(name.to_owned());
+            }
             let checked = kind == "async fn" || exported.contains(name);
             if checked && !has_examples(&lines, index) {
                 let shown = file.strip_prefix(&src).unwrap_or(file);
@@ -6215,7 +6229,22 @@ fn every_public_type_and_async_method_has_an_example() {
         }
     }
 
+    // A re-exported type the scan never found (declared in an inline module,
+    // by a macro, or in another shape) would otherwise pass unchecked.
+    // PascalCase names are types; SCREAMING_SNAKE_CASE ones are constants.
+    // `Result` is a `pub type` alias, which the rule does not cover.
+    let unseen: Vec<&String> = exported
+        .iter()
+        .filter(|name| name.starts_with(char::is_uppercase))
+        .filter(|name| name.contains(char::is_lowercase))
+        .filter(|name| !seen.contains(*name) && name.as_str() != "Result")
+        .collect();
+
     // Assert
+    assert!(
+        unseen.is_empty(),
+        "re-exported but never found as a top-level `pub struct` or `pub enum`: {unseen:?}"
+    );
     assert!(
         missing.is_empty(),
         "{} item(s) lack an `# Examples` section:\n{}",
