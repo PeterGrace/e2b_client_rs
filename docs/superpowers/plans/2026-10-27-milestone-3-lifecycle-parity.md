@@ -5167,6 +5167,8 @@ As Task 12, with `just test-live sandbawks` (`.env` must have `E2B_TEMPLATE_SAND
 
 Changelog `changelog/<ts>-m3-task-13-sandbawks-run.md`; commit `docs: M3 live results on sandbawks`.
 
+> **Corrected (issue #72, 2026-10-28).** Done as written, with two clarifications for a rerun. Failures that fail at a call whose behaviour a filed gfd/sandbawks issue describes (not on readiness) were not rerun, since their result can't change while the issue is open; every other failure was rerun until it passed or hit a defect. On sandbawks 0.1.28 the snapshot and volume sweeps fail with `Api { status: 404, message: "HTTP 404" }` on their list call, which also makes `just test-live sandbawks` exit non-zero; both kill the run's sandboxes first, so the sandbox sweep line is the leak check. Results: `docs/verification/m3-live-results.md`, section "sandbawks".
+
 ---
 
 ### Task 14: Verdicts, docs and milestone close (coordinator)

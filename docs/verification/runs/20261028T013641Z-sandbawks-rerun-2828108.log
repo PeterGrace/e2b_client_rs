@@ -1,0 +1,873 @@
+commit: 6871dbfccd30862f458eb57a8772dae57bfa0560
+dirty: no
+### rerun clm_0009_create_env_vars_reach_commands (live_lifecycle) at 2026-10-28T01:36:41Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.09s
+     Running tests/live_lifecycle.rs (target/debug/deps/live_lifecycle-96ba98bceafb1d73)
+
+running 1 test
+test clm_0009_create_env_vars_reach_commands ... FAILED
+
+successes:
+
+successes:
+
+failures:
+
+---- clm_0009_create_env_vars_reach_commands stdout ----
+
+thread 'clm_0009_create_env_vars_reach_commands' (2828138) panicked at tests/live_lifecycle.rs:142:5:
+assertion `left == right` failed
+  left: "\n"
+ right: "hi from create\n"
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    clm_0009_create_env_vars_reach_commands
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 38 filtered out; finished in 2.21s
+
+error: test failed, to rerun pass `--test live_lifecycle`
+### rerun clm_0012_internet_access_false_blocks_outbound (live_lifecycle) at 2026-10-28T01:38:43Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.06s
+     Running tests/live_lifecycle.rs (target/debug/deps/live_lifecycle-96ba98bceafb1d73)
+
+running 1 test
+test clm_0012_internet_access_false_blocks_outbound ... FAILED
+
+successes:
+
+successes:
+
+failures:
+
+---- clm_0012_internet_access_false_blocks_outbound stdout ----
+
+thread 'clm_0012_internet_access_false_blocks_outbound' (2835545) panicked at tests/live_lifecycle.rs:210:5:
+sandbox without internet access got an HTTP reply from 1.1.1.1:80
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    clm_0012_internet_access_false_blocks_outbound
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 38 filtered out; finished in 3.42s
+
+error: test failed, to rerun pass `--test live_lifecycle`
+### rerun clm_0013_connect_running_sandbox_runs_commands (live_lifecycle) at 2026-10-28T01:40:47Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.06s
+     Running tests/live_lifecycle.rs (target/debug/deps/live_lifecycle-96ba98bceafb1d73)
+
+running 1 test
+test clm_0013_connect_running_sandbox_runs_commands ... ok
+
+successes:
+
+successes:
+    clm_0013_connect_running_sandbox_runs_commands
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 38 filtered out; finished in 2.02s
+
+### rerun clm_0014_connect_resumes_paused_sandbox_with_files (live_lifecycle) at 2026-10-28T01:42:49Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.05s
+     Running tests/live_lifecycle.rs (target/debug/deps/live_lifecycle-96ba98bceafb1d73)
+
+running 1 test
+test clm_0014_connect_resumes_paused_sandbox_with_files ... FAILED
+
+successes:
+
+successes:
+
+failures:
+
+---- clm_0014_connect_resumes_paused_sandbox_with_files stdout ----
+
+thread 'clm_0014_connect_resumes_paused_sandbox_with_files' (2850410) panicked at tests/live_lifecycle.rs:250:5:
+assertion `left == right` failed
+  left: Running
+ right: Paused
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    clm_0014_connect_resumes_paused_sandbox_with_files
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 38 filtered out; finished in 0.67s
+
+error: test failed, to rerun pass `--test live_lifecycle`
+### rerun clm_0028_get_host_reaches_a_port_in_the_sandbox (live_lifecycle) at 2026-10-28T01:44:49Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.05s
+     Running tests/live_lifecycle.rs (target/debug/deps/live_lifecycle-96ba98bceafb1d73)
+
+running 1 test
+test clm_0028_get_host_reaches_a_port_in_the_sandbox ... FAILED
+
+successes:
+
+successes:
+
+failures:
+
+---- clm_0028_get_host_reaches_a_port_in_the_sandbox stdout ----
+
+thread 'clm_0028_get_host_reaches_a_port_in_the_sandbox' (2859276) panicked at tests/live_lifecycle.rs:613:10:
+write: Envd { status: 404, message: "No such file or directory (os error 2)" }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    clm_0028_get_host_reaches_a_port_in_the_sandbox
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 38 filtered out; finished in 0.79s
+
+error: test failed, to rerun pass `--test live_lifecycle`
+### rerun clm_0029_get_metrics_reports_cpu_memory_and_disk (live_lifecycle) at 2026-10-28T01:46:50Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.06s
+     Running tests/live_lifecycle.rs (target/debug/deps/live_lifecycle-96ba98bceafb1d73)
+
+running 1 test
+test clm_0029_get_metrics_reports_cpu_memory_and_disk ... FAILED
+
+successes:
+
+successes:
+
+failures:
+
+---- clm_0029_get_metrics_reports_cpu_memory_and_disk stdout ----
+
+thread 'clm_0029_get_metrics_reports_cpu_memory_and_disk' (2869575) panicked at tests/live_lifecycle.rs:661:55:
+sandbox vanished: SandboxNotFound("sbx-compound-pool-dmkk6")
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    clm_0029_get_metrics_reports_cpu_memory_and_disk
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 38 filtered out; finished in 0.47s
+
+error: test failed, to rerun pass `--test live_lifecycle`
+### rerun clm_0030_fork_starts_running_copies (live_lifecycle) at 2026-10-28T01:48:51Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.05s
+     Running tests/live_lifecycle.rs (target/debug/deps/live_lifecycle-96ba98bceafb1d73)
+
+running 1 test
+test clm_0030_fork_starts_running_copies ... FAILED
+
+successes:
+
+successes:
+
+failures:
+
+---- clm_0030_fork_starts_running_copies stdout ----
+
+thread 'clm_0030_fork_starts_running_copies' (2879672) panicked at tests/live_lifecycle.rs:1079:47:
+fork: SandboxNotFound("sbx-compound-pool-gqjxj")
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    clm_0030_fork_starts_running_copies
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 38 filtered out; finished in 0.47s
+
+error: test failed, to rerun pass `--test live_lifecycle`
+### rerun clm_0030_snapshot_starts_sandboxes_with_its_files (live_lifecycle) at 2026-10-28T01:50:51Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.05s
+     Running tests/live_lifecycle.rs (target/debug/deps/live_lifecycle-96ba98bceafb1d73)
+
+running 1 test
+test clm_0030_snapshot_starts_sandboxes_with_its_files ... FAILED
+
+successes:
+
+successes:
+
+failures:
+
+---- clm_0030_snapshot_starts_sandboxes_with_its_files stdout ----
+
+thread 'clm_0030_snapshot_starts_sandboxes_with_its_files' (2890124) panicked at tests/live_lifecycle.rs:990:59:
+snapshot: SandboxNotFound("sbx-compound-pool-f2xrw")
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    clm_0030_snapshot_starts_sandboxes_with_its_files
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 38 filtered out; finished in 0.68s
+
+error: test failed, to rerun pass `--test live_lifecycle`
+### rerun clm_0034_start_streams_chunks_then_exit (live_commands) at 2026-10-28T01:52:52Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.08s
+     Running tests/live_commands.rs (target/debug/deps/live_commands-eef40517a13510cb)
+
+running 1 test
+test clm_0034_start_streams_chunks_then_exit ... ok
+
+successes:
+
+successes:
+    clm_0034_start_streams_chunks_then_exit
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 16 filtered out; finished in 2.86s
+
+### rerun clm_0035_run_delivers_large_output_in_order (live_commands) at 2026-10-28T01:54:55Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.05s
+     Running tests/live_commands.rs (target/debug/deps/live_commands-eef40517a13510cb)
+
+running 1 test
+test clm_0035_run_delivers_large_output_in_order ... ok
+
+successes:
+
+successes:
+    clm_0035_run_delivers_large_output_in_order
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 16 filtered out; finished in 1.52s
+
+### rerun clm_0037_options_cwd_is_working_directory (live_commands) at 2026-10-28T01:56:57Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.04s
+     Running tests/live_commands.rs (target/debug/deps/live_commands-eef40517a13510cb)
+
+running 1 test
+test clm_0037_options_cwd_is_working_directory ... ok
+
+successes:
+
+successes:
+    clm_0037_options_cwd_is_working_directory
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 16 filtered out; finished in 0.73s
+
+### rerun clm_0038_options_user_runs_as_user (live_commands) at 2026-10-28T01:58:58Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.09s
+     Running tests/live_commands.rs (target/debug/deps/live_commands-eef40517a13510cb)
+
+running 1 test
+test clm_0038_options_user_runs_as_user ... FAILED
+
+successes:
+
+successes:
+
+failures:
+
+---- clm_0038_options_user_runs_as_user stdout ----
+
+thread 'clm_0038_options_user_runs_as_user' (3038602) panicked at tests/live_commands.rs:155:5:
+assertion `left == right` failed
+  left: "dev\n"
+ right: "root\n"
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    clm_0038_options_user_runs_as_user
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 16 filtered out; finished in 3.57s
+
+error: test failed, to rerun pass `--test live_commands`
+### rerun clm_0040_connect_attaches_to_running_command (live_commands) at 2026-10-28T02:01:01Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.05s
+     Running tests/live_commands.rs (target/debug/deps/live_commands-eef40517a13510cb)
+
+running 1 test
+test clm_0040_connect_attaches_to_running_command ... FAILED
+
+successes:
+
+successes:
+
+failures:
+
+---- clm_0040_connect_attaches_to_running_command stdout ----
+
+thread 'clm_0040_connect_attaches_to_running_command' (3049945) panicked at tests/live_commands.rs:209:10:
+connect: Protocol("Connect stream did not open with a start event")
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    clm_0040_connect_attaches_to_running_command
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 16 filtered out; finished in 4.52s
+
+error: test failed, to rerun pass `--test live_commands`
+### rerun clm_0041_list_includes_background_command (live_commands) at 2026-10-28T02:03:06Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.04s
+     Running tests/live_commands.rs (target/debug/deps/live_commands-eef40517a13510cb)
+
+running 1 test
+test clm_0041_list_includes_background_command ... ok
+
+successes:
+
+successes:
+    clm_0041_list_includes_background_command
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 16 filtered out; finished in 1.53s
+
+### rerun clm_0042_send_stdin_reaches_command (live_commands) at 2026-10-28T02:05:07Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.31s
+     Running tests/live_commands.rs (target/debug/deps/live_commands-eef40517a13510cb)
+
+running 1 test
+test clm_0042_send_stdin_reaches_command ... ok
+
+successes:
+
+successes:
+    clm_0042_send_stdin_reaches_command
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 16 filtered out; finished in 1.53s
+
+### rerun clm_0044_sigterm_terminates_command (live_commands) at 2026-10-28T02:07:09Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.07s
+     Running tests/live_commands.rs (target/debug/deps/live_commands-eef40517a13510cb)
+
+running 1 test
+test clm_0044_sigterm_terminates_command ... FAILED
+
+successes:
+
+successes:
+
+failures:
+
+---- clm_0044_sigterm_terminates_command stdout ----
+
+thread 'clm_0044_sigterm_terminates_command' (3077196) panicked at tests/live_commands.rs:317:5:
+pid 10 still listed after SIGTERM: [ProcessInfo { pid: 10, tag: None, cmd: "/bin/bash", args: ["-l", "-c", "sleep 30"], envs: {}, cwd: None }]
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    clm_0044_sigterm_terminates_command
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 16 filtered out; finished in 1.39s
+
+error: test failed, to rerun pass `--test live_commands`
+### rerun clm_0045_kill_reports_whether_pid_existed (live_commands) at 2026-10-28T02:09:11Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.11s
+     Running tests/live_commands.rs (target/debug/deps/live_commands-eef40517a13510cb)
+
+running 1 test
+test clm_0045_kill_reports_whether_pid_existed ... ok
+
+successes:
+
+successes:
+    clm_0045_kill_reports_whether_pid_existed
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 16 filtered out; finished in 2.00s
+
+### rerun clm_0048_pty_resize_changes_terminal_size (live_commands) at 2026-10-28T02:11:13Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.06s
+     Running tests/live_commands.rs (target/debug/deps/live_commands-eef40517a13510cb)
+
+running 1 test
+test clm_0048_pty_resize_changes_terminal_size ... ok
+
+successes:
+
+successes:
+    clm_0048_pty_resize_changes_terminal_size
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 16 filtered out; finished in 1.77s
+
+### rerun clm_0050_write_read_round_trips_binary (live_files) at 2026-10-28T02:13:15Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.05s
+     Running tests/live_files.rs (target/debug/deps/live_files-a406668c314ef385)
+
+running 1 test
+test clm_0050_write_read_round_trips_binary ... ok
+
+successes:
+
+successes:
+    clm_0050_write_read_round_trips_binary
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 18 filtered out; finished in 1.43s
+
+### rerun clm_0051_read_to_string_returns_text (live_files) at 2026-10-28T02:15:16Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.05s
+     Running tests/live_files.rs (target/debug/deps/live_files-a406668c314ef385)
+
+running 1 test
+test clm_0051_read_to_string_returns_text ... ok
+
+successes:
+
+successes:
+    clm_0051_read_to_string_returns_text
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 18 filtered out; finished in 0.92s
+
+### rerun clm_0052_write_returns_write_info (live_files) at 2026-10-28T02:17:17Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.05s
+     Running tests/live_files.rs (target/debug/deps/live_files-a406668c314ef385)
+
+running 1 test
+test clm_0052_write_returns_write_info ... ok
+
+successes:
+
+successes:
+    clm_0052_write_returns_write_info
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 18 filtered out; finished in 1.11s
+
+### rerun clm_0053_read_missing_file_is_not_found (live_files) at 2026-10-28T02:19:19Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.05s
+     Running tests/live_files.rs (target/debug/deps/live_files-a406668c314ef385)
+
+running 1 test
+test clm_0053_read_missing_file_is_not_found ... ok
+
+successes:
+
+successes:
+    clm_0053_read_missing_file_is_not_found
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 18 filtered out; finished in 0.39s
+
+### rerun clm_0054_list_depth_one_lists_direct_entries (live_files) at 2026-10-28T02:21:19Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.05s
+     Running tests/live_files.rs (target/debug/deps/live_files-a406668c314ef385)
+
+running 1 test
+test clm_0054_list_depth_one_lists_direct_entries ... FAILED
+
+successes:
+
+successes:
+
+failures:
+
+---- clm_0054_list_depth_one_lists_direct_entries stdout ----
+
+thread 'clm_0054_list_depth_one_lists_direct_entries' (3135173) panicked at tests/live_files.rs:95:10:
+write a: Envd { status: 404, message: "No such file or directory (os error 2)" }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    clm_0054_list_depth_one_lists_direct_entries
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 18 filtered out; finished in 0.77s
+
+error: test failed, to rerun pass `--test live_files`
+### rerun clm_0056_get_info_reports_metadata (live_files) at 2026-10-28T02:23:20Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.07s
+     Running tests/live_files.rs (target/debug/deps/live_files-a406668c314ef385)
+
+running 1 test
+test clm_0056_get_info_reports_metadata ... FAILED
+
+successes:
+
+successes:
+
+failures:
+
+---- clm_0056_get_info_reports_metadata stdout ----
+
+thread 'clm_0056_get_info_reports_metadata' (3142282) panicked at tests/live_files.rs:167:5:
+want `-rw...` permissions: EntryInfo { name: "sized.txt", file_type: File, path: "/tmp/sized.txt", size: 5, mode: 420, permissions: "rw-r--r--", owner: "", group: "", modified_time: Some(2026-10-28T02:23:21.104530078Z), symlink_target: None, metadata: {} }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    clm_0056_get_info_reports_metadata
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 18 filtered out; finished in 0.92s
+
+error: test failed, to rerun pass `--test live_files`
+### rerun clm_0057_exists_true_and_false (live_files) at 2026-10-28T02:25:21Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.05s
+     Running tests/live_files.rs (target/debug/deps/live_files-a406668c314ef385)
+
+running 1 test
+test clm_0057_exists_true_and_false ... ok
+
+successes:
+
+successes:
+    clm_0057_exists_true_and_false
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 18 filtered out; finished in 1.91s
+
+### rerun clm_0058_make_dir_reports_creation (live_files) at 2026-10-28T02:27:23Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.05s
+     Running tests/live_files.rs (target/debug/deps/live_files-a406668c314ef385)
+
+running 1 test
+test clm_0058_make_dir_reports_creation ... FAILED
+
+successes:
+
+successes:
+
+failures:
+
+---- clm_0058_make_dir_reports_creation stdout ----
+
+thread 'clm_0058_make_dir_reports_creation' (3156621) panicked at tests/live_files.rs:208:10:
+first make_dir: Rpc { code: Unavailable, message: "sandbox is still starting up; retry shortly [EAGAIN: resource temporarily unavailable]" }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    clm_0058_make_dir_reports_creation
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 18 filtered out; finished in 15.39s
+
+error: test failed, to rerun pass `--test live_files`
+### rerun clm_0060_remove_deletes_file_and_directory (live_files) at 2026-10-28T02:29:38Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.06s
+     Running tests/live_files.rs (target/debug/deps/live_files-a406668c314ef385)
+
+running 1 test
+test clm_0060_remove_deletes_file_and_directory ... FAILED
+
+successes:
+
+successes:
+
+failures:
+
+---- clm_0060_remove_deletes_file_and_directory stdout ----
+
+thread 'clm_0060_remove_deletes_file_and_directory' (3164813) panicked at tests/live_files.rs:257:10:
+write file: Envd { status: 503, message: "sandbox is still starting up; retry shortly [EAGAIN: resource temporarily unavailable]" }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    clm_0060_remove_deletes_file_and_directory
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 18 filtered out; finished in 15.66s
+
+error: test failed, to rerun pass `--test live_files`
+### rerun clm_0061_user_selects_file_owner (live_files) at 2026-10-28T02:31:54Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.05s
+     Running tests/live_files.rs (target/debug/deps/live_files-a406668c314ef385)
+
+running 1 test
+test clm_0061_user_selects_file_owner ... FAILED
+
+successes:
+
+successes:
+
+failures:
+
+---- clm_0061_user_selects_file_owner stdout ----
+
+thread 'clm_0061_user_selects_file_owner' (3172843) panicked at tests/live_files.rs:310:5:
+assertion `left == right` failed
+  left: ""
+ right: "root"
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    clm_0061_user_selects_file_owner
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 18 filtered out; finished in 0.81s
+
+error: test failed, to rerun pass `--test live_files`
+### rerun clm_0063_watch_dir_reports_a_created_file (live_files) at 2026-10-28T02:33:55Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.05s
+     Running tests/live_files.rs (target/debug/deps/live_files-a406668c314ef385)
+
+running 1 test
+test clm_0063_watch_dir_reports_a_created_file ... FAILED
+
+successes:
+
+successes:
+
+failures:
+
+---- clm_0063_watch_dir_reports_a_created_file stdout ----
+
+thread 'clm_0063_watch_dir_reports_a_created_file' (3179985) panicked at tests/live_files.rs:358:10:
+watch_dir: Rpc { code: NotFound, message: "HTTP 404" }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    clm_0063_watch_dir_reports_a_created_file
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 18 filtered out; finished in 0.87s
+
+error: test failed, to rerun pass `--test live_files`
+### rerun clm_0064_upload_url_accepts_a_multipart_post (live_files) at 2026-10-28T02:35:56Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.06s
+     Running tests/live_files.rs (target/debug/deps/live_files-a406668c314ef385)
+
+running 1 test
+test clm_0064_upload_url_accepts_a_multipart_post ... ok
+
+successes:
+
+successes:
+    clm_0064_upload_url_accepts_a_multipart_post
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 18 filtered out; finished in 0.99s
+
+### rerun clm_0065_download_url_fetches_without_credentials (live_files) at 2026-10-28T02:37:57Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.05s
+     Running tests/live_files.rs (target/debug/deps/live_files-a406668c314ef385)
+
+running 1 test
+test clm_0065_download_url_fetches_without_credentials ... FAILED
+
+successes:
+
+successes:
+
+failures:
+
+---- clm_0065_download_url_fetches_without_credentials stdout ----
+
+thread 'clm_0065_download_url_fetches_without_credentials' (3194345) panicked at tests/live_files.rs:562:10:
+download url: InvalidArgument("a URL expiration needs a secured sandbox (one with an envd access token)")
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    clm_0065_download_url_fetches_without_credentials
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 18 filtered out; finished in 0.64s
+
+error: test failed, to rerun pass `--test live_files`
+### rerun clm_0128_read_stream_downloads_in_chunks (live_files) at 2026-10-28T02:39:58Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.05s
+     Running tests/live_files.rs (target/debug/deps/live_files-a406668c314ef385)
+
+running 1 test
+test clm_0128_read_stream_downloads_in_chunks ... FAILED
+
+successes:
+
+successes:
+
+failures:
+
+---- clm_0128_read_stream_downloads_in_chunks stdout ----
+
+thread 'clm_0128_read_stream_downloads_in_chunks' (3201457) panicked at tests/live_files.rs:448:10:
+read_stream: Envd { status: 500, message: "an internal error occurred" }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    clm_0128_read_stream_downloads_in_chunks
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 18 filtered out; finished in 6.32s
+
+error: test failed, to rerun pass `--test live_files`
+### rerun clm_0143_create_network_allow_and_deny_lists_are_enforced (live_lifecycle) at 2026-10-28T02:42:04Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.06s
+     Running tests/live_lifecycle.rs (target/debug/deps/live_lifecycle-96ba98bceafb1d73)
+
+running 1 test
+test clm_0143_create_network_allow_and_deny_lists_are_enforced ... FAILED
+
+successes:
+
+successes:
+
+failures:
+
+---- clm_0143_create_network_allow_and_deny_lists_are_enforced stdout ----
+
+thread 'clm_0143_create_network_allow_and_deny_lists_are_enforced' (3208866) panicked at tests/live_lifecycle.rs:747:5:
+1.0.0.1 is denied by ALL_TRAFFIC but replied
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    clm_0143_create_network_allow_and_deny_lists_are_enforced
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 38 filtered out; finished in 3.22s
+
+error: test failed, to rerun pass `--test live_lifecycle`
+### rerun clm_0146_filesystem_pause_cold_boots (live_lifecycle) at 2026-10-28T02:44:07Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.05s
+     Running tests/live_lifecycle.rs (target/debug/deps/live_lifecycle-96ba98bceafb1d73)
+
+running 1 test
+test clm_0146_filesystem_pause_cold_boots ... FAILED
+
+successes:
+
+successes:
+
+failures:
+
+---- clm_0146_filesystem_pause_cold_boots stdout ----
+
+thread 'clm_0146_filesystem_pause_cold_boots' (3216118) panicked at tests/live_lifecycle.rs:61:5:
+assertion `left == right` failed: CommandResult { stdout: "", stderr: "touch: cannot touch '/home/user/on-disk': No such file or directory\n", exit_code: 1, error: None }
+  left: 1
+ right: 0
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    clm_0146_filesystem_pause_cold_boots
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 38 filtered out; finished in 1.42s
+
+error: test failed, to rerun pass `--test live_lifecycle`
+### rerun clm_0146_resume_restores_memory_or_reboots (live_lifecycle) at 2026-10-28T02:46:09Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.05s
+     Running tests/live_lifecycle.rs (target/debug/deps/live_lifecycle-96ba98bceafb1d73)
+
+running 1 test
+test clm_0146_resume_restores_memory_or_reboots ... FAILED
+
+successes:
+
+successes:
+
+failures:
+
+---- clm_0146_resume_restores_memory_or_reboots stdout ----
+
+thread 'clm_0146_resume_restores_memory_or_reboots' (3223361) panicked at tests/live_lifecycle.rs:61:5:
+assertion `left == right` failed: CommandResult { stdout: "", stderr: "NOTICE: sandbox is still starting up; retry shortly\n", exit_code: 75, error: None }
+  left: 75
+ right: 0
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    clm_0146_resume_restores_memory_or_reboots
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 38 filtered out; finished in 15.70s
+
+error: test failed, to rerun pass `--test live_lifecycle`
+### rerun clm_0147_list_and_delete_snapshots (live_lifecycle) at 2026-10-28T02:48:25Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.06s
+     Running tests/live_lifecycle.rs (target/debug/deps/live_lifecycle-96ba98bceafb1d73)
+
+running 1 test
+test clm_0147_list_and_delete_snapshots ... FAILED
+
+successes:
+
+successes:
+
+failures:
+
+---- clm_0147_list_and_delete_snapshots stdout ----
+
+thread 'clm_0147_list_and_delete_snapshots' (3231431) panicked at tests/live_lifecycle.rs:1028:10:
+snapshot: SandboxNotFound("sbx-compound-pool-pc7rd")
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    clm_0147_list_and_delete_snapshots
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 38 filtered out; finished in 1.20s
+
+error: test failed, to rerun pass `--test live_lifecycle`
+### rerun clm_0150_mcp_gateway_starts_and_exposes_url_and_token (live_lifecycle) at 2026-10-28T02:50:26Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.05s
+     Running tests/live_lifecycle.rs (target/debug/deps/live_lifecycle-96ba98bceafb1d73)
+
+running 1 test
+test clm_0150_mcp_gateway_starts_and_exposes_url_and_token ... FAILED
+
+successes:
+
+successes:
+
+failures:
+
+---- clm_0150_mcp_gateway_starts_and_exposes_url_and_token stdout ----
+
+thread 'clm_0150_mcp_gateway_starts_and_exposes_url_and_token' (3238619) panicked at tests/live_support/mod.rs:171:59:
+create sandbox: McpGateway("ERROR: sandbox will not become ready without intervention: the sandbox failed (action_failure)\n")
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    clm_0150_mcp_gateway_starts_and_exposes_url_and_token
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 38 filtered out; finished in 0.62s
+
+error: test failed, to rerun pass `--test live_lifecycle`
+### rerun clm_0151_list_filters_by_template_and_start_time_and_orders (live_lifecycle) at 2026-10-28T02:52:27Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.05s
+     Running tests/live_lifecycle.rs (target/debug/deps/live_lifecycle-96ba98bceafb1d73)
+
+running 1 test
+test clm_0151_list_filters_by_template_and_start_time_and_orders ... FAILED
+
+successes:
+
+successes:
+
+failures:
+
+---- clm_0151_list_filters_by_template_and_start_time_and_orders stdout ----
+
+thread 'clm_0151_list_filters_by_template_and_start_time_and_orders' (3245699) panicked at tests/live_lifecycle.rs:718:5:
+["sbx-91d5e81e4a28", "sbx-compound-pool-5g966", "sbx-compound-pool-sw4nn"]
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    clm_0151_list_filters_by_template_and_start_time_and_orders
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 38 filtered out; finished in 3.31s
+
+error: test failed, to rerun pass `--test live_lifecycle`
+### sweep at 2026-10-28T02:52:30Z
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.05s
+     Running tests/live_sweep.rs (target/debug/deps/live_sweep-9120dd72c29f0516)
+
+running 3 tests
+test sweep_leftover_volumes_of_this_run ... FAILED
+test sweep_leftover_snapshots_of_this_run ... FAILED
+test sweep_leftover_sandboxes_of_this_run ... ok
+
+successes:
+
+---- sweep_leftover_sandboxes_of_this_run stdout ----
+sweep: killed 0 leftover sandbox(es) of run 20261028T013641Z-sandbawks-rerun-2828108
+
+
+successes:
+    sweep_leftover_sandboxes_of_this_run
+
+failures:
+
+---- sweep_leftover_volumes_of_this_run stdout ----
+
+thread 'sweep_leftover_volumes_of_this_run' (3245837) panicked at tests/live_sweep.rs:145:10:
+list volumes: Api { status: 404, message: "HTTP 404" }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- sweep_leftover_snapshots_of_this_run stdout ----
+
+thread 'sweep_leftover_snapshots_of_this_run' (3245836) panicked at tests/live_sweep.rs:86:14:
+list snapshots: Api { status: 404, message: "HTTP 404" }
+
+
+failures:
+    sweep_leftover_snapshots_of_this_run
+    sweep_leftover_volumes_of_this_run
+
+test result: FAILED. 1 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.27s
+
+error: test failed, to rerun pass `--test live_sweep`
