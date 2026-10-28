@@ -1,0 +1,61 @@
+commit: 0591c6a8388f4a1e0882c81727c2b5372e211bc4
+dirty: no
+paced: one test at a time, 5s apart; readiness failures rerun once
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.04s
+  Executable tests/live_commands.rs (target/debug/deps/live_commands-eef40517a13510cb)
+  Executable tests/live_files.rs (target/debug/deps/live_files-a406668c314ef385)
+  Executable tests/live_lifecycle.rs (target/debug/deps/live_lifecycle-96ba98bceafb1d73)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.04s
+     Running tests/live_lifecycle.rs (target/debug/deps/live_lifecycle-96ba98bceafb1d73)
+
+running 1 test
+test clm_0007_create_returns_running_sandbox ... ok
+
+successes:
+
+successes:
+    clm_0007_create_returns_running_sandbox
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 39 filtered out; finished in 0.46s
+
+RESULT clm_0007_create_returns_running_sandbox PASS
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.04s
+     Running tests/live_sweep.rs (target/debug/deps/live_sweep-9120dd72c29f0516)
+
+running 3 tests
+test sweep_leftover_sandboxes_of_this_run ... ok
+test sweep_leftover_snapshots_of_this_run ... FAILED
+test sweep_leftover_volumes_of_this_run ... FAILED
+
+successes:
+
+---- sweep_leftover_sandboxes_of_this_run stdout ----
+sweep: killed 0 leftover sandbox(es) of run 20261028T152914Z-sandbawks-paced-726401
+
+
+successes:
+    sweep_leftover_sandboxes_of_this_run
+
+failures:
+
+---- sweep_leftover_snapshots_of_this_run stdout ----
+
+thread 'sweep_leftover_snapshots_of_this_run' (726616) panicked at tests/live_sweep.rs:86:14:
+list snapshots: Api { status: 404, message: "HTTP 404" }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- sweep_leftover_volumes_of_this_run stdout ----
+
+thread 'sweep_leftover_volumes_of_this_run' (726617) panicked at tests/live_sweep.rs:145:10:
+list volumes: Api { status: 404, message: "HTTP 404" }
+
+
+failures:
+    sweep_leftover_snapshots_of_this_run
+    sweep_leftover_volumes_of_this_run
+
+test result: FAILED. 1 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.15s
+
+error: test failed, to rerun pass `--test live_sweep`
+summary: 1 pass, 0 pass on rerun, 0 fail, 0 still not ready
+run log: target/live-logs/20261028T152914Z-sandbawks-paced-726401.log
