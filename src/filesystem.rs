@@ -509,12 +509,16 @@ impl WriteOptions {
     /// How many octet-stream or gzip uploads [`Filesystem::write_files`]
     /// keeps in flight at once; the rest start as earlier ones finish.
     /// Defaults to [`DEFAULT_UPLOAD_CONCURRENCY`] (8). Multipart sends one
-    /// request for the whole batch, so the cap does not apply to it.
+    /// request for the whole batch, and [`Filesystem::write_stream`] uploads
+    /// one file, so the cap does not limit either.
     ///
     /// # Arguments
     ///
-    /// * `max_concurrency` - at least 1; 0 makes the write fail with
-    ///   [`Error::InvalidArgument`] before any request.
+    /// * `max_concurrency` - at least 1. A zero is bad input whatever the
+    ///   encoding: [`Filesystem::write_files`] and [`Filesystem::write`]
+    ///   fail with [`Error::InvalidArgument`] before any request, multipart
+    ///   included (the default encoding, and envd older than 0.5.7).
+    ///   [`Filesystem::write_stream`] ignores the value.
     ///
     /// # Returns
     ///
@@ -1219,7 +1223,8 @@ impl Filesystem {
     /// # Errors
     ///
     /// [`Error::InvalidArgument`] for invalid metadata (see
-    /// [`WriteOptions::metadata`]), [`Error::Envd`] for a non-2xx answer,
+    /// [`WriteOptions::metadata`]) or a zero
+    /// [`WriteOptions::max_concurrency`], [`Error::Envd`] for a non-2xx answer,
     /// [`Error::Protocol`] if envd reports no written file, [`Error::Decode`]
     /// or [`Error::Transport`].
     pub async fn write(
