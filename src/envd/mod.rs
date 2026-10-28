@@ -346,10 +346,10 @@ impl EnvdClient {
         if let Some(timeout) = self.request_timeout {
             builder = builder.timeout(timeout);
         }
-        let response = builder.send().await?;
+        let response = builder.send().await.map_err(Error::transport)?;
         let status = response.status();
         let content_type = content_type_of(&response);
-        let bytes = response.bytes().await?;
+        let bytes = response.bytes().await.map_err(Error::transport)?;
         if status != reqwest::StatusCode::OK {
             return Err(error_from_response(
                 status.as_u16(),
@@ -475,11 +475,12 @@ impl EnvdClient {
             .headers(protocol_headers(CONTENT_TYPE_STREAM_JSON, timeout))
             .body(body)
             .send()
-            .await?;
+            .await
+            .map_err(Error::transport)?;
         let status = response.status();
         if status != reqwest::StatusCode::OK {
             let content_type = content_type_of(&response);
-            let bytes = response.bytes().await?;
+            let bytes = response.bytes().await.map_err(Error::transport)?;
             return Err(error_from_response(
                 status.as_u16(),
                 content_type.as_deref(),
@@ -577,7 +578,7 @@ pub(crate) async fn envd_http_error(response: reqwest::Response) -> Error {
             status,
             message: json_message_or_text(&body),
         },
-        Err(err) => Error::Transport(err),
+        Err(err) => Error::transport(err),
     }
 }
 

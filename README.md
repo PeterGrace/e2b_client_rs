@@ -60,7 +60,7 @@ async fn main() -> e2b_client::Result<()> {
 | PTY sessions (envd) | `Pty::{create, connect, send_stdin, stream_input, resize, kill}`; `PtyHandle::{next_event, wait}` streams terminal output to an exit code |
 | Files (envd) | `Filesystem::{read, read_to_string, read_stream, write, write_files, write_stream, list, get_info, exists, make_dir, rename, remove, watch_dir}`; `WriteOptions` selects multipart, octet-stream or gzip uploads and attaches metadata; `FileStream::next_chunk` and `WatchHandle::next_event` stream downloads and directory events |
 | Signed URLs | `Sandbox::{upload_url, download_url}` with `FileUrlOptions::{user, expires_in}`: plain HTTP links signed with the sandbox's envd access token |
-| Errors | `Error` (`thiserror`): REST status + E2B message, Connect error codes, envd HTTP errors, protocol, timeout, transport, invalid argument |
+| Errors | `Error` (`thiserror`): REST status + E2B message, Connect error codes, envd HTTP errors, protocol, timeout, transport (`TransportError`, with `is_timeout`/`is_connect`), invalid argument; `status()` and the SDK's categories as `is_not_found`, `is_auth`, `is_rate_limited`, `is_service_busy`, `is_not_enough_space`, `is_sandbox_unreachable`, `is_timeout`, `is_retryable` |
 
 Out of scope by design: code interpreter, template building, and a blocking
 API. Not implemented yet: the SOCKS5 egress proxy and IAM workload identity

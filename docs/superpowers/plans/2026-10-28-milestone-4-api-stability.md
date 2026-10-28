@@ -557,6 +557,8 @@ git commit -m "feat!: drop the v1 connect fallback"
 - Modify: `README.md` (the "Errors" row, line 63), `docs/protocol-notes.md` (new section "Error classification"), `docs/verification/s4-evidence-map.md` (row CLM-0169)
 - Create: `changelog/<ts>-m4-task-02-error-taxonomy.md`
 
+> **Corrected (issue #92, 2026-10-28).** On 88184fb (after Task 1) the reqwest conversions are 30, not 32: Step 3's table lists 30 lines, and the line numbers in `src/client.rs` moved up once Task 1 removed the v1 fallback (by 3 above `connect_sandbox`, so `:105` is `:102`; by 32 below it, so `:325` is `:293` and `:1044` is `:1012`). Follow the compiler's list. Step 4's `tests/rest_api.rs:328` is now `:339`; the 19 pattern sites are otherwise as listed. No later task changes: their code already converts with `.map_err(Error::transport)` and matches the struct variants with `..`.
+
 Decisions 1 and 4. The `Api`, `Envd` and `Rpc` variants stay. `status()` and seven classifiers map them onto SDK 2.61's exception classes (Verified facts: `py: api/__init__.py:155-213`, `py: envd/api.py:24-33`, `py: envd/rpc.py:26-40`). `Error::Transport` now holds a `TransportError`, so no reqwest type is public (CLM-0170). Because `From<reqwest::Error> for Error` is a public trait impl, it goes, and every reqwest result is converted with `.map_err(Error::transport)`.
 
 - [ ] **Step 1: Write the failing integration tests**

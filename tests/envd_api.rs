@@ -190,7 +190,7 @@ async fn end_of_stream_error_frame_becomes_rpc_error() {
         .expect_err("e");
 
     assert!(
-        matches!(err, Error::Rpc { code: ConnectCode::DeadlineExceeded, ref message }
+        matches!(err, Error::Rpc { code: ConnectCode::DeadlineExceeded, ref message, .. }
             if message == "too slow"),
         "{err:?}"
     );
@@ -638,7 +638,7 @@ async fn unary_plain_proxy_error_maps_status() {
     let err = sandbox.commands().list().await.expect_err("error");
 
     assert!(
-        matches!(err, Error::Rpc { code: ConnectCode::Unavailable, ref message }
+        matches!(err, Error::Rpc { code: ConnectCode::Unavailable, ref message, .. }
             if message == "sandbox not running"),
         "{err:?}"
     );
@@ -687,7 +687,7 @@ async fn read_missing_file_is_envd_not_found() {
         .expect_err("error");
 
     assert!(
-        matches!(err, Error::Envd { status: 404, ref message } if message == "file not found"),
+        matches!(err, Error::Envd { status: 404, ref message, .. } if message == "file not found"),
         "{err:?}"
     );
     assert!(err.is_not_found());

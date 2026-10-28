@@ -301,7 +301,7 @@ async fn update_network_refused_by_the_api_is_an_api_error() {
     assert!(
         matches!(
             error,
-            Error::Api { status: 400, ref message } if message.contains("at most 1 transform rule")
+            Error::Api { status: 400, ref message, .. } if message.contains("at most 1 transform rule")
         ),
         "{error:?}"
     );

@@ -76,7 +76,7 @@ async fn create_sandbox_surfaces_e2b_error_body() {
         .expect_err("error");
 
     assert!(
-        matches!(err, Error::Api { status: 400, ref message } if message == "template not found"),
+        matches!(err, Error::Api { status: 400, ref message, .. } if message == "template not found"),
         "{err:?}"
     );
 }
@@ -336,7 +336,7 @@ async fn kill_sandbox_server_error_is_api_error() {
         .expect_err("error");
 
     assert!(
-        matches!(err, Error::Api { status: 500, ref message } if message == "boom"),
+        matches!(err, Error::Api { status: 500, ref message, .. } if message == "boom"),
         "{err:?}"
     );
 }

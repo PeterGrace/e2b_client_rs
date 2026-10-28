@@ -381,7 +381,7 @@ async fn octet_stream_upload_errors_are_reported() {
 
     // Assert
     assert!(
-        matches!(&full, Error::Envd { status: 507, message } if message == "no space"),
+        matches!(&full, Error::Envd { status: 507, message, .. } if message == "no space"),
         "{full:?}"
     );
     assert!(matches!(empty, Error::Protocol(_)), "{empty:?}");

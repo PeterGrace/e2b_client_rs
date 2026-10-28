@@ -115,7 +115,7 @@ async fn create_snapshot_refused_is_an_api_error() {
 
         // Assert
         assert!(
-            matches!(&error, Error::Api { status: got, message } if *got == status && message == code),
+            matches!(&error, Error::Api { status: got, message, .. } if *got == status && message == code),
             "{status}: {error:?}"
         );
     }
@@ -225,7 +225,7 @@ async fn list_snapshots_refused_is_an_api_error() {
 
     // Assert
     assert!(
-        matches!(&error, Error::Api { status: 401, message } if message == "bad key"),
+        matches!(&error, Error::Api { status: 401, message, .. } if message == "bad key"),
         "{error:?}"
     );
 }
@@ -285,7 +285,7 @@ async fn delete_snapshot_refused_is_an_api_error() {
 
     // Assert
     assert!(
-        matches!(&error, Error::Api { status: 500, message } if message == "boom"),
+        matches!(&error, Error::Api { status: 500, message, .. } if message == "boom"),
         "{error:?}"
     );
 }

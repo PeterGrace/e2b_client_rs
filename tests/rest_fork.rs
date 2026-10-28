@@ -49,7 +49,7 @@ async fn fork_returns_one_result_per_fork() {
         "sbx-fork"
     );
     assert!(
-        matches!(&results[1], Err(Error::Api { status: 429, message }) if message == "rate limited"),
+        matches!(&results[1], Err(Error::Api { status: 429, message, .. }) if message == "rate limited"),
         "{:?}",
         results[1]
     );
@@ -59,7 +59,7 @@ async fn fork_returns_one_result_per_fork() {
         results[2]
     );
     assert!(
-        matches!(&results[3], Err(Error::Api { status: 500, message }) if message == "boom"),
+        matches!(&results[3], Err(Error::Api { status: 500, message, .. }) if message == "boom"),
         "{:?}",
         results[3]
     );
@@ -163,7 +163,7 @@ async fn fork_refused_is_an_api_error() {
 
     // Assert
     assert!(
-        matches!(&error, Error::Api { status: 409, message } if message == "paused"),
+        matches!(&error, Error::Api { status: 409, message, .. } if message == "paused"),
         "{error:?}"
     );
 }

@@ -101,7 +101,7 @@ pub use config::{
     ConnectionConfig, ConnectionConfigBuilder, DEFAULT_DOMAIN, DEFAULT_REQUEST_TIMEOUT, ENVD_PORT,
 };
 pub use envd::EnvdVersion;
-pub use error::{ConnectCode, Error, Result};
+pub use error::{ConnectCode, Error, Result, TransportError};
 pub use filesystem::{
     DEFAULT_WATCH_TIMEOUT, EntryInfo, FileStream, FileType, Filesystem, FilesystemEvent,
     FilesystemEventType, WatchHandle, WatchOptions, WriteEntry, WriteInfo, WriteOptions,
@@ -122,3 +122,8 @@ pub use sandbox::{FileUrlOptions, Sandbox};
 pub use snapshots::{ListSnapshotsParams, SnapshotInfo, SnapshotOptions, SnapshotPage};
 pub use stream_input::{DEFAULT_STREAM_INPUT_TIMEOUT, InputStream, StreamInputOptions};
 pub use volumes::{Volume, VolumeInfo, VolumeMount};
+
+/// The `secrecy` crate, at the version this crate's API uses: the envd and
+/// MCP tokens are [`secrecy::SecretString`]s, and `secrecy::ExposeSecret`
+/// reads them.
+pub use secrecy;
