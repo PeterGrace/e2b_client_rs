@@ -3647,6 +3647,12 @@ git commit -m "feat: create, list and delete snapshots"
 - Modify: `tests/live_support/mod.rs` (`LiveSandbox::adopt`), `tests/live_lifecycle.rs`
 - Modify: `docs/protocol-notes.md` ("Snapshots and fork", or "REST endpoints" if Task 8 has not merged), `docs/verification/s4-evidence-map.md`
 
+> **Corrected (issue #68, 2026-10-27).** What shipped differs from the steps below in these ways; the live-test code is fixed inline.
+> - **Each entry of the 201 array is decoded on its own.** `fork_sandbox` parses the body as `Vec<serde_json::Value>` and `fork_result(entry: serde_json::Value)` decodes each into `ForkResultWire`, so one malformed entry is that fork's `Error::Decode` instead of failing the call and losing the handles of forks that did start (each a running, billed sandbox). A body that is not an array (the SDK raises on `null` too) is still `Error::Decode` for the whole call.
+> - **Hosted E2B gives a fork the source's metadata** (live, 2026-10-28 UTC: both forks' `get_info().metadata` had `RUN_METADATA_KEY` with the run id), so the sandbox sweep finds a leaked fork. `clm_0030_fork_starts_running_copies` asserts it, and that each fork reports `state: running`.
+> - `ForkOptions`' doc names the API defaults the generated model states (one fork, 15 s, `py: api/client/models/sandbox_fork_request.py:16-19`); the SDK leaves both fields out when unset, so the crate sends `{}` as planned.
+> - Extra tests beyond the plan: a fourth entry with both `sandbox` and `error` in `fork_returns_one_result_per_fork` (the error wins), `fork_refused_is_an_api_error`, `fork_reads_a_malformed_entry_as_that_forks_error_and_a_null_body_as_decode`, `sandbox_fork_posts_to_its_own_id`, and in `src/models.rs` `fork_body_sends_only_what_is_set_in_whole_seconds` and `fork_body_refuses_counts_outside_1_to_20_with_the_count`. `Client::fork_sandbox` has a doctest. Read `src/models.rs`, `src/client.rs` and `tests/rest_fork.rs` for the shipped code.
+
 - [ ] **Step 1: Write the failing mock tests**
 
 `tests/rest_fork.rs`:
@@ -3998,12 +4004,20 @@ async fn clm_0030_fork_starts_running_copies() {
             .await
             .expect("read in the fork");
         assert_eq!(text, "from the source");
+        let info = fork.get_info().await.expect("fork info");
+        assert_eq!(info.state, SandboxState::Running);
+        // A fork inherits the source's metadata (hosted E2B, 2026-10-28), so
+        // the sandbox sweep finds a leaked fork by the run id too.
+        assert_eq!(
+            info.metadata.get(RUN_METADATA_KEY).map(String::as_str),
+            Some(run_id())
+        );
     }
     assert_eq!(source.get_info().await.expect("source info").state, SandboxState::Running);
 }
 ```
 
-Record in the PR whether a fork's `get_info().metadata` has `RUN_METADATA_KEY`: it decides whether the sandbox sweep can also catch a leaked fork. Run it on hosted. Expected: PASS.
+Record in the PR whether a fork's `get_info().metadata` has `RUN_METADATA_KEY`: it decides whether the sandbox sweep can also catch a leaked fork (it does on hosted E2B; the test asserts it). Run it on hosted. Expected: PASS.
 
 - [ ] **Step 6: Docs, gates, changelog, commit**
 

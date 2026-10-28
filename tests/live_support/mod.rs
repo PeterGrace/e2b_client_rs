@@ -177,6 +177,15 @@ impl LiveSandbox {
         Self::create(&params()).await
     }
 
+    /// Takes ownership of a sandbox this test did not create with
+    /// [`LiveSandbox::create`] (a fork), so it is killed on drop too.
+    pub fn adopt(sandbox: Sandbox) -> Self {
+        Self {
+            client: client(),
+            sandbox,
+        }
+    }
+
     /// The client that created this sandbox.
     pub fn client(&self) -> &Client {
         &self.client

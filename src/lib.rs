@@ -13,7 +13,8 @@
 //!   what a pause keeps ([`PauseOptions`]) and whether a resume restores the
 //!   memory or reboots ([`ConnectOptions`], [`OnResume`]). Snapshot a
 //!   sandbox ([`SnapshotOptions`]), list ([`ListSnapshotsParams`]) and
-//!   delete snapshots, and start new sandboxes from one.
+//!   delete snapshots, and start new sandboxes from one. Fork a running
+//!   sandbox into up to [`MAX_FORK_COUNT`] copies ([`ForkOptions`]).
 //! - **envd process service** ([`Commands`]): start commands, stream their
 //!   stdout and stderr to an exit code, send stdin (one write at a time or
 //!   as an ordered [`InputStream`]), signal, list processes.
@@ -101,8 +102,8 @@ pub use lifecycle::{
 };
 pub use metrics::{MetricsParams, SandboxMetrics};
 pub use models::{
-    CreateSandboxParams, DEFAULT_TEMPLATE, ListSandboxesParams, SandboxInfo, SandboxPage,
-    SandboxState, SortOrder,
+    CreateSandboxParams, DEFAULT_TEMPLATE, ForkOptions, ListSandboxesParams, MAX_FORK_COUNT,
+    SandboxInfo, SandboxPage, SandboxState, SortOrder,
 };
 pub use network::{ALL_TRAFFIC, NetworkConfig, NetworkInfo, NetworkRule, NetworkUpdate};
 pub use pty::{DEFAULT_PTY_TIMEOUT, Pty, PtyEvent, PtyHandle, PtyOptions, PtySize};

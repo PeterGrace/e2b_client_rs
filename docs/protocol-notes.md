@@ -111,9 +111,11 @@ back. The crate builds them with `NetworkConfig`, `NetworkUpdate` and
 
 ## Snapshots and fork
 
-Snapshots are persistent copies of a sandbox that new sandboxes start from.
+Snapshots are persistent copies of a sandbox that new sandboxes start from;
+a fork starts running copies of a sandbox from a snapshot taken for it.
 The crate builds the requests with `SnapshotOptions` and
-`ListSnapshotsParams` (`src/snapshots.rs`).
+`ListSnapshotsParams` (`src/snapshots.rs`), and `ForkOptions`
+(`src/models.rs`).
 
 | Fact | Citation |
 |---|---|
@@ -126,6 +128,10 @@ The crate builds the requests with `SnapshotOptions` and
 | Delete: `DELETE /templates/{id}` (a snapshot is a template), 204 → `true`, 404 → `false`, other statuses are errors. The id is one path segment: `/` is sent as `%2F`. The SDKs also encode `:` (`quote(value, safe="")`, `encodeURIComponent`) where the crate's URL builder leaves it as is; `:` is a legal path character with the same meaning either way, and hosted E2B deleted `<id>:<tag>` snapshots sent this way | `py: api/client/api/templates/delete_templates_template_id.py:16-37`; `py: sandbox_async/sandbox_api.py:377-396`; `py: api/__init__.py:32-40`; `js: 5520-5528`; live, hosted E2B, 2026-10-28 |
 | Hosted E2B refuses to delete a snapshot while a sandbox created from it runs: 400 `cannot delete template '<id>' because there are running sandboxes using it`. Once that sandbox is killed, the delete succeeds at once | live, hosted E2B, 2026-10-28 (`clm_0030`) |
 | Hosted E2B's names for a snapshot named `<name>` contain `<name>` as given (lowercase), and listing by that bare name, without the team prefix, finds it | live, hosted E2B, 2026-10-28 (`clm_0147`, the snapshot sweep) |
+| Fork: `POST /sandboxes/{id}/fork`, body `{timeout?, count?}` (timeout in seconds), each left out when unset, so `{}` takes the API defaults (one fork, 15 s); `count` must be an integer 1 to 20 (`MAX_FORK_COUNT`), else `InvalidArgument` before any request; 201 → one `SandboxForkResult` per fork; 404 → not found; other statuses (the spec lists 401, 409, 429, 500, 503) are errors | `py: api/client/api/sandboxes/post_sandboxes_sandbox_id_fork.py:22-66`; `py: api/client/models/sandbox_fork_request.py:13-39`; `py: sandbox/sandbox_api.py:81, 103-118`; `py: sandbox_async/sandbox_api.py:435-472`; `js: 5137-5141, 5579-5604` |
+| The source is briefly paused, snapshotted with its full memory and resumed, keeping its ID and expiry; every fork boots from that one snapshot, taken once whatever the count | `py: sandbox_async/main.py:400-420`; `py: api/client/models/sandbox_fork_request.py:17-19` |
+| `SandboxForkResult` is `{sandbox?, error?: {code, message}}`; the API sets exactly one. An error wins over a sandbox, and an entry with neither is an error ("Failed to start forked sandbox" in the SDK, `Error::Protocol` here). A per-fork error is `Error::Api { status: code, message }`, a per-fork 404 included: it refers to something that fork needed, not the source. The SDK maps the code to an exception class; the crate keeps the code. The crate decodes each entry on its own, so a malformed one is that fork's `Error::Decode`; the SDK fails the whole call on one. A `null` body is `Error::Decode`, as the Python SDK raises on it (the JS SDK reads it as no forks) | `py: api/client/models/sandbox_fork_result.py:17-76`; `py: sandbox_async/sandbox_api.py:466-493`; `py: api/client/models/error.py:26-28`; `js: 5596-5604` |
+| Hosted E2B starts forks with the source's metadata (a fork's `get_info().metadata` carries the source's keys) and in state `running`, with a `/tmp` file the source wrote before the fork | live, hosted E2B, 2026-10-28 (`clm_0030_fork_starts_running_copies`) |
 
 ## Connect-RPC framing
 
@@ -378,8 +384,8 @@ the download URL with its `signature` pair removed with a 4xx.
 - **`wait()` does not replay consumed output.** The SDK handle buffers all
   output; here `next_event()` hands chunks to the caller and `wait()` only
   collects what is left, so output is held once.
-- **Not implemented yet.** Milestone 3: fork, and the remaining SDK 2.61
-  create fields (volume mounts and the MCP gateway).
+- **Not implemented yet.** Milestone 3: the remaining SDK 2.61 create
+  fields (volume mounts and the MCP gateway).
   Milestone 4: the `is_symlink` file type (#30) and dropping the v1 connect
   fallback.
   Unscheduled: sandbox health probing on transport errors. Out of scope by
