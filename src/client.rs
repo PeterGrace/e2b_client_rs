@@ -11,10 +11,11 @@ use serde::Serialize;
 use crate::config::ConnectionConfig;
 use crate::envd::json_message_or_text;
 use crate::error::{Error, Result};
+use crate::lifecycle::{ConnectOptions, PauseOptions};
 use crate::metrics::{MetricsParams, SandboxMetrics};
 use crate::models::{
-    CreateSandboxParams, EmptyBody, ListSandboxesParams, RefreshBody, SandboxCreated, SandboxInfo,
-    SandboxPage, TimeoutBody,
+    ConnectBody, CreateSandboxParams, ListSandboxesParams, PauseBody, RefreshBody, SandboxCreated,
+    SandboxInfo, SandboxPage, TimeoutBody,
 };
 use crate::network::NetworkUpdate;
 use crate::sandbox::Sandbox;
@@ -177,7 +178,9 @@ impl Client {
     }
 
     /// Connects to a sandbox, resuming it first if it is paused
-    /// (`POST /v2/sandboxes/{id}/connect`).
+    /// (`POST /v2/sandboxes/{id}/connect`). A paused sandbox is restored
+    /// with the API's default; [`Client::connect_sandbox_with`] can reboot it
+    /// instead.
     ///
     /// If the server has no v2 route (HTTP 404) the v1 route
     /// `POST /sandboxes/{id}/connect`, also part of the E2B API, is tried
@@ -205,29 +208,71 @@ impl Client {
         sandbox_id: &str,
         timeout: Option<Duration>,
     ) -> Result<Sandbox> {
-        let v2_path = ["v2", "sandboxes", sandbox_id, "connect"];
-        let response = match timeout {
-            Some(timeout) => {
-                self.send_json(
-                    Method::POST,
-                    &v2_path,
-                    &TimeoutBody {
-                        timeout: timeout.as_secs(),
-                    },
-                )
-                .await?
-            }
-            None => {
-                self.send_json(Method::POST, &v2_path, &EmptyBody {})
-                    .await?
-            }
+        let options = match timeout {
+            Some(timeout) => ConnectOptions::new().timeout(timeout),
+            None => ConnectOptions::new(),
         };
+        self.connect_sandbox_with(sandbox_id, &options).await
+    }
+
+    /// [`Client::connect_sandbox`] with the SDK 2.61 options: the timeout and
+    /// how a paused sandbox resumes (`connect(timeout, on_resume)`,
+    /// `e2b/sandbox_async/sandbox_api.py:498-520`).
+    ///
+    /// [`OnResume::Reboot`](crate::OnResume::Reboot) sends `memory: false`
+    /// on the v2 route and on the v1 fallback alike; a restore, the API's
+    /// default, sends no `memory` field. The timeout behaves as in
+    /// [`Client::connect_sandbox`], including the 300 seconds sent on the v1
+    /// fallback when none is set.
+    ///
+    /// # Arguments
+    ///
+    /// * `sandbox_id` - the sandbox to connect to.
+    /// * `options` - the timeout and the resume mode.
+    ///
+    /// # Returns
+    ///
+    /// A [`Sandbox`] handle.
+    ///
+    /// # Errors
+    ///
+    /// As [`Client::connect_sandbox`]. The API documents that it refuses a
+    /// reboot with an error status ([`Error::Api`]) where that capability is
+    /// not enabled, rather than falling back to a memory restore.
+    pub async fn connect_sandbox_with(
+        &self,
+        sandbox_id: &str,
+        options: &ConnectOptions,
+    ) -> Result<Sandbox> {
+        let memory = options.memory();
+        let v2_body = ConnectBody {
+            timeout: options.timeout_value().map(|timeout| timeout.as_secs()),
+            memory,
+        };
+        let response = self
+            .send_json(
+                Method::POST,
+                &["v2", "sandboxes", sandbox_id, "connect"],
+                &v2_body,
+            )
+            .await?;
         let response = if response.status() == StatusCode::NOT_FOUND {
-            let body = TimeoutBody {
-                timeout: timeout.unwrap_or(DEFAULT_SANDBOX_TIMEOUT).as_secs(),
+            // The v1 body requires a timeout (`connect_sandbox.py:24, 48`).
+            let v1_body = ConnectBody {
+                timeout: Some(
+                    options
+                        .timeout_value()
+                        .unwrap_or(DEFAULT_SANDBOX_TIMEOUT)
+                        .as_secs(),
+                ),
+                memory,
             };
-            self.send_json(Method::POST, &["sandboxes", sandbox_id, "connect"], &body)
-                .await?
+            self.send_json(
+                Method::POST,
+                &["sandboxes", sandbox_id, "connect"],
+                &v1_body,
+            )
+            .await?
         } else {
             response
         };
@@ -382,8 +427,9 @@ impl Client {
         ensure_success(response).await.map(|_| true)
     }
 
-    /// Pauses a sandbox (`POST /sandboxes/{id}/pause`). Resume it with
-    /// [`Client::connect_sandbox`].
+    /// Pauses a sandbox (`POST /sandboxes/{id}/pause`) with the API's
+    /// default snapshot. Resume it with [`Client::connect_sandbox`];
+    /// [`Client::pause_sandbox_with`] chooses what the pause keeps.
     ///
     /// # Arguments
     ///
@@ -398,12 +444,46 @@ impl Client {
     /// [`Error::SandboxNotFound`] for HTTP 404, [`Error::Api`] for other
     /// non-2xx answers, [`Error::Transport`] for connection failures.
     pub async fn pause_sandbox(&self, sandbox_id: &str) -> Result<bool> {
+        self.pause_sandbox_with(sandbox_id, &PauseOptions::new())
+            .await
+    }
+
+    /// [`Client::pause_sandbox`] with the SDK 2.61 options: what the pause
+    /// keeps (`pause(mode)`, `e2b/sandbox_async/sandbox_api.py:399-432`).
+    /// The body is `{"memory": true}` for [`SnapshotMode::Full`],
+    /// `{"memory": false}` for [`SnapshotMode::Filesystem`], and `{}` when no
+    /// mode is set.
+    ///
+    /// # Arguments
+    ///
+    /// * `sandbox_id` - the sandbox to pause.
+    /// * `options` - what the pause keeps.
+    ///
+    /// # Returns
+    ///
+    /// `true` if it was paused, `false` if it was already paused (HTTP 409).
+    ///
+    /// # Errors
+    ///
+    /// As [`Client::pause_sandbox`]. The API may refuse a filesystem-only
+    /// pause where the feature is unavailable; for filesystem-only snapshots
+    /// the SDK documents HTTP 400 (not enabled for the team) and 409 (the
+    /// node is too old). A 400 is an [`Error::Api`]. A 409 is read as
+    /// "already paused" and returns `Ok(false)`, because the SDK reads every
+    /// 409 from this route that way.
+    ///
+    /// [`SnapshotMode::Full`]: crate::SnapshotMode::Full
+    /// [`SnapshotMode::Filesystem`]: crate::SnapshotMode::Filesystem
+    pub async fn pause_sandbox_with(
+        &self,
+        sandbox_id: &str,
+        options: &PauseOptions,
+    ) -> Result<bool> {
+        let body = PauseBody {
+            memory: options.memory(),
+        };
         let response = self
-            .send_json(
-                Method::POST,
-                &["sandboxes", sandbox_id, "pause"],
-                &EmptyBody {},
-            )
+            .send_json(Method::POST, &["sandboxes", sandbox_id, "pause"], &body)
             .await?;
         match response.status() {
             StatusCode::NOT_FOUND => Err(Error::SandboxNotFound(sandbox_id.to_owned())),

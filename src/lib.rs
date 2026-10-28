@@ -9,7 +9,9 @@
 //!   at create ([`NetworkConfig`]) or on a running sandbox
 //!   ([`NetworkUpdate`]). At create, choose what happens at the timeout
 //!   ([`Lifecycle`]: kill, or pause with a [`SnapshotMode`]) and make the
-//!   request idempotent ([`CreateSandboxParams::idempotency_key`]).
+//!   request idempotent ([`CreateSandboxParams::idempotency_key`]). Choose
+//!   what a pause keeps ([`PauseOptions`]) and whether a resume restores the
+//!   memory or reboots ([`ConnectOptions`], [`OnResume`]).
 //! - **envd process service** ([`Commands`]): start commands, stream their
 //!   stdout and stderr to an exit code, send stdin (one write at a time or
 //!   as an ordered [`InputStream`]), signal, list processes.
@@ -90,7 +92,10 @@ pub use filesystem::{
     DEFAULT_WATCH_TIMEOUT, EntryInfo, FileStream, FileType, Filesystem, FilesystemEvent,
     FilesystemEventType, WatchHandle, WatchOptions, WriteEntry, WriteInfo, WriteOptions,
 };
-pub use lifecycle::{Lifecycle, LifecycleInfo, OnTimeout, SnapshotMode, TimeoutAction};
+pub use lifecycle::{
+    ConnectOptions, Lifecycle, LifecycleInfo, OnResume, OnTimeout, PauseOptions, SnapshotMode,
+    TimeoutAction,
+};
 pub use metrics::{MetricsParams, SandboxMetrics};
 pub use models::{
     CreateSandboxParams, DEFAULT_TEMPLATE, ListSandboxesParams, SandboxInfo, SandboxPage,

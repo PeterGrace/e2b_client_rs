@@ -333,7 +333,7 @@ pub(crate) struct NewSandboxBody<'a> {
     network: Option<&'a NetworkConfig>,
 }
 
-/// `ConnectSandbox` / `ConnectSandboxV2` request body: the timeout in seconds.
+/// `SandboxTimeoutRequest` body: the timeout in seconds.
 #[derive(Debug, Serialize)]
 pub(crate) struct TimeoutBody {
     pub(crate) timeout: u64,
@@ -346,9 +346,25 @@ pub(crate) struct RefreshBody {
     pub(crate) duration: Option<u64>,
 }
 
-/// An empty JSON object body (`SandboxPauseRequest` with nothing set).
+/// `SandboxPauseRequest` body: `{memory?}`, `{}` when no mode is set
+/// (`e2b/api/client/models/sandbox_pause_request.py:22-39`).
 #[derive(Debug, Serialize)]
-pub(crate) struct EmptyBody {}
+pub(crate) struct PauseBody {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) memory: Option<bool>,
+}
+
+/// `ConnectSandboxV2` and v1 `ConnectSandbox` body: `{timeout?, memory?}`
+/// (`e2b/api/client/models/connect_sandbox_v2.py:25-49`,
+/// `e2b/api/client/models/connect_sandbox.py:24-50`). The v1 route requires
+/// the timeout, so the caller always sets it there.
+#[derive(Debug, Serialize)]
+pub(crate) struct ConnectBody {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) timeout: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) memory: Option<bool>,
+}
 
 /// The `Sandbox` model returned by create and connect.
 #[derive(Debug, Clone, Deserialize)]

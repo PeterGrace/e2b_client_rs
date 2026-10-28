@@ -16,6 +16,7 @@ use crate::commands::Commands;
 use crate::envd::{EnvdClient, EnvdTarget, EnvdVersion, envd_http_error};
 use crate::error::{Error, Result};
 use crate::filesystem::{FILES_ROUTE, Filesystem};
+use crate::lifecycle::PauseOptions;
 use crate::metrics::{MetricsParams, SandboxMetrics};
 use crate::models::{SandboxCreated, SandboxInfo};
 use crate::network::NetworkUpdate;
@@ -503,6 +504,26 @@ impl Sandbox {
     /// As [`Client::pause_sandbox`].
     pub async fn pause(&self) -> Result<bool> {
         self.client.pause_sandbox(&self.sandbox_id).await
+    }
+
+    /// Pauses the sandbox, choosing what the pause keeps. See
+    /// [`Client::pause_sandbox_with`].
+    ///
+    /// # Arguments
+    ///
+    /// * `options` - what the pause keeps.
+    ///
+    /// # Returns
+    ///
+    /// `true` if it was paused, `false` if it was already paused.
+    ///
+    /// # Errors
+    ///
+    /// As [`Client::pause_sandbox_with`].
+    pub async fn pause_with(&self, options: &PauseOptions) -> Result<bool> {
+        self.client
+            .pause_sandbox_with(&self.sandbox_id, options)
+            .await
     }
 
     /// Sets the sandbox's remaining lifetime. See [`Client::set_sandbox_timeout`].

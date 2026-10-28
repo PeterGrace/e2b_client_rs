@@ -1,5 +1,8 @@
-//! What a sandbox does when its timeout expires, and what a pause or a
-//! snapshot keeps (`e2b/sandbox/sandbox_api.py:627-662, 1046-1125`).
+//! What a sandbox does when its timeout expires, what a pause or a
+//! snapshot keeps, and how a paused sandbox resumes
+//! (`e2b/sandbox/sandbox_api.py:627-791, 1046-1125`).
+
+use std::time::Duration;
 
 use serde::{Deserialize, Deserializer, Serialize};
 
@@ -288,6 +291,167 @@ pub(crate) fn deserialize_known_mode<'de, D: Deserializer<'de>>(
     })
 }
 
+/// Options for [`crate::Client::pause_sandbox_with`] and
+/// [`crate::Sandbox::pause_with`]: what the pause keeps (the SDK's `mode` on
+/// `pause`, `e2b/sandbox_async/sandbox_api.py:399-432`).
+///
+/// # Examples
+///
+/// ```
+/// use e2b_client::{PauseOptions, SnapshotMode};
+///
+/// let options = PauseOptions::new().mode(SnapshotMode::Filesystem);
+/// # let _ = options;
+/// ```
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct PauseOptions {
+    mode: Option<SnapshotMode>,
+}
+
+impl PauseOptions {
+    /// The API's default pause (currently [`SnapshotMode::Full`]).
+    ///
+    /// # Returns
+    ///
+    /// Empty options.
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// What the pause keeps. With [`SnapshotMode::Filesystem`] only the
+    /// filesystem is kept, and resuming cold-boots the sandbox; such a
+    /// sandbox must be resumed with [`crate::Client::connect_sandbox`], as
+    /// auto-resume refuses it. See [`crate::Client::pause_sandbox_with`] for
+    /// how the API may refuse a filesystem-only pause.
+    ///
+    /// # Arguments
+    ///
+    /// * `mode` - full or filesystem-only.
+    ///
+    /// # Returns
+    ///
+    /// The options, for chaining.
+    #[must_use]
+    pub fn mode(mut self, mode: SnapshotMode) -> Self {
+        self.mode = Some(mode);
+        self
+    }
+
+    /// The pause body's `memory` flag (`resolve_snapshot_memory`,
+    /// `e2b/sandbox/sandbox_api.py:639-662`).
+    ///
+    /// # Returns
+    ///
+    /// `Some(true)` for a full pause, `Some(false)` for a filesystem-only
+    /// one, and `None` (the field is left out) when no mode is set.
+    pub(crate) fn memory(&self) -> Option<bool> {
+        // `Option::map` applies the function only to a `Some`, like
+        // `None if mode is None else keeps_memory(mode)` in Python.
+        self.mode.map(SnapshotMode::keeps_memory)
+    }
+}
+
+/// How a paused sandbox comes back (`SandboxOnResume`,
+/// `e2b/sandbox/sandbox_api.py:783-791`).
+///
+/// `#[non_exhaustive]`: a `match` outside this crate needs a `_` arm.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum OnResume {
+    /// Restore the memory snapshot, so processes and connections survive
+    /// (the API's default).
+    Restore,
+    /// Ignore any memory in the snapshot and cold-boot from disk: the rescue
+    /// path for a snapshot whose memory image wedges the guest.
+    Reboot,
+}
+
+/// Options for [`crate::Client::connect_sandbox_with`]: a new timeout and
+/// how a paused sandbox resumes (the SDK's `timeout` and `on_resume` on
+/// `connect`, `e2b/sandbox_async/sandbox_api.py:498-520`).
+///
+/// # Examples
+///
+/// ```
+/// use std::time::Duration;
+/// use e2b_client::{ConnectOptions, OnResume};
+///
+/// let options = ConnectOptions::new()
+///     .timeout(Duration::from_secs(600))
+///     .on_resume(OnResume::Reboot);
+/// # let _ = options;
+/// ```
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct ConnectOptions {
+    timeout: Option<Duration>,
+    on_resume: Option<OnResume>,
+}
+
+impl ConnectOptions {
+    /// No new timeout, and the API's default resume ([`OnResume::Restore`]).
+    ///
+    /// # Returns
+    ///
+    /// Empty options.
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// A new sandbox lifetime from now, sent in whole seconds.
+    ///
+    /// # Arguments
+    ///
+    /// * `timeout` - the lifetime.
+    ///
+    /// # Returns
+    ///
+    /// The options, for chaining.
+    #[must_use]
+    pub fn timeout(mut self, timeout: Duration) -> Self {
+        self.timeout = Some(timeout);
+        self
+    }
+
+    /// How a paused sandbox resumes. The API ignores it for a running
+    /// sandbox.
+    ///
+    /// # Arguments
+    ///
+    /// * `on_resume` - restore or reboot.
+    ///
+    /// # Returns
+    ///
+    /// The options, for chaining.
+    #[must_use]
+    pub fn on_resume(mut self, on_resume: OnResume) -> Self {
+        self.on_resume = Some(on_resume);
+        self
+    }
+
+    /// The timeout, if one was set.
+    ///
+    /// # Returns
+    ///
+    /// The lifetime given to [`ConnectOptions::timeout`], or `None`.
+    pub(crate) fn timeout_value(&self) -> Option<Duration> {
+        self.timeout
+    }
+
+    /// The connect body's `memory` flag (`resolve_connect_memory`,
+    /// `e2b/sandbox/sandbox_api.py:761-780`).
+    ///
+    /// # Returns
+    ///
+    /// `Some(false)` for a reboot; `None` (the field is left out) for a
+    /// restore, which is the API's default, or when nothing is set.
+    pub(crate) fn memory(&self) -> Option<bool> {
+        // `bool::then_some(x)` is `Some(x)` when the bool is true, else `None`.
+        (self.on_resume == Some(OnResume::Reboot)).then_some(false)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -426,5 +590,47 @@ mod tests {
         );
         assert!(SnapshotMode::Full.keeps_memory());
         assert!(!SnapshotMode::Filesystem.keeps_memory());
+    }
+
+    #[test]
+    fn pause_options_memory_follows_the_mode() {
+        assert_eq!(PauseOptions::new().memory(), None);
+        assert_eq!(
+            PauseOptions::new().mode(SnapshotMode::Full).memory(),
+            Some(true)
+        );
+        assert_eq!(
+            PauseOptions::new().mode(SnapshotMode::Filesystem).memory(),
+            Some(false)
+        );
+        // The last mode wins, as for every builder setter.
+        let options = PauseOptions::new()
+            .mode(SnapshotMode::Filesystem)
+            .mode(SnapshotMode::Full);
+        assert_eq!(options.memory(), Some(true));
+    }
+
+    #[test]
+    fn connect_options_send_memory_false_only_for_a_reboot() {
+        assert_eq!(ConnectOptions::new().memory(), None);
+        assert_eq!(
+            ConnectOptions::new().on_resume(OnResume::Restore).memory(),
+            None
+        );
+        assert_eq!(
+            ConnectOptions::new().on_resume(OnResume::Reboot).memory(),
+            Some(false)
+        );
+        let options = ConnectOptions::new()
+            .on_resume(OnResume::Reboot)
+            .on_resume(OnResume::Restore);
+        assert_eq!(options.memory(), None);
+    }
+
+    #[test]
+    fn connect_options_keep_the_timeout() {
+        assert_eq!(ConnectOptions::new().timeout_value(), None);
+        let options = ConnectOptions::new().timeout(Duration::from_secs(90));
+        assert_eq!(options.timeout_value(), Some(Duration::from_secs(90)));
     }
 }
