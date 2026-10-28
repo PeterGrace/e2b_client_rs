@@ -3,8 +3,10 @@
 
 mod live_support;
 
-use e2b_client::{Client, ListSandboxesParams, ListSnapshotsParams, SandboxState};
-use live_support::{RUN_METADATA_KEY, client, resource_name, run_id};
+use std::time::Duration;
+
+use e2b_client::{Client, Error, ListSandboxesParams, ListSnapshotsParams, SandboxState};
+use live_support::{RUN_METADATA_KEY, client, poll_until, resource_name, run_id};
 
 #[tokio::test]
 #[ignore = "live: run with `just test-live <target>`"]
@@ -90,14 +92,31 @@ async fn sweep_leftover_snapshots_of_this_run() {
         }
     }
     for snapshot_id in &leftovers {
-        client
-            .delete_snapshot(snapshot_id)
-            .await
-            .expect("delete leftover snapshot");
+        delete_when_unused(&client, snapshot_id).await;
     }
     eprintln!(
         "sweep: deleted {} leftover snapshot(s) of run {}",
         leftovers.len(),
         run_id()
     );
+}
+
+/// Deletes a snapshot, retrying for up to 30 s while hosted E2B still
+/// refuses with 400 because a sandbox made from it runs: the sweep has just
+/// killed those sandboxes, and a kill may take a moment to reach the
+/// template service. Any other error fails the sweep at once.
+async fn delete_when_unused(client: &Client, snapshot_id: &str) {
+    poll_until(
+        &format!("snapshot {snapshot_id} to be deletable"),
+        Duration::from_secs(30),
+        || async {
+            match client.delete_snapshot(snapshot_id).await {
+                // `Ok(false)` (already gone) counts as done, like `Ok(true)`.
+                Ok(_) => Some(()),
+                Err(Error::Api { status: 400, .. }) => None,
+                Err(error) => panic!("delete leftover snapshot {snapshot_id}: {error:?}"),
+            }
+        },
+    )
+    .await;
 }
