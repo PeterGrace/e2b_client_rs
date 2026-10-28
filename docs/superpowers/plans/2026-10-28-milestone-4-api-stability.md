@@ -1757,7 +1757,9 @@ git commit -m "feat!: report a refused moded pause instead of reading it as alre
 - Modify: `src/stream_input.rs` (`StreamInputOptions::timeout`, `src/stream_input.rs:64-81`)
 - Create: `tests/zero_timeouts.rs`
 - Modify: `docs/protocol-notes.md` (the "Timeouts sent as whole ms" row at line 202, the StreamInput deadline row at line 259, the WatchDir headers row at line 376), `docs/verification/s4-evidence-map.md` (CLM-0172 row)
-- Create: `changelog/<ts>-m4-task-04-zero-timeouts.md`
+- Create: `changelog/<ts>-m4-task-04-zero-timeout-no-limit.md`
+
+> **Corrected (issue #52, 2026-10-28).** The rule also covers the two deadlines that are not set through an options struct yet: `Commands::connect(pid, timeout)` and `Pty::connect(pid, timeout)` pass `no_limit_if_zero(timeout)` to `open`, so "every stream deadline" holds between this task and Task 7. `tests/zero_timeouts.rs` therefore has seven tests, not five: `a_zero_command_connect_timeout_sends_no_deadline` and `a_zero_pty_connect_timeout_sends_no_deadline` join the plan's five, and the CLM-0172 row names them too. Task 7 converts their `connect(7, Some(Duration::ZERO))` calls (see its Step 5). In `docs/protocol-notes.md` the rows are one line higher than Step 6 says: "Timeouts sent as whole ms" is line 201, the StreamInput deadline row 258 and the WatchDir headers row 375 (the new request-timeout row goes after line 29 as planned). This task shifts `src/commands.rs` and `src/pty.rs` down by 8 lines below their `connect`, and `src/filesystem.rs` up by 2 below `WatchOptions::timeout`; the line numbers that Tasks 5 and 12 cite in those files are corrected to the post-Task-4 files. The changelog slug is `zero-timeout-no-limit`.
 
 The rule lives in one helper. Every public setter that takes an `Option<Duration>` deadline or request timeout stores `no_limit_if_zero(timeout)`. The fields are private, so a setter is the only way in, and `protocol_headers`, `within` and `ConnectStream` never see a zero. `Connect-Timeout-Ms` keeps "at least 1 ms" for positive sub-millisecond values (`src/envd/connect.rs:261-268`), as the SDK's `max(1, round(ms))` does (`py: envd/utils.py:15-24`).
 
@@ -2094,7 +2096,7 @@ Task 5 changes `partial` to `yes` and appends its test name.
 
 Run `just lint`, `just test` and `just doc`. No live behaviour changes for non-zero values, and no live test calls these setters with zero, so no live run is needed.
 
-Write `changelog/<ts>-m4-task-04-zero-timeouts.md`:
+Write `changelog/<ts>-m4-task-04-zero-timeout-no-limit.md`:
 
 ```markdown
 # M4 Task 4: A zero timeout means no limit (issue #52)
@@ -2148,10 +2150,10 @@ git commit -m "feat: a zero timeout means no limit, as the SDK's timeout=0"
   - the call signatures (873-1393);
   - the struct-literal unit test at 1543-1557
 - Modify: `src/commands.rs`, `src/pty.rs` and `src/sandbox.rs`:
-  - the `unary`, `within_request_timeout` and `http_request` callers: `src/commands.rs:365, 407, 489, 516, 583`; `src/pty.rs:352, 375`; `src/sandbox.rs:566`;
+  - the `unary`, `within_request_timeout` and `http_request` callers: `src/commands.rs:373, 415, 497, 524, 591`; `src/pty.rs:360, 383`; `src/sandbox.rs:566`;
   - `mcp_token` at `src/sandbox.rs:351`
 - Modify: `src/lib.rs` (re-exports and the crate-doc example at lines 54-55)
-- Modify: the rustdoc examples at `src/client.rs:875`, `src/sandbox.rs:188`, `src/filesystem.rs:702` and `src/filesystem.rs:1356`
+- Modify: the rustdoc examples at `src/client.rs:875`, `src/sandbox.rs:188`, `src/filesystem.rs:700` and `src/filesystem.rs:1354`
 - Create: `tests/envd_file_options.rs`
 - Modify (call sites): `tests/envd_api.rs`, `tests/envd_stream_files.rs`, `tests/envd_write.rs`, `tests/zero_timeouts.rs` (Task 4's `list` call), `tests/live_files.rs`, `tests/live_lifecycle.rs`
 - Modify: `README.md` (lines 20, 34-35, 92, 101, 115-118, 169; the Files row)
@@ -2567,9 +2569,9 @@ Replace `request_timeout()` (lines 267-275) with:
 ```
 
 Callers without options pass `RequestTimeout::default()`, imported as `use crate::config::RequestTimeout;`. Task 7 replaces these in `src/commands.rs` and `src/pty.rs`:
-- `src/commands.rs:365`, `:407`, `:489`, `:516`: append `RequestTimeout::default()` as the last argument of each `.unary(...)`. For example, line 407 becomes `.unary(process_pb::SERVICE, "SendInput", &request, HeaderMap::new(), RequestTimeout::default())`.
-- `src/commands.rs:583` (`open_process_stream`): `envd.within_request_timeout(RequestTimeout::default(), async { ... })`.
-- `src/pty.rs:352` and `:375`: append `RequestTimeout::default()` to each `.unary(...)`.
+- `src/commands.rs:373`, `:415`, `:497`, `:524`: append `RequestTimeout::default()` as the last argument of each `.unary(...)`. For example, line 415 becomes `.unary(process_pb::SERVICE, "SendInput", &request, HeaderMap::new(), RequestTimeout::default())`.
+- `src/commands.rs:591` (`open_process_stream`): `envd.within_request_timeout(RequestTimeout::default(), async { ... })`.
+- `src/pty.rs:360` and `:383`: append `RequestTimeout::default()` to each `.unary(...)`.
 - `src/sandbox.rs:566` (`is_running`): `.http_request(Method::GET, ENVD_HEALTH_ROUTE, RequestTimeout::default())`.
 
 - [ ] **Step 5: `FileOptions`, `ListOptions` and the new fields (`src/filesystem.rs`)**
@@ -3012,7 +3014,7 @@ These rules convert every call in `src/`, `tests/`, the doctests and `README.md`
 Sites (from `grep -nP '\.(read|read_to_string|read_stream|write|list|get_info|exists|make_dir|rename|remove)\(' src tests README.md` at 7ee3eab):
 - **`src/`:**
   - `src/sandbox.rs:351` becomes `.read_to_string(MCP_TOKEN_PATH, &FileOptions::new().user(MCP_USER))`, with `use crate::filesystem::FileOptions;`;
-  - doc examples at `src/sandbox.rs:188`, `src/client.rs:875`, `src/filesystem.rs:702` and `src/filesystem.rs:1356`, which become `&WriteOptions::default()` and `&FileOptions::default()` (each example adds the type to its `use e2b_client::{...}` line, or names it as `e2b_client::FileOptions`);
+  - doc examples at `src/sandbox.rs:188`, `src/client.rs:875`, `src/filesystem.rs:700` and `src/filesystem.rs:1354`, which become `&WriteOptions::default()` and `&FileOptions::default()` (each example adds the type to its `use e2b_client::{...}` line, or names it as `e2b_client::FileOptions`);
   - `src/lib.rs:54-55`, whose `use` line becomes `use e2b_client::{Client, CommandOptions, CreateSandboxParams, FileOptions, WriteOptions};`.
 - **`tests/envd_api.rs`:**
   - lines 142, 663, 685, 725, 746, 765, 797-798, 813, 892-893, 917-918, 945, 948, 965, 1004-1006;
@@ -3410,7 +3412,7 @@ git commit -m "feat!: fold the _with twins into connect_sandbox and pause"
 - Modify: `src/pty.rs`. It gains `PtyConnectOptions` and `PtyOptions::request_timeout`, and `Pty::connect` changes signature.
 - Modify: `src/lib.rs`, for the re-exports.
 - Create: `tests/envd_connect_options.rs`.
-- Modify: `tests/envd_pty.rs`, `tests/envd_api.rs` and `tests/live_commands.rs`, which are callers.
+- Modify: `tests/envd_pty.rs`, `tests/envd_api.rs`, `tests/live_commands.rs` and `tests/zero_timeouts.rs`, which are callers.
 - Modify: `docs/protocol-notes.md`, the "Commands" and "PTY" rows.
 - Create: `changelog/<ts>-m4-task-07-connect-options.md`.
 
@@ -4166,6 +4168,7 @@ The old calls passed `None` (no limit) or `Some(d)`. The new default is 60 s, so
 - `tests/envd_api.rs:495`: `.connect(42, &CommandConnectOptions::new().timeout(Some(Duration::from_secs(5))))`.
 - `tests/envd_api.rs:1002`: `let _ = commands.connect(1, &CommandConnectOptions::default()).await;`. Add `CommandConnectOptions` to that file's import list.
 - `tests/live_commands.rs:207` (`clm_0040`): `.connect(pid, &CommandConnectOptions::new().timeout(None))`, and add `CommandConnectOptions` to the imports.
+- `tests/zero_timeouts.rs` (Task 4's `a_zero_command_connect_timeout_sends_no_deadline` and `a_zero_pty_connect_timeout_sends_no_deadline`): `.connect(7, &CommandConnectOptions::new().timeout(Some(Duration::ZERO)))` and `.connect(7, &PtyConnectOptions::new().timeout(Some(Duration::ZERO)))`, and add both types to the imports. `Commands::connect` and `Pty::connect` no longer call `no_limit_if_zero` themselves: the new setters do (corrected in issue #52, 2026-10-28).
 
 Then `grep -rn "\.connect(" src tests README.md | grep -v connect_sandbox` must show no `Option<Duration>` argument left.
 
@@ -5625,7 +5628,7 @@ pub enum Signal {
 pub enum CommandEvent {
 ```
 
-Matches inside the crate (`CommandHandle::wait`, `src/commands.rs:678-689`) stay exhaustive: `#[non_exhaustive]` only applies to other crates. Matches outside must gain an arm:
+Matches inside the crate (`CommandHandle::wait`, `src/commands.rs:686-697`) stay exhaustive: `#[non_exhaustive]` only applies to other crates. Matches outside must gain an arm:
 
 `src/commands.rs`, the `Commands::start` example (doctests are another crate):
 

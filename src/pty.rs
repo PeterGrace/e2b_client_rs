@@ -9,6 +9,7 @@ use bytes::Bytes;
 use reqwest::header::HeaderMap;
 
 use crate::commands::{CommandExit, Commands, open_process_stream};
+use crate::config::no_limit_if_zero;
 use crate::envd::connect::{ConnectStream, Empty};
 use crate::envd::process_pb::{
     self, ConnectRequest, EventResponse, ProcessConfig, ProcessInput, ProcessSelector, PtyConfig,
@@ -164,8 +165,9 @@ impl PtyOptions {
         self
     }
 
-    /// Bounds the whole session; `None` for no limit. Defaults to
-    /// [`DEFAULT_PTY_TIMEOUT`] (60 s), as in the SDKs.
+    /// Bounds the whole session; `None`, or a zero duration (the SDK's
+    /// `timeout=0`), for no limit. Defaults to [`DEFAULT_PTY_TIMEOUT`] (60 s),
+    /// as in the SDKs.
     ///
     /// The deadline counts from when the session opens, not from the last
     /// activity: with the default, the output stream ends 60 s after
@@ -184,7 +186,7 @@ impl PtyOptions {
     /// The options, for chaining.
     #[must_use]
     pub fn timeout(mut self, timeout: Option<Duration>) -> Self {
-        self.timeout = timeout;
+        self.timeout = no_limit_if_zero(timeout);
         self
     }
 
@@ -292,7 +294,8 @@ impl Pty {
     /// # Arguments
     ///
     /// * `pid` - the shell's process ID.
-    /// * `timeout` - the stream deadline, or `None` for no limit. Unlike
+    /// * `timeout` - the stream deadline, or `None` (or a zero duration, the
+    ///   SDK's `timeout=0`) for no limit. Unlike
     ///   [`Pty::create`], there is no default here: pass
     ///   `Some(DEFAULT_PTY_TIMEOUT)` for the SDKs' 60 s, as their
     ///   `pty.connect` uses. Like [`crate::Commands::connect`], it takes the
@@ -310,8 +313,13 @@ impl Pty {
         let request = ConnectRequest {
             process: ProcessSelector::Pid(pid),
         };
-        self.open("Connect", &request, keepalive_headers(), timeout)
-            .await
+        self.open(
+            "Connect",
+            &request,
+            keepalive_headers(),
+            no_limit_if_zero(timeout),
+        )
+        .await
     }
 
     /// Opens a `Start`/`Connect` stream and wraps it in a [`PtyHandle`].

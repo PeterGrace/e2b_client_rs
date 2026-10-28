@@ -24,6 +24,27 @@ pub const ENVD_PORT: u16 = 49983;
 /// The default per-request timeout used by the official SDKs (60 seconds).
 pub const DEFAULT_REQUEST_TIMEOUT: Duration = Duration::from_secs(60);
 
+/// A timeout as the setters store it: `Some(Duration::ZERO)` means no limit,
+/// as SDK 2.61's `timeout=0` and `request_timeout=0` do
+/// (`e2b/envd/utils.py:15-24`, `e2b/api/__init__.py:280`).
+///
+/// Python note: in the SDK `0` is falsy, so `timeout or None` turns it into
+/// "no timeout". Rust has no truthiness, so the rule is spelled out here once
+/// and every setter calls it.
+///
+/// # Arguments
+///
+/// * `timeout` - the caller's value.
+///
+/// # Returns
+///
+/// `None` for `None` or zero, else the value unchanged.
+pub(crate) fn no_limit_if_zero(timeout: Option<Duration>) -> Option<Duration> {
+    // `filter` keeps `Some(d)` only when the closure returns true, like
+    // `d if d else None` in Python.
+    timeout.filter(|timeout| !timeout.is_zero())
+}
+
 /// Hosted E2B domains whose envd RPC traffic goes through the shared
 /// `sandbox.<domain>` endpoint instead of the per-sandbox host
 /// (`e2b/sandbox_domains.py:1-9`).
@@ -377,19 +398,20 @@ impl ConnectionConfigBuilder {
         self
     }
 
-    /// Sets the per-request timeout. `None` disables it.
+    /// Sets the per-request timeout. `None`, or a zero duration (the SDK's
+    /// `request_timeout=0`), disables it.
     ///
     /// # Arguments
     ///
-    /// * `timeout` - the timeout, or `None` for no timeout. Defaults to
-    ///   [`DEFAULT_REQUEST_TIMEOUT`].
+    /// * `timeout` - the timeout, or `None` (or zero) for no timeout.
+    ///   Defaults to [`DEFAULT_REQUEST_TIMEOUT`].
     ///
     /// # Returns
     ///
     /// The builder, for chaining.
     #[must_use]
     pub fn request_timeout(mut self, timeout: Option<Duration>) -> Self {
-        self.request_timeout = Some(timeout);
+        self.request_timeout = Some(no_limit_if_zero(timeout));
         self
     }
 
@@ -513,6 +535,21 @@ mod tests {
             .expect("config");
         assert_eq!(config.api_key(), Some("builder-key"));
         assert_eq!(config.api_url().as_str(), "https://builder.example/");
+        assert_eq!(config.request_timeout(), None);
+    }
+
+    #[test]
+    fn zero_means_no_limit() {
+        assert_eq!(no_limit_if_zero(Some(Duration::ZERO)), None);
+        assert_eq!(no_limit_if_zero(None), None);
+        assert_eq!(
+            no_limit_if_zero(Some(Duration::from_millis(1))),
+            Some(Duration::from_millis(1))
+        );
+        let config = ConnectionConfig::builder()
+            .request_timeout(Some(Duration::ZERO))
+            .build_with_env(env_of(&[]))
+            .expect("config");
         assert_eq!(config.request_timeout(), None);
     }
 
