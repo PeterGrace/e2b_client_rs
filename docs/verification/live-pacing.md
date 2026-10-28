@@ -36,8 +36,9 @@ Hosted E2B has no such limit and keeps `just test-live`.
    the gateway's message for a sandbox that failed outright (`the sandbox
    failed (action_failure)`, an unknown template, gfd/sandbawks#680), so read
    a `FAIL-READINESS (rerun)` line before counting it as capacity: M4 Task
-   17's `clm_0150` was one (`m4-live-results.md`, section "sandbawks"). A test that failed and was rerun
-   has two lines: `FAIL-READINESS`, then the rerun's result.
+   17's `clm_0150` was one (`m4-live-results.md`, section "sandbawks"). A
+   test that failed and was rerun has two lines: `FAIL-READINESS`, then the
+   rerun's result.
 5. Reruns each readiness failure once, after another gap.
 6. Runs `live_sweep` for the run id, then writes a summary line that counts
    the final results and a last `run log: <path>` line. Both go to the
