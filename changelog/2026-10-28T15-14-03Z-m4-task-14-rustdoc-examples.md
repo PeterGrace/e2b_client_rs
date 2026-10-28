@@ -10,17 +10,23 @@ has an `# Examples` section in its rustdoc. Builder setters and accessors
 are covered by their type's example. Examples that need a sandbox or the
 API are `no_run` with the crate's hidden `# async fn demo(..) ->
 e2b_client::Result<()>` wrapper, so `cargo test` compiles them against the
-current signatures without a network. Pure-value examples
-(`ConnectionConfig`, `EnvdVersion`, `ConnectCode`, `OnTimeout`, `SortOrder`)
-run.
+current signatures without a network. Of the new examples,
+the pure-value ones (`ConnectionConfig`, `EnvdVersion`, `ConnectCode`,
+`OnTimeout`, `SortOrder`) run; `docs/api-review.md` lists every running
+example, older ones included.
 
 ## The test
 
 `tests/doc_examples.rs` reads `src/` and fails, naming each item by file
 and line, when one lacks an example:
 
-- `every_public_type_and_async_method_has_an_example`: the rule.
-- `reexported_names_reads_single_and_grouped_uses`: the `pub use` parser.
+- `every_public_type_and_async_method_has_an_example`: the rule. It also
+  fails on a re-exported type name it never finds as a top-level
+  `pub struct` or `pub enum` (`Result`, a `pub type`, excepted), so a type
+  cannot drop out of the check unnoticed.
+- `reexported_names_reads_single_and_grouped_uses`: the `pub use` parser,
+  which reads only lines that start with `pub use `, so crate-doc prose that
+  mentions one is skipped.
 - `has_examples_looks_through_attributes_only`: the doc-comment search
   skips `#[...]` attributes and plain `//` comments, and stops at a blank
   line or code.
@@ -38,7 +44,8 @@ helper now looks through `//` lines, and the plan is corrected.
 | Public async functions | 18 of 69 | 69 of 69 |
 
 The first run of the new test listed 93 items: the 90 that lacked one (39
-types, 51 async functions), plus the three false positives above. The numbers are appended to `docs/api-review.md`.
+types, 51 async functions), plus the three false positives above. The
+numbers are appended to `docs/api-review.md`.
 
 ## Breaking changes
 
