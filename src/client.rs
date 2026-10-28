@@ -683,7 +683,10 @@ impl Client {
     /// # Errors
     ///
     /// [`Error::Api`] for a non-2xx answer other than 404,
-    /// [`Error::Transport`] for connection failures.
+    /// [`Error::Transport`] for connection failures. Hosted E2B refuses to
+    /// delete a snapshot while a sandbox created from it is running, with
+    /// HTTP 400 `cannot delete template '<id>' because there are running
+    /// sandboxes using it`: kill those sandboxes first.
     pub async fn delete_snapshot(&self, snapshot_id: &str) -> Result<bool> {
         let response = self
             .request(Method::DELETE, &["templates", snapshot_id])?
