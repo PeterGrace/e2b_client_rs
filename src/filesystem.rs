@@ -1982,6 +1982,11 @@ mod tests {
             decode(r#"{"type":"FILE_TYPE_FILE"}"#).file_type,
             FileType::File
         );
+        // An explicit null is proto3 JSON's default, not a decode error.
+        assert_eq!(
+            decode(r#"{"type":"FILE_TYPE_FILE","isSymlink":null}"#).file_type,
+            FileType::File
+        );
         assert_eq!(decode(r#"{"type":3}"#).file_type, FileType::Symlink);
     }
 }

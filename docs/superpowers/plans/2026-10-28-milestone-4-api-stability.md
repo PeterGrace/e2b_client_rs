@@ -4811,7 +4811,7 @@ git commit -m "feat: cap concurrent octet-stream uploads at 8 by default"
 - Modify: `docs/protocol-notes.md` (the `EntryInfo` message row, line 302; a behaviour row)
 - Create: `changelog/<ts>-m4-task-10-is-symlink.md`
 
-> **Corrected (issue #30, 2026-10-28).** The code shipped as given. The changelog slug is `is-symlink`, not `symlinks`. Hosted E2B runs envd 0.10.0, which uses the new shape: with the fix disabled the live test saw `file-link` as `File` and `dir-link` as `Directory`; with it, the test passes. No later task changes.
+> **Corrected (issue #30, 2026-10-28).** From review, Steps 1 and 3 now decode an explicit `isSymlink: null` as `false` (`deserialize_with = "deserialize_null_as_default"`, as `metadata` does), and the protocol-notes row reads "A symlink is `FileType::Symlink` on every envd version" (the wire `type` is not `FILE_TYPE_SYMLINK` on newer envd). The changelog slug is `is-symlink`, not `symlinks`. Hosted E2B runs envd 0.10.0, which uses the new shape: with the fix disabled the live test saw `file-link` as `File` and `dir-link` as `Directory`; with it, the test passes. No later task changes.
 
 Newer envd reports a symlink's *target* type in `type` and sets `is_symlink` (proto field 12, `py: envd/filesystem/filesystem_pb.py:240, 299-303`). Older envd reports `FILE_TYPE_SYMLINK` in `type`. The SDK maps `FileType.SYMLINK if entry.is_symlink else map_file_type(entry.type)` (`py: sandbox/filesystem/filesystem.py:130-148`). The crate reads only `type` today. Watch events build their entry through the same `From`, so they get the fix too.
 
@@ -4888,6 +4888,11 @@ Append to the `tests` module of `src/filesystem.rs`:
             FileType::Symlink
         );
         assert_eq!(decode(r#"{"type":"FILE_TYPE_FILE"}"#).file_type, FileType::File);
+        // An explicit null is proto3 JSON's default, not a decode error.
+        assert_eq!(
+            decode(r#"{"type":"FILE_TYPE_FILE","isSymlink":null}"#).file_type,
+            FileType::File
+        );
         assert_eq!(decode(r#"{"type":3}"#).file_type, FileType::Symlink);
     }
 ```
@@ -4907,8 +4912,13 @@ Expected: FAIL. The mock test fails with `left: [("link", File), ("old", Symlink
     /// it and reports the *target's* type in `type`; older envd omits it and
     /// reports `FILE_TYPE_SYMLINK` in `type`. The struct's camelCase renaming
     /// makes the JSON name `isSymlink`; the alias also accepts the proto
-    /// name, which Connect's JSON codec allows.
-    #[serde(default, alias = "is_symlink")]
+    /// name, which Connect's JSON codec allows. An explicit `null` decodes
+    /// as `false`, as proto3 JSON treats it as the default.
+    #[serde(
+        default,
+        alias = "is_symlink",
+        deserialize_with = "deserialize_null_as_default"
+    )]
     pub(crate) is_symlink: bool,
 ```
 
@@ -5006,7 +5016,7 @@ Expected: PASS. If `get_info` on the link reports the target (envd's `Stat` foll
 - add a "Filesystem" behaviour row after the `list` depth row:
 
 ```
-| A symlink is reported as `FILE_TYPE_SYMLINK` on every envd version: newer envd sets `is_symlink` (JSON `isSymlink`) and puts the target's type in `type`, so `is_symlink` wins; older envd reports `FILE_TYPE_SYMLINK` in `type` | `py: sandbox/filesystem/filesystem.py:130-148`; `py: envd/filesystem/filesystem_pb.py:240, 299-303` |
+| A symlink is `FileType::Symlink` on every envd version: newer envd sets `is_symlink` (JSON `isSymlink`) and puts the target's type in `type`, so `is_symlink` wins; older envd reports `FILE_TYPE_SYMLINK` in `type` | `py: sandbox/filesystem/filesystem.py:130-148`; `py: envd/filesystem/filesystem_pb.py:240, 299-303` |
 ```
 
 The "Not implemented yet" paragraph (line 430) is rewritten by Task 18, not here, to avoid conflicts with Tasks 1 and 3.
