@@ -572,7 +572,6 @@ Create `tests/error_taxonomy.rs`. It uses only the public API. The struct varian
 mod common;
 
 use std::error::Error as _;
-use std::net::TcpListener;
 use std::time::Duration;
 
 use common::{SANDBOX_ID, client_for, client_with_timeout, sandbox};
@@ -762,11 +761,13 @@ async fn a_request_timeout_is_a_timeout_and_not_retryable() {
 
 #[tokio::test]
 async fn a_refused_connection_is_retryable_and_keeps_its_cause() {
-    // Arrange: bind a port, then free it, so nothing listens there.
-    let port = {
-        let listener = TcpListener::bind("127.0.0.1:0").expect("bind");
-        listener.local_addr().expect("addr").port()
-    };
+    // Arrange: reserve a port with a socket that is bound but never listens.
+    // The kernel refuses connections to it, and because the socket stays
+    // bound until the end of the test, no other process can take the port
+    // in between (binding and then freeing a port would leave that race).
+    let reserved = tokio::net::TcpSocket::new_v4().expect("socket");
+    reserved.bind("127.0.0.1:0".parse().expect("addr")).expect("bind");
+    let port = reserved.local_addr().expect("addr").port();
     let config = ConnectionConfig::builder()
         .api_key("test-api-key")
         .api_url(format!("http://127.0.0.1:{port}"))
