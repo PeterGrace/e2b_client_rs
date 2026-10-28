@@ -5,10 +5,10 @@
     "by": "server",
     "mac": "aa5a465b8e88b71dbc1a03e1e4c4a5b3833663cd88247fba24784462b2661d2d"
   },
-  "next_evidence_seq": 219,
+  "next_evidence_seq": 253,
   "next_evidence_seq_seal": {
     "by": "server",
-    "mac": "06b2c657b5dab22da99a0ba38807ffd1d84695fbbeeee33788186c5a0ded22d0"
+    "mac": "d4e09cf09066c05c34401870ef033a380b7670a4b8f42d6b243c9311fa01f7ea"
   },
   "claims": [
     {
@@ -62,13 +62,24 @@
             "by": "server",
             "mac": "302e602ffecad52c3ecf4f114cf3ccd82e3d878f7eca99bb120c57180d645101"
           }
+        },
+        {
+          "verdict": "not_enough_info",
+          "rationale": "At M4 close, the Commands, Filesystem and wire-protocol branches (CLM-0003, 0004 and 0005) are supported. CLM-0002 still waits on the egress proxy and IAM (CLM-0031, 0032) and on volumes for the team (CLM-0148, 0153). CLM-0006 waits only on M5's live CI job and publish (CLM-0123, 0124).",
+          "auditor": "claude-code/claude-opus-5-5 (M4 coordinator)",
+          "evidence_ids": [],
+          "recorded_at": "2026-10-28T18:42:24.931030471Z",
+          "seal": {
+            "by": "server",
+            "mac": "3246a65b381d95daaea0578b8d11776676270fc2b2ef70290a8d64eb23f22ffd"
+          }
         }
       ],
       "created_at": "2026-10-26T22:09:06.855685366Z",
-      "updated_at": "2026-10-28T03:24:33.290664960Z",
+      "updated_at": "2026-10-28T18:42:24.931030471Z",
       "seal": {
         "by": "server",
-        "mac": "721d8a45d0cddf5086db6f7d2aa7cf9e4ff0acffd7a4c4458fec57e56261ee28"
+        "mac": "922d105a202c70f10c84c33f61aa94f4d47d0e2028655af9d74783d3e2dcfc3e"
       }
     },
     {
@@ -142,13 +153,26 @@
             "by": "server",
             "mac": "5ebaf8a6d23b4fbcbb2ac4f9c8d435acf84eeb473f669a21ebd120b392293205"
           }
+        },
+        {
+          "verdict": "not_enough_info",
+          "rationale": "At M4 close, 27 of 31 lifecycle children are supported, including M4's new CLM-0171 (a refused moded pause is an error). Parity still waits on CLM-0031 and CLM-0032 (the egress proxy and IAM, unscheduled), and on CLM-0148 and CLM-0153 (volumes are not enabled for the team on hosted E2B, which answers 403).",
+          "auditor": "claude-code/claude-opus-5-5 (M4 coordinator)",
+          "evidence_ids": [
+            "EVD-0218"
+          ],
+          "recorded_at": "2026-10-28T18:42:20.012051995Z",
+          "seal": {
+            "by": "server",
+            "mac": "cf10850c8aeb0f9a4d3165f526c59711114ce3d1a2486513560727387bcbaab5"
+          }
         }
       ],
       "created_at": "2026-10-26T22:09:06.855685366Z",
-      "updated_at": "2026-10-28T03:18:34.402519521Z",
+      "updated_at": "2026-10-28T18:42:20.012051995Z",
       "seal": {
         "by": "server",
-        "mac": "811acfefb884195cc3fca61226ffb226de6bba034f8911d9eefccc0bb7c3130e"
+        "mac": "28cf75cf3a2154503f39618d8dcebfb3218117b189df20453c21ba394fb8230b"
       }
     },
     {
@@ -182,6 +206,18 @@
             "by": "server",
             "mac": "a1990ddfa3f4f481fc9564792547fd76d6a2395d20ffd8e62f4dbb3997d99cac"
           }
+        },
+        {
+          "id": "EVD-0250",
+          "kind": "analysis",
+          "locator": "claims ledger at M4 close: children of CLM-0003 (derived_from); docs/verification/m4-live-results.md (hosted, run 20261028T153214Z-hosted-761165)",
+          "summary": "All 20 active children of CLM-0003 are supported, including M4's CLM-0174 (connect options and request timeouts), CLM-0175 (no PTY deadline by default) and CLM-0178 (Pty::connect to an exited pid). The live commands tests pass on hosted E2B at bf65ca8 (19 of 19).",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T18:42:04.727519425Z",
+          "seal": {
+            "by": "server",
+            "mac": "731e2a5b5e798fbddbfb21319435ece837dab7ed6ed8fea6425d2f20a7fc170c"
+          }
         }
       ],
       "verdicts": [
@@ -208,13 +244,26 @@
             "by": "server",
             "mac": "dce5bd6c06f047d8261b8e21511191143feb597ed94012da4e0eb65442156a2f"
           }
+        },
+        {
+          "verdict": "supported",
+          "rationale": "Re-affirmed at M4 close: all 20 children are supported, including M4's CLM-0174, CLM-0175 and CLM-0178, and the live commands tests pass on hosted E2B.",
+          "auditor": "claude-code/claude-opus-5-5 (M4 coordinator)",
+          "evidence_ids": [
+            "EVD-0250"
+          ],
+          "recorded_at": "2026-10-28T18:42:14.606679807Z",
+          "seal": {
+            "by": "server",
+            "mac": "1b4af53c2089f4ea5829477885df718d33d2dcf3602c1e93bbad9727fc9d809c"
+          }
         }
       ],
       "created_at": "2026-10-26T22:09:06.855685366Z",
-      "updated_at": "2026-10-27T15:27:42.627346824Z",
+      "updated_at": "2026-10-28T18:42:14.606679807Z",
       "seal": {
         "by": "server",
-        "mac": "35e458b054ea673a9f1f5b9dcce725f1cb563d2078f189f190e145e8dc341a45"
+        "mac": "ec3a7025a5626b2ad60cf6e572bf15614d899d3570bcd1d14875f5179cdb7a84"
       }
     },
     {
@@ -260,6 +309,18 @@
             "by": "server",
             "mac": "d49958f3dbd3f8a93875a1b3b2ab880de0854b156079f761ecdfe4c7ef0e0898"
           }
+        },
+        {
+          "id": "EVD-0251",
+          "kind": "analysis",
+          "locator": "claims ledger at M4 close: children of CLM-0004 (derived_from); docs/verification/m4-live-results.md (hosted, run 20261028T153214Z-hosted-761165)",
+          "summary": "All 22 active children of CLM-0004 are supported, including M4's CLM-0173 (filesystem options and per-call request timeouts), CLM-0176 (the upload cap) and CLM-0177 (symlinks). CLM-0177 closes the is_symlink defect that EVD-0167 recorded (#30, PR #110). The live files tests pass on hosted E2B at bf65ca8 (20 of 20).",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T18:42:07.128022658Z",
+          "seal": {
+            "by": "server",
+            "mac": "e2176b2bb4a9ce5ca62a316710259c4a21ae5dbdbdec77018b79f382c887b7be"
+          }
         }
       ],
       "verdicts": [
@@ -286,13 +347,26 @@
             "by": "server",
             "mac": "5b7b542e69f53b4a5fafbf36225cdfb315dd081f478e469982a2950371b963d4"
           }
+        },
+        {
+          "verdict": "supported",
+          "rationale": "Re-affirmed at M4 close: all 22 children are supported, including M4's CLM-0173, CLM-0176 and CLM-0177. The is_symlink fidelity bug EVD-0167 noted is fixed (#30, PR #110).",
+          "auditor": "claude-code/claude-opus-5-5 (M4 coordinator)",
+          "evidence_ids": [
+            "EVD-0251"
+          ],
+          "recorded_at": "2026-10-28T18:42:16.324648264Z",
+          "seal": {
+            "by": "server",
+            "mac": "4fbd429553c51fe5f7deea1e051cc1776c1819c99062b71bb3970ae6d96af248"
+          }
         }
       ],
       "created_at": "2026-10-26T22:09:06.855685366Z",
-      "updated_at": "2026-10-27T15:27:44.577002679Z",
+      "updated_at": "2026-10-28T18:42:16.324648264Z",
       "seal": {
         "by": "server",
-        "mac": "3b217c8e5c1a91b58ecb729873f80fa3fad729323fa4f823a78d164d3f10e19b"
+        "mac": "819391ce47df85659eb661bed27ca4bef505db60170a5df6c3c22b4419e582ea"
       }
     },
     {
@@ -362,6 +436,18 @@
             "by": "server",
             "mac": "eb4c1ad6ab86436c6d6e399e178bc68b600d88bb5feef45db5ac1802c5fc1891"
           }
+        },
+        {
+          "id": "EVD-0252",
+          "kind": "analysis",
+          "locator": "claims ledger at M4 close: children of CLM-0005 (derived_from); docs/verification/s4-evidence-map.md @ bc02ca3; just test at bc02ca3 (504 passed, 0 failed)",
+          "summary": "All 79 active wire claims under CLM-0005 are supported by passing tests. They include M4's CLM-0168 (v2-only connect), CLM-0169 (the error classifiers) and CLM-0172 (zero means no limit), and CLM-0159 on fresh evidence (EVD-0249). CLM-0087, the v1 connect fallback, was retired because the fallback was removed.",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T18:42:09.469601247Z",
+          "seal": {
+            "by": "server",
+            "mac": "610b77fc984e4bc97a50a3f726976d48f812391ed85d26521f6c64157910291e"
+          }
         }
       ],
       "verdicts": [
@@ -416,13 +502,26 @@
             "by": "server",
             "mac": "32d57401d04f295b5d0a99be38b8516517f945aa0d0b5f220222fddb691aaacc"
           }
+        },
+        {
+          "verdict": "supported",
+          "rationale": "Re-affirmed at M4 close: all 79 active wire claims are supported by passing tests, including M4's CLM-0168, CLM-0169 and CLM-0172. CLM-0087 is retired with the v1 fallback.",
+          "auditor": "claude-code/claude-opus-5-5 (M4 coordinator)",
+          "evidence_ids": [
+            "EVD-0252"
+          ],
+          "recorded_at": "2026-10-28T18:42:17.971864504Z",
+          "seal": {
+            "by": "server",
+            "mac": "7b1a34d57f4a940ade9d54c310f4de13fbf0e17ad3cfb623e8714d2854e6f7ee"
+          }
         }
       ],
       "created_at": "2026-10-26T22:09:06.855685366Z",
-      "updated_at": "2026-10-28T03:18:14.997618823Z",
+      "updated_at": "2026-10-28T18:42:17.971864504Z",
       "seal": {
         "by": "server",
-        "mac": "e0014591186294e6e5854a6053f444b28925ee4ef46691569dbffce3f7974aa2"
+        "mac": "5b216cb761cd4141a3197e84fa8d018feeada7c7cfef629fa4ceb47827b3162c"
       }
     },
     {
@@ -454,13 +553,24 @@
             "by": "server",
             "mac": "774c2a712963fe76318610634f4c7581f83b3e7f4e8dec0bf004004cb0a2e81d"
           }
+        },
+        {
+          "verdict": "not_enough_info",
+          "rationale": "At M4 close, 12 of 14 children are supported:\n- CLM-0117 (live-verified on hosted E2B);\n- CLM-0118 (v0.1 on sandbawks, decided in M4);\n- M4's CLM-0119, 0120, 0121, 0170 and 0179 to 0181 (API review, docs enforcement, MSRV and semver, no public reqwest, trait bounds, paced runs).\n\nPublishing still waits on M5: CLM-0123 (a live CI job) and CLM-0124 (a publish dry-run and release).",
+          "auditor": "claude-code/claude-opus-5-5 (M4 coordinator)",
+          "evidence_ids": [],
+          "recorded_at": "2026-10-28T18:42:22.766399727Z",
+          "seal": {
+            "by": "server",
+            "mac": "b4989c104f7ce5557bcbb3d11ece393457e0328c6839e134f3201e9afbf7ec09"
+          }
         }
       ],
       "created_at": "2026-10-26T22:09:06.855685366Z",
-      "updated_at": "2026-10-26T23:03:36.601704727Z",
+      "updated_at": "2026-10-28T18:42:22.766399727Z",
       "seal": {
         "by": "server",
-        "mac": "3248198cfb7f147535891fea760132afa19cec66f63e69696dba2ff05d1e8c39"
+        "mac": "cd18248950b2056ed4bf6d17e397a671df1cf03dcf413fb196698f546b0363df"
       }
     },
     {
@@ -5843,7 +5953,9 @@
         "v0.1"
       ],
       "status": {
-        "state": "active"
+        "state": "retired",
+        "reason": "The v1 connect fallback was removed in M4 (Task 1, PR #101, merge 88184fb), per the spec's decision 5; superseded by CLM-0168.",
+        "retired_at": "2026-10-28T18:41:43.087708098Z"
       },
       "evidence": [
         {
@@ -5875,10 +5987,10 @@
         }
       ],
       "created_at": "2026-10-26T22:12:33.762053365Z",
-      "updated_at": "2026-10-26T22:56:06.793458285Z",
+      "updated_at": "2026-10-28T18:41:43.087708098Z",
       "seal": {
         "by": "server",
-        "mac": "c4a82e1827976c40c48f6b79b2912bb01362cfa724b81832461f9323091e0118"
+        "mac": "ac3de2dc619f96f0b4f2eabc161a1ba471d796a87a028d4cc0543a60bf9ab956"
       }
     },
     {
@@ -7631,6 +7743,18 @@
             "by": "server",
             "mac": "04087039bf66274bb61400bcddce6b2ca5a7bf28312ed17da80869d255d64e30"
           }
+        },
+        {
+          "id": "EVD-0248",
+          "kind": "demonstration",
+          "locator": "docs/verification/runs/20261028T154205Z-sandbawks-paced-913873.log (just test-live-paced sandbawks, 120 s gap, commit 3cedbc3); docs/verification/m4-live-results.md \"CLM-0118 (v0.1 on sandbawks, #27)\" (PR #117, merge bc02ca3); gfd/sandbawks#690",
+          "summary": "The paced run covered all 52 v0.1 S1-S3 tests (CLM-0007 to 0027 and 0033 to 0063). 26 passed and 26 failed, and none ended at capacity. The paced run's one readiness label was clm_0150, which isn't v0.1. That includes the five tests EVD-0128 named as capacity-masked in M1:\n- CLM-0042, 0052 and 0057 pass;\n- CLM-0056 fails on #687;\n- CLM-0061 fails on #687, with #682 and #688.\n\nAll 26 failures are filed sandbawks defects: #664, #665, #667, #675 to #679, #681, #682, #684, #687, #688, and #690 (new in M4, for CLM-0010 and CLM-0025). Each of the 26 tests passes on hosted E2B, so none is a crate bug.",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T18:41:47.481879142Z",
+          "seal": {
+            "by": "server",
+            "mac": "a028f94a7f517e69618e5290b8dc429fe95de912b10672ca5b126701fcac841c"
+          }
         }
       ],
       "verdicts": [
@@ -7660,13 +7784,27 @@
             "by": "server",
             "mac": "2d0c8e69c12e2decedbc84847709fbeeb3b83e3e0d914ac7fe33b8d6d451490f"
           }
+        },
+        {
+          "verdict": "supported",
+          "rationale": "This supersedes the M1 not_enough_info, which waited on a sandbawks run with headroom for five capacity-masked tests. The M4 paced run gave every v0.1 test a real result: each one passes or fails on a filed gfd/sandbawks defect (including the new #690), and none ends at capacity or is a crate bug.",
+          "auditor": "claude-code/claude-opus-5-5 (M4 coordinator)",
+          "evidence_ids": [
+            "EVD-0126",
+            "EVD-0248"
+          ],
+          "recorded_at": "2026-10-28T18:42:00.605093010Z",
+          "seal": {
+            "by": "server",
+            "mac": "7526ae45105e8b0ed14e6764ede7cf65c79f120a54d4912b117481bdc81545ca"
+          }
         }
       ],
       "created_at": "2026-10-26T22:12:45.325766859Z",
-      "updated_at": "2026-10-27T00:24:59.487027610Z",
+      "updated_at": "2026-10-28T18:42:00.605093010Z",
       "seal": {
         "by": "server",
-        "mac": "587fe89fa36deb24bc4c7fc4be01466e97bb6a0a7ec00e34328c84d5e2a9966b"
+        "mac": "c987e077ffcd71825c834dc6a520599e8516f7bd1d003ed54e701d1288f44850"
       }
     },
     {
@@ -7689,7 +7827,20 @@
       "status": {
         "state": "active"
       },
-      "evidence": [],
+      "evidence": [
+        {
+          "id": "EVD-0219",
+          "kind": "inspection",
+          "locator": "docs/api-review.md @ f65615f (PR #112, Task 12), on main at bc02ca3",
+          "summary": "The API review records a #[non_exhaustive] decision for every public struct and enum re-exported from src/lib.rs. Types that may gain fields or variants are marked, CommandEvent and Signal among them; ConnectCode and PtySize are recorded as exceptions, each with its reason.",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T18:38:57.525102843Z",
+          "seal": {
+            "by": "server",
+            "mac": "50183652d770c67043c9186ccb17e51e1db78d9652b082be995809dcd8d6ac5b"
+          }
+        }
+      ],
       "verdicts": [
         {
           "verdict": "not_enough_info",
@@ -7701,13 +7852,26 @@
             "by": "server",
             "mac": "ae78f141b9be54b2e14112fcc9f701d0ce16d13079415f09898b7ceb0bd71698"
           }
+        },
+        {
+          "verdict": "supported",
+          "rationale": "The M4 API review records a #[non_exhaustive] decision for every public struct and enum. The types that may grow are marked, and the two that won't (ConnectCode, PtySize) are recorded exceptions with reasons. This supersedes the earlier not_enough_info, which was waiting on the review.",
+          "auditor": "claude-code/claude-opus-5-5 (M4 coordinator)",
+          "evidence_ids": [
+            "EVD-0219"
+          ],
+          "recorded_at": "2026-10-28T18:40:56.157193687Z",
+          "seal": {
+            "by": "server",
+            "mac": "bf3b2ebc3807a142aecb47c1faa6901a5f0b71dc0c80f19c5bcd4bdc92467cb3"
+          }
         }
       ],
       "created_at": "2026-10-26T22:12:45.325766859Z",
-      "updated_at": "2026-10-28T11:54:11.147223950Z",
+      "updated_at": "2026-10-28T18:40:56.157193687Z",
       "seal": {
         "by": "server",
-        "mac": "58d634c17367ff7f426cf2d1b63898c08eef4de6d6af1206d3178633f3beecfd"
+        "mac": "a7b8f8669b5046d381967699f99c49bc42edcf76fb5a907aa5f3aefbe026fb83"
       }
     },
     {
@@ -7730,7 +7894,20 @@
       "status": {
         "state": "active"
       },
-      "evidence": [],
+      "evidence": [
+        {
+          "id": "EVD-0220",
+          "kind": "test",
+          "locator": "tests/doc_examples.rs::every_public_type_and_async_method_has_an_example @ 768decc (PR #114, Task 14); Cargo.toml [lints.rust] missing_docs = \"warn\"; just test and just doc at bc02ca3, CI run 40746797436 green",
+          "summary": "The test reads every name re-exported from src/lib.rs and fails if any public type or public async fn lacks an # Examples section in its rustdoc. At bc02ca3 it passes, with examples on all 67 types and 69 async functions. missing_docs is set to warn, and CI's lint runs with -D warnings, so an undocumented public item fails CI. just test passed 504 tests across 28 binaries with 0 failures, and just doc exited 0.",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T18:39:00.452754981Z",
+          "seal": {
+            "by": "server",
+            "mac": "32ea7e5a38763cc01139ce543ff854cb3e9f00c3738ec8c20f56522ada700e1a"
+          }
+        }
+      ],
       "verdicts": [
         {
           "verdict": "not_enough_info",
@@ -7742,13 +7919,26 @@
             "by": "server",
             "mac": "fb173ca3fb84d400060e88a8efa3e8cbc00c63160b12be316fd74b1e1c2bf301"
           }
+        },
+        {
+          "verdict": "supported",
+          "rationale": "missing_docs is enforced through CI's -D warnings, and tests/doc_examples.rs requires an Examples section on every public type and async function; both pass on main at bc02ca3. This supersedes the earlier not_enough_info.",
+          "auditor": "claude-code/claude-opus-5-5 (M4 coordinator)",
+          "evidence_ids": [
+            "EVD-0220"
+          ],
+          "recorded_at": "2026-10-28T18:40:57.907708323Z",
+          "seal": {
+            "by": "server",
+            "mac": "2ae6a12e4cfd021ab230abe2479aa378fcad8fd6e7c4dc67a163238d8c4f6ba7"
+          }
         }
       ],
       "created_at": "2026-10-26T22:12:45.325766859Z",
-      "updated_at": "2026-10-28T11:54:11.163090446Z",
+      "updated_at": "2026-10-28T18:40:57.907708323Z",
       "seal": {
         "by": "server",
-        "mac": "e8dd535a66953f9962f01e4a79eb1dc448415acd386cc42dbb256807fa4c2163"
+        "mac": "aab08f7459aea25ec7660b0bc5324b692243d1adbf6ff38ee7adb963c59b0155"
       }
     },
     {
@@ -7772,7 +7962,20 @@
       "status": {
         "state": "active"
       },
-      "evidence": [],
+      "evidence": [
+        {
+          "id": "EVD-0221",
+          "kind": "inspection",
+          "locator": "Cargo.toml:7 rust-version = \"1.89\"; .github/workflows/ci.yml job msrv (\"MSRV (Rust 1.89)\", toolchain 1.89); README.md:214 \"## Versioning\" @ 89218d1 (PR #113, Task 13); gh run list --branch main --limit 1 -> run 40746797436 success at bc02ca3",
+          "summary": "Cargo.toml pins rust-version 1.89. CI has an msrv job that builds on toolchain 1.89, and it is green on main (the \"MSRV (Rust 1.89)\" check also passed on PR #117's head). The README's Versioning section states the semver policy and lists the public dependencies.",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T18:39:03.105360446Z",
+          "seal": {
+            "by": "server",
+            "mac": "5a928efbe441e9fdba05e5fbd50fdb5a88a587772e4c9972c13052cd76eeee7a"
+          }
+        }
+      ],
       "verdicts": [
         {
           "verdict": "not_enough_info",
@@ -7784,13 +7987,26 @@
             "by": "server",
             "mac": "5a341c2b0b16169432c5265d06e804cf847ce27f3225e50bb0dcd6208419715e"
           }
+        },
+        {
+          "verdict": "supported",
+          "rationale": "rust-version 1.89 is pinned in Cargo.toml and checked by a CI job that is green on main. The README's Versioning section states the semver policy. This supersedes the earlier not_enough_info.",
+          "auditor": "claude-code/claude-opus-5-5 (M4 coordinator)",
+          "evidence_ids": [
+            "EVD-0221"
+          ],
+          "recorded_at": "2026-10-28T18:40:59.634693434Z",
+          "seal": {
+            "by": "server",
+            "mac": "7140731a91bea8065b38b9a19337bbdb640e84985f4ff68df19e0c2b7135a218"
+          }
         }
       ],
       "created_at": "2026-10-26T22:12:45.325766859Z",
-      "updated_at": "2026-10-28T11:54:11.182102495Z",
+      "updated_at": "2026-10-28T18:40:59.634693434Z",
       "seal": {
         "by": "server",
-        "mac": "7d5a9857963f2e7c977dee501c9be6b0f8fa43402dab950b070355812287abda"
+        "mac": "e6c596283ff0a76024aca1b4730855e1a2207ee4cf64279478b37a2ba719e53a"
       }
     },
     {
@@ -10029,6 +10245,18 @@
             "by": "server",
             "mac": "52b89fc160763127defe8c591e0ffc8027d919cbdc916bbfe02688a42af4695c"
           }
+        },
+        {
+          "id": "EVD-0249",
+          "kind": "test",
+          "locator": "tests/rest_lifecycle.rs::{pause_sends_memory_from_the_mode, connect_sends_memory_false_only_for_a_reboot, sandbox_pause_sends_the_mode, a_moded_pause_reads_only_an_already_paused_409_as_false}; src/lifecycle.rs::tests::{pause_options_memory_follows_the_mode, connect_options_send_memory_false_only_for_a_reboot, connect_options_keep_the_timeout} (S4 evidence map at bc02ca3); just test at bc02ca3 (504 passed, 0 failed)",
+          "summary": "This is fresh evidence after M4's renames; the tests EVD-0205 names no longer exist. sandbox_pause_with_sends_the_mode was renamed sandbox_pause_sends_the_mode (PR #106). the_v1_fallback_keeps_the_reboot_flag was removed with the v1 fallback (PR #101). pause_with_maps_status_codes_as_pause_does became a_moded_pause_reads_only_an_already_paused_409_as_false (PR #103, PR #106).\n\nThe current tests mount one pause mock per exact body: {\"memory\": true} for Full, {\"memory\": false} for Filesystem, and {} with no mode. They mount one v2 connect mock per exact body: {\"timeout\": 60, \"memory\": false} for a reboot, {\"timeout\": 90} for a restore with a timeout, and {} for a restore without one. All pass on main.",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T18:41:52.018080344Z",
+          "seal": {
+            "by": "server",
+            "mac": "6c94b9d3c6de27d14a8ee5839464cb19771012e8800894b9649adbdb5dba9c42"
+          }
         }
       ],
       "verdicts": [
@@ -10044,13 +10272,26 @@
             "by": "server",
             "mac": "bb82cbc917f97744e91df853dd34343acee1b8ddbfd761b393c9b6b6c142839c"
           }
+        },
+        {
+          "verdict": "supported",
+          "rationale": "Re-affirmed on fresh evidence after the M4 renames: the evidence-map tests asserting the pause and connect memory bodies pass at bc02ca3 (504 passed, 0 failed).",
+          "auditor": "claude-code/claude-opus-5-5 (M4 coordinator)",
+          "evidence_ids": [
+            "EVD-0249"
+          ],
+          "recorded_at": "2026-10-28T18:42:02.279458709Z",
+          "seal": {
+            "by": "server",
+            "mac": "83a184924b781a19ed8df66187cb30d1696e6faba35ca0462c033cf0c4091b54"
+          }
         }
       ],
       "created_at": "2026-10-27T19:57:29.982344497Z",
-      "updated_at": "2026-10-28T03:17:36.787029979Z",
+      "updated_at": "2026-10-28T18:42:02.279458709Z",
       "seal": {
         "by": "server",
-        "mac": "930a08ca7c6fbdc314eab08440dd668a4233c9b4191c7f94f678412cb1751c19"
+        "mac": "7327d9b5aa73cae77e959ce76a8ec0e0021b0a8b6ec97070543873c4b7f00809"
       }
     },
     {
@@ -10505,13 +10746,53 @@
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0222",
+          "kind": "test",
+          "locator": "tests/rest_api.rs::connect_sandbox_v2_404_is_not_found_without_a_v1_request; tests/rest_api.rs::connect_missing_sandbox_is_not_found; tests/rest_api.rs::every_rest_request_carries_the_api_key @ 88184fb (PR #101, Task 1); just test at bc02ca3 (504 passed)",
+          "summary": "The tests are the S4 evidence-map row for CLM-0168. When v2 connect answers 404, the result is Error::SandboxNotFound with the id and exactly one recorded request; a v1 mock that would answer 201 is set to .expect(0). A catch-all 404 mock sees exactly one connect request.",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T18:39:05.753728156Z",
+          "seal": {
+            "by": "server",
+            "mac": "ddf33ae5b3432196d1f0b818827afe112f319cd56f3cf0881169793d806818f1"
+          }
+        },
+        {
+          "id": "EVD-0223",
+          "kind": "demonstration",
+          "locator": "clm_0015_connect_unknown_sandbox_is_not_found @ hosted, docs/verification/runs/20261028T153214Z-hosted-761165.log:111 (commit bf65ca8); @ sandbawks, docs/verification/runs/20261028T154205Z-sandbawks-paced-913873.log RESULT PASS (commit 3cedbc3)",
+          "summary": "On both hosted E2B and sandbawks, connecting to an unknown sandbox id returns SandboxNotFound from the v2 route alone; no v1 fallback exists.",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T18:39:08.153593261Z",
+          "seal": {
+            "by": "server",
+            "mac": "f24b263aa0bcdba073841a6adcb5f67f506490c0709600563ab6d40d28580a90"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "supported",
+          "rationale": "The mock tests show a single v2 request, a 404 that maps to SandboxNotFound, and no v1 request. Live on both hosted E2B and sandbawks, an unknown id is SandboxNotFound.",
+          "auditor": "claude-code/claude-opus-5-5 (M4 coordinator)",
+          "evidence_ids": [
+            "EVD-0222",
+            "EVD-0223"
+          ],
+          "recorded_at": "2026-10-28T18:41:01.493083285Z",
+          "seal": {
+            "by": "server",
+            "mac": "5195de8469ebbbd42b4dda24f1ccefa808f11e67bd56a2aabcb8d488972f400f"
+          }
+        }
+      ],
       "created_at": "2026-10-28T11:54:04.781576457Z",
-      "updated_at": "2026-10-28T11:54:04.781576457Z",
+      "updated_at": "2026-10-28T18:41:01.493083285Z",
       "seal": {
         "by": "server",
-        "mac": "94bdf01e61dc573b9a2ae617e0b1e91feccf72ce8c94e7663bcb5db5242ef3cf"
+        "mac": "e6e9b7d4437be06e7679e2d43f26e37974db9c029cfdefc78ea3720a133192b9"
       }
     },
     {
@@ -10534,13 +10815,40 @@
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0224",
+          "kind": "test",
+          "locator": "tests/error_taxonomy.rs (rest_statuses_classify_as_the_sdk_does, envd_http_statuses_classify_as_the_sdk_does, rpc_codes_classify_as_the_sdk_does, a_request_timeout_is_a_timeout_and_not_retryable, a_refused_connection_is_retryable_and_keeps_its_cause) and src/error.rs::tests @ a4d209e (PR #102, Task 2); just test at bc02ca3 (504 passed)",
+          "summary": "The tests are the S4 evidence-map row for CLM-0169. REST, envd-HTTP and RPC answers each give status() and exactly the SDK 2.61 classifier flags, with all seven classifiers compared at once. A client timeout is is_timeout and not retryable. A refused connection is retryable and keeps its TransportError as source(). The unit tests pin an envd 502 as unreachable, a REST 503 against an envd 503, and status() of the non-HTTP variants.",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T18:39:11.554948689Z",
+          "seal": {
+            "by": "server",
+            "mac": "bdb4e8cb6b648fa6641c8394e8b83556bb16462184ff9ee445226a69173ebd2f"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "supported",
+          "rationale": "The error-taxonomy tests compare status() and every classifier against SDK 2.61's maps for REST, envd-HTTP and RPC answers, client timeouts and refused connections. They pass on main.",
+          "auditor": "claude-code/claude-opus-5-5 (M4 coordinator)",
+          "evidence_ids": [
+            "EVD-0224"
+          ],
+          "recorded_at": "2026-10-28T18:41:03.144588570Z",
+          "seal": {
+            "by": "server",
+            "mac": "a9f4ae09af4f1d06627bd130513113b129e8d86e79886be5011a0772b1929886"
+          }
+        }
+      ],
       "created_at": "2026-10-28T11:54:04.781576457Z",
-      "updated_at": "2026-10-28T11:55:19.520082930Z",
+      "updated_at": "2026-10-28T18:41:03.144588570Z",
       "seal": {
         "by": "server",
-        "mac": "c6b68f06a13ca4d7fdc6b5aa1993085be8af24021818843e33135986ea89f2ff"
+        "mac": "db80ecad79c460f11429fadb5424a524d6b3dfc3a27525c5db4e7aa53e5f08f1"
       }
     },
     {
@@ -10565,13 +10873,40 @@
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0225",
+          "kind": "inspection",
+          "locator": "just doc at bc02ca3, then `grep -rl reqwest target/doc/e2b_client/ | wc -l` -> 0; src/lib.rs:133 `pub use secrecy;`; README.md \"## Versioning\" public-dependency list; src/error.rs TransportError (PR #102)",
+          "summary": "After just doc on main, no rustdoc page of the public API mentions reqwest. Error::Transport holds the opaque TransportError, which keeps the cause as its source. secrecy is re-exported from the crate root, and the README's Versioning section lists the public dependencies.",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T18:39:13.856379909Z",
+          "seal": {
+            "by": "server",
+            "mac": "ec1fa9cc0965a6af986c8b3471a0f9426a86d1fe678ed80190710f2d4ea07854"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "supported",
+          "rationale": "No public rustdoc page mentions reqwest. Transport holds the opaque TransportError, secrecy is re-exported, and the README lists the public dependencies.",
+          "auditor": "claude-code/claude-opus-5-5 (M4 coordinator)",
+          "evidence_ids": [
+            "EVD-0225"
+          ],
+          "recorded_at": "2026-10-28T18:41:04.693565590Z",
+          "seal": {
+            "by": "server",
+            "mac": "25d4342ac768cdc803d7a987689195e321df192cde2580dd6c4e50e6ec3d8d76"
+          }
+        }
+      ],
       "created_at": "2026-10-28T11:54:04.781576457Z",
-      "updated_at": "2026-10-28T11:54:04.781576457Z",
+      "updated_at": "2026-10-28T18:41:04.693565590Z",
       "seal": {
         "by": "server",
-        "mac": "9ea3c885c7d55a0e612c51abcea218b514fe7fac4236fa0ffa209b1875b38791"
+        "mac": "6005d2d4b1d405d0d073b658f0c782e18db87e7dc7d29656af4a8501609cb2d8"
       }
     },
     {
@@ -10594,13 +10929,65 @@
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0226",
+          "kind": "test",
+          "locator": "tests/rest_lifecycle.rs::a_moded_pause_reads_only_an_already_paused_409_as_false; ::a_full_pause_also_reads_the_409_body; ::a_pause_without_a_mode_reads_every_409_as_already_paused @ cf49575 (PR #103, Task 3), on main bc02ca3; just test at bc02ca3 (504 passed)",
+          "summary": "With SnapshotMode::Filesystem, the result depends on the API's answer:\n- a 409 whose message says \"is already paused\" gives Ok(false);\n- a 409 with another message gives Error::Api with status 409 and that message;\n- a 409 with no body gives Error::Api with status 409;\n- a 400 gives Error::Api with status 400;\n- a 404 gives SandboxNotFound.\n\nSnapshotMode::Full reads the 409 body the same way. A pause without a mode treats any 409 as Ok(false), as SDK 2.61 does.",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T18:39:17.305423621Z",
+          "seal": {
+            "by": "server",
+            "mac": "25fac7f3a0f6f05ed29b1ffe4aa2cced2589d4206499828b5593147d704078d5"
+          }
+        },
+        {
+          "id": "EVD-0227",
+          "kind": "demonstration",
+          "locator": "clm_0171_moded_pause_of_a_paused_sandbox_is_false @ hosted, docs/verification/runs/20261028T153214Z-hosted-761165.log:144 (ok, commit bf65ca8)",
+          "summary": "On hosted E2B, pausing an already-paused sandbox again with a SnapshotMode returns Ok(false). The API's 409 message is read as \"already paused\", not as a refusal.",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T18:39:19.303578863Z",
+          "seal": {
+            "by": "server",
+            "mac": "7eab06eb3d035a56311f33b43b10defc6dc4c8b594dc0650dd15c1d4467fd71a"
+          }
+        },
+        {
+          "id": "EVD-0228",
+          "kind": "demonstration",
+          "locator": "clm_0171_moded_pause_of_a_paused_sandbox_is_false @ sandbawks, docs/verification/runs/20261028T154205Z-sandbawks-paced-913873.log RESULT FAIL; docs/verification/m4-live-results.md (sandbawks); gfd/sandbawks#679",
+          "summary": "On sandbawks the test fails, but not because of the crate. sandbawks never answers a second pause with 409: it returns 200 {\"state\":\"paused\"} whatever the body, while the sandbox detail still says running (#679). The crate's 409 handling is never reached.",
+          "stance": "neutral",
+          "recorded_at": "2026-10-28T18:39:21.545460037Z",
+          "seal": {
+            "by": "server",
+            "mac": "89f5d3edb221c7018183dd56c17dd690d8be11074979f8b12f4ceb2efcaa0bc5"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "supported",
+          "rationale": "The mock tests pin each 409 case for a moded pause and the SDK-parity behaviour without a mode. On hosted E2B, a moded pause of a paused sandbox is Ok(false). The sandbawks failure (EVD-0228) is #679, which never sends a 409, so it doesn't refute the claim.",
+          "auditor": "claude-code/claude-opus-5-5 (M4 coordinator)",
+          "evidence_ids": [
+            "EVD-0226",
+            "EVD-0227"
+          ],
+          "recorded_at": "2026-10-28T18:41:06.745690159Z",
+          "seal": {
+            "by": "server",
+            "mac": "3a5bda5fcc5c6857a7be16106c0489e072a7b9c76ee279357354c442b786075b"
+          }
+        }
+      ],
       "created_at": "2026-10-28T11:54:04.781576457Z",
-      "updated_at": "2026-10-28T11:54:04.781576457Z",
+      "updated_at": "2026-10-28T18:41:06.745690159Z",
       "seal": {
         "by": "server",
-        "mac": "c58900870852c14150877ab66285aaf8ade1af3513c223b1e89a310c0ce38609"
+        "mac": "3c052205fd0be4a7e2647fce15c80326d621984a5472eefbcf19c4168fb3ff08"
       }
     },
     {
@@ -10623,13 +11010,40 @@
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0229",
+          "kind": "test",
+          "locator": "tests/zero_timeouts.rs (a_zero_command_timeout_sends_no_deadline, a_zero_pty_timeout_sends_no_deadline, a_zero_command_connect_timeout_sends_no_deadline, a_zero_pty_connect_timeout_sends_no_deadline, a_zero_watch_timeout_sends_no_deadline, a_zero_stream_input_timeout_sends_no_deadline, a_zero_request_timeout_in_the_config_means_no_limit) @ d35bf5f (PR #104, Task 4); src/config.rs::tests::zero_means_no_limit; tests/envd_file_options.rs::a_zero_per_call_request_timeout_means_no_limit (PR #105); just test at bc02ca3 (504 passed)",
+          "summary": "The tests are the S4 evidence-map row for CLM-0172. Each stream test sets a zero duration, then checks the call completes and the request carries no Connect-Timeout-Ms header. The streams covered are commands, PTY, the two connects, watch and stream input. A zero configured request timeout lets a ListDir that answers after 300 ms succeed, and request_timeout() reads None. A zero per-call request timeout is likewise no limit.",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T18:39:45.287994754Z",
+          "seal": {
+            "by": "server",
+            "mac": "dabce031f388e1c54aa6175958d737d0f7e98f47d260e2b60bc3ab96afad257a"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "supported",
+          "rationale": "Every stream deadline and the request timeout, configured or per call, are tested at zero. Each sends no Connect-Timeout-Ms header and applies no client-side deadline.",
+          "auditor": "claude-code/claude-opus-5-5 (M4 coordinator)",
+          "evidence_ids": [
+            "EVD-0229"
+          ],
+          "recorded_at": "2026-10-28T18:41:08.448961913Z",
+          "seal": {
+            "by": "server",
+            "mac": "5ec7ce68b6b377f886eac540f4ca82e0699a670b0b3230be1cc80f1340f0cbfb"
+          }
+        }
+      ],
       "created_at": "2026-10-28T11:54:04.781576457Z",
-      "updated_at": "2026-10-28T11:54:04.781576457Z",
+      "updated_at": "2026-10-28T18:41:08.448961913Z",
       "seal": {
         "by": "server",
-        "mac": "6623887abcd999dab92453fe2382650dbb297f19fef713a49cf0536ac97e8c82"
+        "mac": "6b837302e6d299d5c4314cf144d56e3ada82f89d23cbe929f19a47e56550d682"
       }
     },
     {
@@ -10652,13 +11066,77 @@
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0230",
+          "kind": "test",
+          "locator": "tests/envd_file_options.rs (a_per_call_request_timeout_overrides_the_configured_one, a_per_call_none_lifts_a_short_configured_timeout, a_zero_per_call_request_timeout_means_no_limit, read_and_write_use_the_per_call_request_timeout, watch_dir_opens_within_the_per_call_request_timeout, file_options_select_the_user, list_options_default_to_depth_one_and_reject_zero) @ e92cb33 (PR #105, Task 5); just test at bc02ca3 (504 passed)",
+          "summary": "Every Filesystem call takes FileOptions, ListOptions, WriteOptions or WatchOptions, and each carries the user and a per-call request timeout. A per-call timeout shorter than the configured one bounds the call, and a longer one lets a slow answer through; None lifts a short configured timeout, and zero means no limit. read, write and watch_dir honour it. The user option selects the Authorization user.",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T18:39:48.538502748Z",
+          "seal": {
+            "by": "server",
+            "mac": "3fafbebf823bd967136034398daa654e458d41bd020633bd76353bca0e7b1f0c"
+          }
+        },
+        {
+          "id": "EVD-0231",
+          "kind": "demonstration",
+          "locator": "tests/live_files.rs @ hosted, docs/verification/runs/20261028T153214Z-hosted-761165.log:53-101 (20 passed, commit bf65ca8); docs/verification/m4-live-results.md CLM-0173 row",
+          "summary": "On hosted E2B, all 20 live_files tests pass through the new signatures, including the user option in clm_0061_user_selects_file_owner. This is partial live evidence: no live test exercises the per-call request timeout, which is covered by the mock tests.",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T18:39:50.794750174Z",
+          "seal": {
+            "by": "server",
+            "mac": "2098301e26302c1a2a328ac8d13a5e8d499fc885ef8afd8088ed46f0d190022b"
+          }
+        },
+        {
+          "id": "EVD-0232",
+          "kind": "demonstration",
+          "locator": "tests/live_files.rs @ sandbawks, docs/verification/runs/20261028T154205Z-sandbawks-paced-913873.log (files 7/20, commit 3cedbc3); docs/verification/m4-live-results.md (sandbawks)",
+          "summary": "On sandbawks, 7 of the 20 live_files tests pass. Each of the 13 failures maps to a filed gfd/sandbawks defect (#664, #675, #677, #678, #682, #684 to #688), and each of those tests passes on hosted, so this decides nothing about the crate.",
+          "stance": "neutral",
+          "recorded_at": "2026-10-28T18:39:53.192419041Z",
+          "seal": {
+            "by": "server",
+            "mac": "6f9cb526b3033e7c3d7e073a5aebc5338af1872adfea7641a3ebbed1bf6ff412"
+          }
+        },
+        {
+          "id": "EVD-0239",
+          "kind": "analysis",
+          "locator": "EVD-0232; docs/verification/m4-live-results.md (sandbawks failure table, per test)",
+          "summary": "Correction to EVD-0232: its parenthesised list of issue numbers is approximate, taken from a summary. The authoritative per-test mapping is the failure table in m4-live-results.md, where every live_files failure on sandbawks names its filed gfd/sandbawks issue. The conclusion stands: the sandbawks failures decide nothing about the crate.",
+          "stance": "neutral",
+          "recorded_at": "2026-10-28T18:40:23.474288485Z",
+          "seal": {
+            "by": "server",
+            "mac": "534c1729112ca8b2191322d5aef6a9878e1ae23b1049d83ef4c0939421463d10"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "supported",
+          "rationale": "The mock tests show that every Filesystem call takes an options value whose user and per-call request timeout are honoured, the timeout overriding the configured one. On hosted E2B, all of live_files passes through the new signatures. The per-call timeout itself is covered by mocks only. The sandbawks failures are filed server defects (EVD-0232, EVD-0239).",
+          "auditor": "claude-code/claude-opus-5-5 (M4 coordinator)",
+          "evidence_ids": [
+            "EVD-0230",
+            "EVD-0231"
+          ],
+          "recorded_at": "2026-10-28T18:41:10.596794001Z",
+          "seal": {
+            "by": "server",
+            "mac": "a63b2377311112695083ae9f7f699010ced812f0287c5a6cd8f8487a7757d107"
+          }
+        }
+      ],
       "created_at": "2026-10-28T11:54:04.781576457Z",
-      "updated_at": "2026-10-28T11:54:04.781576457Z",
+      "updated_at": "2026-10-28T18:41:10.596794001Z",
       "seal": {
         "by": "server",
-        "mac": "c698a433b0e1b7519e1e73b59b78c04de23b211d345854d03604b41bfd3b4bfc"
+        "mac": "c1bbf55caf3a4321315c7a5a5c4b5ee6eb984f65ce7d0c3ce6420a4a61a9b315"
       }
     },
     {
@@ -10682,13 +11160,65 @@
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0233",
+          "kind": "test",
+          "locator": "tests/envd_connect_options.rs::{command_connect_defaults_to_the_sdk_sixty_seconds, command_connect_sends_the_chosen_deadline, command_connect_without_a_deadline_sends_no_header, pty_connect_has_no_deadline_by_default, a_shorter_request_timeout_bounds_the_wait_for_the_start_event, a_longer_request_timeout_overrides_the_configured_one, command_options_request_timeout_bounds_start, pty_options_request_timeout_bounds_create} @ 2760fa9 (PR #107, Task 7) and f0d951f (PR #108, Task 8); just test at bc02ca3 (504 passed)",
+          "summary": "Commands::connect takes CommandConnectOptions and sends Connect-Timeout-Ms 60000 by default, the chosen deadline when one is set, and no header when the deadline is None. Pty::connect takes PtyConnectOptions and has no deadline by default. A shorter per-call request timeout bounds the wait for the start event, and a longer one overrides the configured timeout. CommandOptions' and PtyOptions' request timeouts bound start and create.",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T18:39:56.739182858Z",
+          "seal": {
+            "by": "server",
+            "mac": "5664f3d39d3510509ad1e500c752cab77b2ee03d6ca90a23e7a0806dac096b08"
+          }
+        },
+        {
+          "id": "EVD-0234",
+          "kind": "demonstration",
+          "locator": "clm_0040_connect_attaches_to_running_command @ hosted, docs/verification/runs/20261028T153214Z-hosted-761165.log:19 (ok, commit bf65ca8)",
+          "summary": "On hosted E2B, Commands::connect with CommandConnectOptions::default() attaches to a running command and streams it to its exit. The live run exercises the new signature; the per-call timeout is covered only by the mock tests.",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T18:39:58.797750518Z",
+          "seal": {
+            "by": "server",
+            "mac": "eb3ddfb1f4e43610ec5fa3d58fe4c25c01625e186ce3322fb4dad46a37c8241f"
+          }
+        },
+        {
+          "id": "EVD-0235",
+          "kind": "demonstration",
+          "locator": "clm_0040_connect_attaches_to_running_command @ sandbawks, docs/verification/runs/20261028T154205Z-sandbawks-paced-913873.log RESULT FAIL; gfd/sandbawks#677",
+          "summary": "On sandbawks the connect test fails on #677 (no start event on connect), as it did in M3. It is a filed server defect and decides nothing about the crate.",
+          "stance": "neutral",
+          "recorded_at": "2026-10-28T18:40:00.790698100Z",
+          "seal": {
+            "by": "server",
+            "mac": "fd689377da3a170da8443983b35c0b62d48887a795b8ec7589263cfb85cced1f"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "supported",
+          "rationale": "The mock tests show the connect options structs, the per-call request timeouts on the connect, CommandOptions and PtyOptions paths, and Commands::connect's 60 s default. On hosted E2B, Commands::connect works through the new signature; the per-call timeout is covered by mocks only. The sandbawks failure is #677.",
+          "auditor": "claude-code/claude-opus-5-5 (M4 coordinator)",
+          "evidence_ids": [
+            "EVD-0233",
+            "EVD-0234"
+          ],
+          "recorded_at": "2026-10-28T18:41:12.695275529Z",
+          "seal": {
+            "by": "server",
+            "mac": "6eceb509eec5833d20d48623a39d547a001dd418e4848625b210382df7385321"
+          }
+        }
+      ],
       "created_at": "2026-10-28T11:54:04.781576457Z",
-      "updated_at": "2026-10-28T11:55:20.416253637Z",
+      "updated_at": "2026-10-28T18:41:12.695275529Z",
       "seal": {
         "by": "server",
-        "mac": "2ac590d415277c525146bd06e3289a60e7b0cb637380b30082b22586a8369ee2"
+        "mac": "f95ce26108f45cbed9b7fa0ee328088599d14c5cdbd249f29a9ff9a55224a1c6"
       }
     },
     {
@@ -10711,13 +11241,53 @@
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0236",
+          "kind": "demonstration",
+          "locator": "clm_0175_pty_outlives_sixty_seconds @ hosted, docs/verification/runs/20261028T153214Z-hosted-761165.log:26 (ok, commit bf65ca8); @ sandbawks, docs/verification/runs/20261028T154205Z-sandbawks-paced-913873.log RESULT PASS (commit 3cedbc3)",
+          "summary": "The test opens a PTY with PtyOptions::default(), sleeps 65 s, sends \"echo alive-$((40+2))\" and then exit, and asserts the transcript contains alive-42 and the exit code is 0. It passes on both hosted E2B and sandbawks.",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T18:40:03.289088812Z",
+          "seal": {
+            "by": "server",
+            "mac": "a02bf2eab688b7b0193c97c1955b388d58cb510ae887154b8a5d55e01d1b467a"
+          }
+        },
+        {
+          "id": "EVD-0237",
+          "kind": "test",
+          "locator": "src/pty.rs::tests::options_default_to_no_deadline; tests/envd_connect_options.rs::pty_create_sends_a_deadline_only_when_set @ f0d951f (PR #108, Task 8); just test at bc02ca3 (504 passed)",
+          "summary": "PtyOptions::default() has no stream deadline, and a PTY create sends Connect-Timeout-Ms only when a deadline is set.",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T18:40:05.138302635Z",
+          "seal": {
+            "by": "server",
+            "mac": "7309b43853e1af966e6fc79412142610991e3152ed5136e9ac52ce040e6b82ca"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "supported",
+          "rationale": "With default options, a PTY still echoes input 65 s after it opened, live on both hosted E2B and sandbawks. The unit and mock tests pin that the default has no deadline.",
+          "auditor": "claude-code/claude-opus-5-5 (M4 coordinator)",
+          "evidence_ids": [
+            "EVD-0236",
+            "EVD-0237"
+          ],
+          "recorded_at": "2026-10-28T18:41:14.393836966Z",
+          "seal": {
+            "by": "server",
+            "mac": "fa3f613575b278deb926e8cfe991f352a3ee11c8821348b9db62a21128f89cf4"
+          }
+        }
+      ],
       "created_at": "2026-10-28T11:54:04.781576457Z",
-      "updated_at": "2026-10-28T11:54:04.781576457Z",
+      "updated_at": "2026-10-28T18:41:14.393836966Z",
       "seal": {
         "by": "server",
-        "mac": "3779e47bcd048c75076d8a5a36dbaeb685e7b36187113485196be16f57afe733"
+        "mac": "815d66dad34f27c357d8eaa0061e8c75c11aaf7925b951572a679c5ede7083f8"
       }
     },
     {
@@ -10740,13 +11310,40 @@
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0238",
+          "kind": "test",
+          "locator": "tests/envd_write.rs::{octet_stream_uploads_are_capped_at_max_concurrency, the_default_cap_is_eight_uploads_in_flight, capped_uploads_keep_the_entry_order, a_zero_max_concurrency_is_rejected_before_sending, octet_stream_batch_fails_fast_without_waiting_for_the_other_uploads, octet_stream_upload_errors_are_reported} @ 57cb991 (PR #109, Task 9); just test at bc02ca3 (504 passed)",
+          "summary": "An arrival-time gauge measures the peak number of uploads in flight. It is 2 with max_concurrency(2) and 8 by default, with DEFAULT_UPLOAD_CONCURRENCY = 8. Results come back in entry order even when later uploads finish first. A zero cap is rejected before any request. The batch fails on the first error without waiting for the other uploads. The tests drive octet-stream; gzip goes through the same upload path (PR #109).",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T18:40:08.237112600Z",
+          "seal": {
+            "by": "server",
+            "mac": "dc03acbcaa1e242548aef3a51b77d0792d902db9d0dc474454882f2edcb4223f"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "supported",
+          "rationale": "A gauge shows the upload peak is the cap (2 when set, 8 by default). Results come back in input order, a zero cap is refused, and the batch fails fast on the first error.",
+          "auditor": "claude-code/claude-opus-5-5 (M4 coordinator)",
+          "evidence_ids": [
+            "EVD-0238"
+          ],
+          "recorded_at": "2026-10-28T18:41:16.094902842Z",
+          "seal": {
+            "by": "server",
+            "mac": "a34bc85b9d630ffe69d7d7bdfa4eb35fe460c1d912aad76c91ebe38b16b42e41"
+          }
+        }
+      ],
       "created_at": "2026-10-28T11:54:04.781576457Z",
-      "updated_at": "2026-10-28T11:54:04.781576457Z",
+      "updated_at": "2026-10-28T18:41:16.094902842Z",
       "seal": {
         "by": "server",
-        "mac": "034f5e56d78f0882f3e81c671f435d67a908f1200b91ad1fd957ea372397f725"
+        "mac": "7ce3c7049600bbd7eb2ac254d71744f11d3c44ef3577e2f17464fdf02b365880"
       }
     },
     {
@@ -10770,13 +11367,65 @@
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0240",
+          "kind": "test",
+          "locator": "tests/envd_api.rs::list_and_stat_report_symlinks_for_both_envd_shapes @ 859db41 (PR #110, Task 10); just test at bc02ca3 (504 passed)",
+          "summary": "A mocked ListDir returns four entries:\n- a link with isSymlink true and type FILE;\n- an old-shape entry with type FILE_TYPE_SYMLINK;\n- a plain file with isSymlink false;\n- a directory link with isSymlink true.\n\nlist reports Symlink, Symlink, File and Symlink. get_info on the new-shape link reports Symlink and its symlink_target.",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T18:40:25.977390940Z",
+          "seal": {
+            "by": "server",
+            "mac": "d78efe0712f9b0c5f691e5e4061514754303c3043ec1ea7a6d70b128a0de503a"
+          }
+        },
+        {
+          "id": "EVD-0241",
+          "kind": "demonstration",
+          "locator": "clm_0177_symlinks_report_symlink_type @ hosted, docs/verification/runs/20261028T153214Z-hosted-761165.log:74 (ok, commit bf65ca8)",
+          "summary": "On hosted E2B (envd 0.10.0, which sets is_symlink), links made with ln -s to a file and to a directory are listed as Symlink, their targets as File and Directory, and get_info on the file link reports Symlink.",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T18:40:28.030763182Z",
+          "seal": {
+            "by": "server",
+            "mac": "17d79eaa4bc2b68a3c5bae289364367c548a40273d8ff733ec20ad49b3ea2ba7"
+          }
+        },
+        {
+          "id": "EVD-0242",
+          "kind": "demonstration",
+          "locator": "clm_0177_symlinks_report_symlink_type @ sandbawks, docs/verification/runs/20261028T154205Z-sandbawks-paced-913873.log:1884 RESULT FAIL; gfd/sandbawks#678",
+          "summary": "On sandbawks the test fails in its setup, writing /tmp/sym/target.txt into a directory that doesn't exist yet (#678: envd write doesn't create parent directories). The symlink handling is never reached, so this decides nothing.",
+          "stance": "neutral",
+          "recorded_at": "2026-10-28T18:40:30.283801537Z",
+          "seal": {
+            "by": "server",
+            "mac": "e858c52079672281539a3aa6ca0907ffe751ac4ab803ffec16f245d6b19f319e"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "supported",
+          "rationale": "Both envd shapes give Symlink in the mock test. On hosted E2B (the is_symlink shape), list and get_info report Symlink for real links. The sandbawks failure is #678, in the test's setup.",
+          "auditor": "claude-code/claude-opus-5-5 (M4 coordinator)",
+          "evidence_ids": [
+            "EVD-0240",
+            "EVD-0241"
+          ],
+          "recorded_at": "2026-10-28T18:41:17.997357284Z",
+          "seal": {
+            "by": "server",
+            "mac": "a21fc72769a6bdef39bfc080ec6392bfb7a38cce12d0b15fc4f85a7251becb3a"
+          }
+        }
+      ],
       "created_at": "2026-10-28T11:54:04.781576457Z",
-      "updated_at": "2026-10-28T11:54:04.781576457Z",
+      "updated_at": "2026-10-28T18:41:17.997357284Z",
       "seal": {
         "by": "server",
-        "mac": "a6020b5c6e7553ac92afd02296392e6b76c8de87f1977d33a8c92712b5e530fb"
+        "mac": "ed9cd875d0c731094ed3e3742a1ff84212dccd2551890bea3b8d982169dbb1d6"
       }
     },
     {
@@ -10799,13 +11448,52 @@
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0243",
+          "kind": "demonstration",
+          "locator": "clm_0178_pty_connect_to_exited_pid @ hosted, docs/verification/runs/20261028T153214Z-hosted-761165.log:24 (ok, commit bf65ca8); Pty::connect and Commands::connect rustdoc in src/pty.rs and src/commands.rs @ cc7d695 (PR #111, Task 11)",
+          "summary": "The live test makes a PTY shell exit with code 3, then connects to its pid both at once and after 5 s. On hosted E2B both connects attach and replay Exit(3) as their first event, and a never-used pid is refused with Rpc NotFound. Pty::connect's rustdoc, corrected in PR #111, states exactly this: envd keeps an exited pid attachable for tens of seconds and replays its exit.",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T18:40:33.230775924Z",
+          "seal": {
+            "by": "server",
+            "mac": "8dcbd8c975a90f50f5d112c74171a5fd5e7f1b855c2f95e62242c8f08ea459a1"
+          }
+        },
+        {
+          "id": "EVD-0244",
+          "kind": "demonstration",
+          "locator": "clm_0178_pty_connect_to_exited_pid @ sandbawks, docs/verification/runs/20261028T154205Z-sandbawks-paced-913873.log RESULT FAIL; gfd/sandbawks#677",
+          "summary": "On sandbawks the connect gets no start event (#677), as clm_0040 does. The claim is about hosted E2B's behaviour, and this filed server defect decides nothing.",
+          "stance": "neutral",
+          "recorded_at": "2026-10-28T18:40:35.232504525Z",
+          "seal": {
+            "by": "server",
+            "mac": "ef750b7288ce0f02ae81d3af69ec174fefc9c8e236205cc5fd41a94ae2e4d81d"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "supported",
+          "rationale": "Pty::connect's rustdoc states hosted E2B's behaviour (the exited pid is attachable and replays its exit), and clm_0178 pins it live on hosted. The sandbawks failure is #677.",
+          "auditor": "claude-code/claude-opus-5-5 (M4 coordinator)",
+          "evidence_ids": [
+            "EVD-0243"
+          ],
+          "recorded_at": "2026-10-28T18:41:19.693880144Z",
+          "seal": {
+            "by": "server",
+            "mac": "2941dcaeb100cd82b20d11bc232ff877f62077dd85ab9bacde959b609479ae15"
+          }
+        }
+      ],
       "created_at": "2026-10-28T11:54:04.781576457Z",
-      "updated_at": "2026-10-28T11:54:04.781576457Z",
+      "updated_at": "2026-10-28T18:41:19.693880144Z",
       "seal": {
         "by": "server",
-        "mac": "e888b6e82fc1d0d312a2227e3170f603a427285f2fe5ba3d8bc76bb93c9543fb"
+        "mac": "47ec1bf065fd5b9c1d49501c3c0b139f4e25bd499b85d126ae06072f9fe9b08e"
       }
     },
     {
@@ -10828,13 +11516,40 @@
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0245",
+          "kind": "test",
+          "locator": "tests/api_traits.rs::clients_handles_options_and_results_are_send_and_sync and the Send/Debug/Error assertions in the same file @ f65615f (PR #112, Task 12); just test at bc02ca3 (504 passed)",
+          "summary": "The file asserts at compile time that the following are Send + Sync:\n- Client, ConnectionConfig and its builder;\n- Sandbox, Commands, Pty, Filesystem and Volume;\n- every options type and result type.\n\nIt also asserts that the stream handles are Send, that every public type is Debug, and that Error is a std::error::Error + Send + Sync + 'static. It compiles and passes on main.",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T18:40:37.931178728Z",
+          "seal": {
+            "by": "server",
+            "mac": "433f49f00b7f45d339ead2466cdb6368eb98e5c5f544a151117212a2f464f5ad"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "supported",
+          "rationale": "tests/api_traits.rs asserts the Send, Sync and Debug bounds at compile time, and it builds and passes on main.",
+          "auditor": "claude-code/claude-opus-5-5 (M4 coordinator)",
+          "evidence_ids": [
+            "EVD-0245"
+          ],
+          "recorded_at": "2026-10-28T18:41:21.144728056Z",
+          "seal": {
+            "by": "server",
+            "mac": "3ba8a8c673a7463d3dbbad400b18af3c31ccca99eb46fb5a416948263cc27c1c"
+          }
+        }
+      ],
       "created_at": "2026-10-28T11:54:04.781576457Z",
-      "updated_at": "2026-10-28T11:54:04.781576457Z",
+      "updated_at": "2026-10-28T18:41:21.144728056Z",
       "seal": {
         "by": "server",
-        "mac": "e64106f483c5a458c36cbf0be7b0040db32032c34ace2676dfde2ef7e8ddd8b5"
+        "mac": "f2ea977a1bcd6793722cc53513610c1fed3923291a35c2985eb7fc28b20fb2c8"
       }
     },
     {
@@ -10858,13 +11573,40 @@
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0246",
+          "kind": "inspection",
+          "locator": "docs/api-review.md @ 768decc (PR #114, Task 14, with the rustdoc-example coverage section), first written in f65615f (PR #112, Task 12)",
+          "summary": "The review walks every re-export in src/lib.rs against the Rust API Guidelines checklist: naming, conversions, common traits, C-STABLE and non_exhaustive. It records where the API follows each guideline and why it departs where it does. One finding it fixed in PR #112: Error::Decode now displays only its own message, and the cause stays in source(). The rustdoc-example coverage was added in PR #114.",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T18:40:40.830141326Z",
+          "seal": {
+            "by": "server",
+            "mac": "78615b41a1d6c6b66a65bb0bd2f936bb14c31604975b7768d82bff9bf57e1d9a"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "supported",
+          "rationale": "docs/api-review.md reviews every public item against the Rust API Guidelines and records each exception and its reason.",
+          "auditor": "claude-code/claude-opus-5-5 (M4 coordinator)",
+          "evidence_ids": [
+            "EVD-0246"
+          ],
+          "recorded_at": "2026-10-28T18:41:22.595400530Z",
+          "seal": {
+            "by": "server",
+            "mac": "0e099d034d7c47e48959792da1df8e309e4901331449824e422b8052d9bb88b6"
+          }
+        }
+      ],
       "created_at": "2026-10-28T11:54:04.781576457Z",
-      "updated_at": "2026-10-28T11:54:04.781576457Z",
+      "updated_at": "2026-10-28T18:41:22.595400530Z",
       "seal": {
         "by": "server",
-        "mac": "dfc4b68e542cfeb269f85bc4de36df17640f95734a5a2e7392c68529abaebdac"
+        "mac": "60d35ed56bc14b7b84846afa3d3de7facdb725a359e94c9348164d307728f891"
       }
     },
     {
@@ -10887,13 +11629,40 @@
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0247",
+          "kind": "demonstration",
+          "locator": "justfile test-live-paced (bf65ca8, PR #115); docs/verification/runs/20261028T154205Z-sandbawks-paced-913873.log (Task 17, commit 3cedbc3); docs/verification/live-pacing.md",
+          "summary": "The paced sandbawks run started with \"paced: one test at a time, 120s apart; readiness failures rerun once\". Each of the 79 tests got one labelled RESULT line (PASS, FAIL or FAIL-READINESS). The single readiness failure, clm_0150, was rerun once and labelled \"FAIL-READINESS (rerun)\". The log ends with \"summary: 29 pass, 0 pass on rerun, 49 fail, 1 still not ready\", and the commit and dirty stamp is at the top.",
+          "stance": "supports",
+          "recorded_at": "2026-10-28T18:40:43.428546477Z",
+          "seal": {
+            "by": "server",
+            "mac": "0917562b465a1f2bbbc91cdd709ca02a12b50933d51e7577b52727ae40e4e7c8"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "supported",
+          "rationale": "The paced recipe ran 79 tests one at a time with a 120 s gap, gave each a labelled RESULT line, reran the one readiness failure once and summarised the run.",
+          "auditor": "claude-code/claude-opus-5-5 (M4 coordinator)",
+          "evidence_ids": [
+            "EVD-0247"
+          ],
+          "recorded_at": "2026-10-28T18:41:24.229573952Z",
+          "seal": {
+            "by": "server",
+            "mac": "10f2536bea22b8e1324fefa3c7c6c0be9c1c4900ff4911663da4d53305a32f18"
+          }
+        }
+      ],
       "created_at": "2026-10-28T11:54:04.781576457Z",
-      "updated_at": "2026-10-28T11:54:04.781576457Z",
+      "updated_at": "2026-10-28T18:41:24.229573952Z",
       "seal": {
         "by": "server",
-        "mac": "2a5f26f3a73497d37626ad79a23e2d3631223921e934ddb38e18b3560a791053"
+        "mac": "3e3f43dfeb743050b5b0da91bf1f16fdab9ea9895b70115a16399658469bab4b"
       }
     }
   ]

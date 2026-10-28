@@ -262,7 +262,7 @@ As of 2026-10-28 (milestone 4):
   as are CLM-0122 (`Debug` output never shows secrets) and CLM-0152 (the
   idempotency key).
 - **Ledger:** 179 active claims: 169 supported, 10 `not_enough_info`, 0
-  refuted, 0 unverified. <!-- LEDGER: confirm -->
+  refuted, 0 unverified.
 - **Refuted claims:** 0. Two were refuted during M1 and fixed: empty config
   values, and the envd version gate on `close_stdin`.
 - **Not yet shown:** the egress proxy and IAM (unscheduled), volumes on a
