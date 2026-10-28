@@ -16,10 +16,9 @@ SDK 2.61.0 behaves the same way (`pty.connect` succeeds, `wait()` returns
 the exit code), so the crate matches the SDK and there is nothing to fix.
 The rustdoc was what was wrong.
 
-`Commands::connect` shows the same behaviour (one probe run, below). Its
-rustdoc makes the same claim ("`not_found` if no such process") and is left
-unchanged here, because the issue puts `Commands::connect` out of scope; it
-is reported in the PR.
+`Commands::connect` shows the same behaviour (one probe run, below), so its
+rustdoc gets the same correction, as the plan's branch (b) asks. It has no
+live test of its own; the probe run is the evidence.
 
 ## What changed
 
@@ -28,13 +27,18 @@ is reported in the PR.
   the stream's first event is its `PtyEvent::Exit`, as with the SDKs'
   `pty.connect`, with the hosted window (attachable at 20 s, `not_found` by
   30 s).
+- `Commands::connect` rustdoc, `# Errors`: the same correction, citing
+  the probe run (a `true` connected straight after its exit attached and
+  replayed `CommandEvent::Exit`) and pointing to `Pty::connect` for the
+  window.
 - Live test `clm_0178_pty_connect_to_exited_pid` in `tests/live_commands.rs`
   (and `PtyConnectOptions` added to that file's import). It pins the
   observed behaviour: the shell exits with code 3, then `connect` at once
   and after 5 s yields `Attached(Ok(Some(Exit(exit_code 3))))`, and a
   `connect` to pid 999999, which never existed, is refused with
   `not_found`. The exit code 3 shows the event is the shell's own exit.
-- `docs/protocol-notes.md`: a PTY row for `Connect` to an exited pid.
+- `docs/protocol-notes.md`: a PTY row for `Connect` to an exited pid, and
+  a Process service row for the same with a command.
 - The plan's Task 11: a dated Corrected note for how the test differs from
   Step 1 and Step 4 (b).
 

@@ -236,6 +236,7 @@ Behaviour:
 | Command stream default timeout 60 s, sent as the stream deadline | `py: sandbox_async/commands/command.py:218, 335-338` |
 | Opening the stream waits for the first event within the call's request timeout (`CommandOptions::request_timeout` / `CommandConnectOptions::request_timeout`, else the configured one; `None` or zero for no limit); it must be `start` and carries the pid | `py: sandbox_async/commands/command.py:335-344, 382-411`; `py: envd/client_async/__init__.py:113-149`; `py: envd/utils.py:27-41` |
 | `connect(pid, timeout=60, request_timeout)`: the attach defaults to a 60 s stream deadline (`CommandConnectOptions::default()`) | `py: sandbox_async/commands/command.py:346-380` |
+| `Connect` to the pid of a process that has just exited (`true`, connected straight after its end event): `connect` returns `Ok` and the first `next_event` is `CommandEvent::Exit` with the process's exit code, as for a PTY (see the PTY section for the window: attachable at 20 s, `not_found` by 30 s) | observed on hosted E2B, 2026-10-28 (issue #56, one probe run) |
 | Output is accumulated from `data.stdout`/`data.stderr`; `end` gives `exit_code` and `error` | `py: sandbox_async/commands/command_handle.py:154-183` |
 | A stream that ends without an `end` event is an error | `py: sandbox_async/commands/command_handle.py:252-253` |
 | `kill(pid)` is `SendSignal(SIGKILL)`; `not_found` → `false` | `py: envd/rpc.py:208-231` |
