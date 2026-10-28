@@ -17,7 +17,9 @@
 //!   sandbox into up to [`MAX_FORK_COUNT`] copies ([`ForkOptions`]).
 //!   Create, look up, list and destroy persistent volumes ([`Volume`],
 //!   [`VolumeInfo`]) and mount them into new sandboxes
-//!   ([`CreateSandboxParams::volume_mount`]).
+//!   ([`CreateSandboxParams::volume_mount`]). Start an MCP gateway in a new
+//!   sandbox ([`CreateSandboxParams::mcp`]) and reach it at
+//!   [`Sandbox::mcp_url`] with [`Sandbox::mcp_token`].
 //! - **envd process service** ([`Commands`]): start commands, stream their
 //!   stdout and stderr to an exit code, send stdin (one write at a time or
 //!   as an ordered [`InputStream`]), signal, list processes.
@@ -69,6 +71,7 @@ mod envd;
 mod error;
 mod filesystem;
 mod lifecycle;
+mod mcp;
 mod metrics;
 mod models;
 mod network;
@@ -104,6 +107,7 @@ pub use lifecycle::{
     ConnectOptions, Lifecycle, LifecycleInfo, OnResume, OnTimeout, PauseOptions, SnapshotMode,
     TimeoutAction,
 };
+pub use mcp::{DEFAULT_MCP_TEMPLATE, MCP_PORT};
 pub use metrics::{MetricsParams, SandboxMetrics};
 pub use models::{
     CreateSandboxParams, DEFAULT_TEMPLATE, ForkOptions, ListSandboxesParams, MAX_FORK_COUNT,

@@ -65,6 +65,13 @@ pub enum Error {
     #[error("volume {0} not found")]
     VolumeNotFound(String),
 
+    /// The MCP gateway did not start in a sandbox created with
+    /// [`crate::CreateSandboxParams::mcp`]: `mcp-gateway` exited with a
+    /// non-zero code. The sandbox was killed. Holds the gateway's stderr (the
+    /// SDKs' `"Failed to start MCP gateway: <stderr>"`).
+    #[error("failed to start the MCP gateway: {0}")]
+    McpGateway(String),
+
     /// An envd Connect-RPC call failed.
     #[error("envd RPC error ({code}): {message}")]
     Rpc {
@@ -374,6 +381,7 @@ mod tests {
             }
             .is_not_found()
         );
+        assert!(!Error::McpGateway("bad config".into()).is_not_found());
         assert!(
             !Error::Rpc {
                 code: ConnectCode::Internal,
