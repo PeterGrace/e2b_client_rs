@@ -401,7 +401,10 @@ impl ForkOptions {
         Self::default()
     }
 
-    /// The forks' lifetime, sent in whole seconds (any fraction is dropped).
+    /// The forks' lifetime, sent in whole seconds (any fraction is dropped,
+    /// as for the crate's other REST timeouts). A timeout under one second
+    /// is sent as `0`, as the SDK sends whatever integer it is given; what
+    /// the API does with `0` is not documented.
     ///
     /// # Arguments
     ///
