@@ -10,7 +10,7 @@ use std::time::{Duration, Instant};
 use async_compression::tokio::bufread::GzipDecoder;
 use common::{ACCESS_TOKEN, sandbox, sandbox_with_version};
 use e2b_client::Sandbox;
-use e2b_client::{Error, FileType, WriteEntry, WriteOptions};
+use e2b_client::{Error, FileOptions, FileType, WriteEntry, WriteOptions};
 use serde_json::json;
 use tokio::io::AsyncReadExt;
 use wiremock::matchers::{
@@ -196,6 +196,37 @@ async fn octet_stream_write_sends_one_request_per_file() {
             .all(|request| !request.headers.contains_key("content-encoding")),
         "plain octet-stream must not set Content-Encoding"
     );
+}
+
+#[tokio::test]
+async fn write_passes_its_options_to_the_upload() {
+    // Arrange: only an octet-stream request with the metadata header matches.
+    let server = MockServer::start().await;
+    let sandbox = sandbox_with_version(&server, "0.6.2").await;
+    Mock::given(method("POST"))
+        .and(path("/files"))
+        .and(query_param("path", "/w/a.txt"))
+        .and(header("content-type", "application/octet-stream"))
+        .and(header("x-metadata-team", "m4"))
+        .and(body_bytes(b"alpha".as_slice()))
+        .respond_with(written(&["/w/a.txt"]))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let options = WriteOptions::default()
+        .octet_stream(true)
+        .metadata("team", "m4");
+
+    // Act
+    let info = sandbox
+        .files()
+        .write("/w/a.txt", "alpha", &options)
+        .await
+        .expect("write");
+
+    // Assert: the one request was octet-stream with the metadata, not the
+    // default multipart.
+    assert_eq!(info.path, "/w/a.txt");
 }
 
 #[tokio::test]
@@ -567,8 +598,14 @@ async fn reported_metadata(
         .mount(server)
         .await;
     let files = sandbox.files();
-    let written = files.write("/a", "x", None).await.expect("write");
-    let info = files.get_info("/a", None).await.expect("stat");
+    let written = files
+        .write("/a", "x", &WriteOptions::default())
+        .await
+        .expect("write");
+    let info = files
+        .get_info("/a", &FileOptions::default())
+        .await
+        .expect("stat");
     (written.metadata, info.metadata)
 }
 

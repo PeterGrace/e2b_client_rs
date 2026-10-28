@@ -15,9 +15,10 @@ use url::Url;
 
 use crate::client::Client;
 use crate::commands::{CommandOptions, Commands};
+use crate::config::RequestTimeout;
 use crate::envd::{EnvdClient, EnvdTarget, EnvdVersion, envd_http_error};
 use crate::error::{Error, Result};
-use crate::filesystem::{FILES_ROUTE, Filesystem};
+use crate::filesystem::{FILES_ROUTE, FileOptions, Filesystem};
 use crate::lifecycle::PauseOptions;
 use crate::mcp::{MCP_PORT, MCP_TOKEN_ENV, MCP_TOKEN_PATH, MCP_USER, gateway_command};
 use crate::metrics::{MetricsParams, SandboxMetrics};
@@ -178,14 +179,14 @@ fn expiration_from_now(expires_in: Duration) -> Result<u64> {
 /// # Examples
 ///
 /// ```no_run
-/// use e2b_client::{Client, CommandOptions, CreateSandboxParams};
+/// use e2b_client::{Client, CommandOptions, CreateSandboxParams, WriteOptions};
 ///
 /// # async fn demo() -> e2b_client::Result<()> {
 /// let client = Client::from_env()?;
 /// let sandbox = client.create_sandbox(&CreateSandboxParams::new("base")).await?;
 /// let result = sandbox.commands().run("echo hello", &CommandOptions::default()).await?;
 /// assert_eq!(result.stdout, "hello\n");
-/// sandbox.files().write("/tmp/note.txt", "hi", None).await?;
+/// sandbox.files().write("/tmp/note.txt", "hi", &WriteOptions::default()).await?;
 /// sandbox.kill().await?;
 /// # Ok(())
 /// # }
@@ -348,7 +349,7 @@ impl Sandbox {
             .get_or_try_init(|| async {
                 let token = self
                     .files()
-                    .read_to_string(MCP_TOKEN_PATH, Some(MCP_USER))
+                    .read_to_string(MCP_TOKEN_PATH, &FileOptions::new().user(MCP_USER))
                     .await?;
                 // Trimmed, unlike the SDK: the token is a UUID, and a
                 // trailing newline would make it unusable in a header.
@@ -563,7 +564,7 @@ impl Sandbox {
     pub async fn is_running(&self) -> Result<bool> {
         let response = self
             .envd
-            .http_request(Method::GET, ENVD_HEALTH_ROUTE)
+            .http_request(Method::GET, ENVD_HEALTH_ROUTE, RequestTimeout::default())
             .send()
             .await
             .map_err(Error::transport)?;

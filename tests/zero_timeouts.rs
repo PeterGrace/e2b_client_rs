@@ -10,7 +10,9 @@ use common::{
     client_with_timeout, end_stream, message, sandbox, sandbox_from_json_with_client, sandbox_json,
     stream_response,
 };
-use e2b_client::{CommandOptions, PtyOptions, PtySize, StreamInputOptions, WatchOptions};
+use e2b_client::{
+    CommandOptions, ListOptions, PtyOptions, PtySize, StreamInputOptions, WatchOptions,
+};
 use serde_json::json;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, Request, ResponseTemplate};
@@ -214,8 +216,8 @@ async fn a_zero_request_timeout_in_the_config_means_no_limit() {
         .mount(&server)
         .await;
 
-    // Act: `list(path, 1, None)` until Task 5 changes the signature.
-    let entries = sandbox.files().list("/w", 1, None).await;
+    // Act: list with the default options (depth 1, configured timeout).
+    let entries = sandbox.files().list("/w", &ListOptions::default()).await;
 
     // Assert: neither a deadline header nor a client-side timeout applied.
     assert!(entries.expect("list").is_empty());

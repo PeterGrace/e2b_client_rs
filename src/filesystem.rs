@@ -16,7 +16,7 @@ use serde::Deserialize;
 use tokio::io::{AsyncBufRead, AsyncRead, BufReader};
 use tokio_util::io::ReaderStream;
 
-use crate::config::no_limit_if_zero;
+use crate::config::{RequestTimeout, no_limit_if_zero};
 use crate::envd::connect::{ConnectStream, Empty};
 use crate::envd::filesystem_pb::{
     self, EntryInfoWire, EntryResponse, ListDirRequest, ListDirResponse, MoveRequest, PathRequest,
@@ -208,15 +208,186 @@ impl WriteEntry {
     }
 }
 
-/// How [`Filesystem::write_files`] and [`Filesystem::write_stream`] upload:
-/// as which user, with which encoding, and with which user metadata.
+/// Options for the filesystem calls that take only a user and a request
+/// timeout: [`Filesystem::read`], [`read_to_string`](Filesystem::read_to_string),
+/// [`read_stream`](Filesystem::read_stream), [`get_info`](Filesystem::get_info),
+/// [`exists`](Filesystem::exists), [`make_dir`](Filesystem::make_dir),
+/// [`rename`](Filesystem::rename) and [`remove`](Filesystem::remove).
+///
+/// Python note: these are the SDK's `user=` and `request_timeout=` keyword
+/// arguments, gathered in one value so more can be added without breaking
+/// callers.
+///
+/// # Examples
+///
+/// ```
+/// use std::time::Duration;
+/// use e2b_client::FileOptions;
+///
+/// let defaults = FileOptions::default();
+/// let as_root = FileOptions::new()
+///     .user("root")
+///     .request_timeout(Some(Duration::from_secs(5)));
+/// # let _ = (defaults, as_root);
+/// ```
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct FileOptions {
+    user: Option<String>,
+    request_timeout: RequestTimeout,
+}
+
+impl FileOptions {
+    /// The defaults: the sandbox's default user and the configured request
+    /// timeout.
+    ///
+    /// # Returns
+    ///
+    /// The options.
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Acts as `user` instead of the sandbox's default user, which also
+    /// decides how relative paths resolve.
+    ///
+    /// # Arguments
+    ///
+    /// * `user` - the user name, e.g. `"root"`.
+    ///
+    /// # Returns
+    ///
+    /// The options, for chaining.
+    #[must_use]
+    pub fn user(mut self, user: impl Into<String>) -> Self {
+        self.user = Some(user.into());
+        self
+    }
+
+    /// Bounds this call in place of the configured request timeout
+    /// ([`crate::ConnectionConfigBuilder::request_timeout`]); `None`, or a
+    /// zero duration, for no limit. For [`Filesystem::read_stream`], which
+    /// has no timeout by default, it bounds the whole download.
+    ///
+    /// # Arguments
+    ///
+    /// * `timeout` - the per-call request timeout.
+    ///
+    /// # Returns
+    ///
+    /// The options, for chaining.
+    #[must_use]
+    pub fn request_timeout(mut self, timeout: Option<Duration>) -> Self {
+        self.request_timeout = RequestTimeout::set(timeout);
+        self
+    }
+}
+
+/// Options for [`Filesystem::list`]: how deep to list, as which user, and a
+/// per-call request timeout.
+///
+/// # Examples
+///
+/// ```
+/// use e2b_client::ListOptions;
+///
+/// // Direct children and grandchildren, as root.
+/// let options = ListOptions::new().depth(2).user("root");
+/// # let _ = options;
+/// ```
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ListOptions {
+    depth: u32,
+    /// The user and request timeout, shared with [`FileOptions`] so the two
+    /// setters are written once.
+    file: FileOptions,
+}
+
+impl Default for ListOptions {
+    fn default() -> Self {
+        Self {
+            // The SDK's `depth: Optional[int] = 1`
+            // (`e2b/sandbox_async/filesystem/filesystem.py:494`).
+            depth: 1,
+            file: FileOptions::default(),
+        }
+    }
+}
+
+impl ListOptions {
+    /// The defaults: depth 1 (direct children), the sandbox's default user
+    /// and the configured request timeout.
+    ///
+    /// # Returns
+    ///
+    /// The options.
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// How many levels to descend; 1 lists only direct children. 0 is
+    /// refused by [`Filesystem::list`] before any request.
+    ///
+    /// # Arguments
+    ///
+    /// * `depth` - the depth, at least 1.
+    ///
+    /// # Returns
+    ///
+    /// The options, for chaining.
+    #[must_use]
+    pub fn depth(mut self, depth: u32) -> Self {
+        self.depth = depth;
+        self
+    }
+
+    /// Lists as `user` instead of the sandbox's default user.
+    ///
+    /// # Arguments
+    ///
+    /// * `user` - the user name, e.g. `"root"`.
+    ///
+    /// # Returns
+    ///
+    /// The options, for chaining.
+    #[must_use]
+    pub fn user(mut self, user: impl Into<String>) -> Self {
+        self.file = self.file.user(user);
+        self
+    }
+
+    /// Bounds this call in place of the configured request timeout; `None`,
+    /// or a zero duration, for no limit.
+    ///
+    /// # Arguments
+    ///
+    /// * `timeout` - the per-call request timeout.
+    ///
+    /// # Returns
+    ///
+    /// The options, for chaining.
+    #[must_use]
+    pub fn request_timeout(mut self, timeout: Option<Duration>) -> Self {
+        self.file = self.file.request_timeout(timeout);
+        self
+    }
+}
+
+/// How [`Filesystem::write`], [`Filesystem::write_files`] and
+/// [`Filesystem::write_stream`] upload: as which user, with which encoding,
+/// with which user metadata, and within which request timeout.
 ///
 /// By default [`Filesystem::write_files`] uploads are `multipart/form-data`,
 /// the SDKs' default for in-memory data, with all files in one request.
 /// Octet-stream and gzip send one request per file, and need envd 0.5.7 or
 /// newer: on older envd they fall back to uncompressed multipart, as the SDKs
 /// do. [`Filesystem::write_stream`] always uses octet-stream where envd
-/// supports it, so only `user`, `gzip` and `metadata` matter there.
+/// supports it, so only `user`, `gzip`, `metadata` and `request_timeout`
+/// matter there.
+///
+/// `request_timeout` bounds each in-memory upload request;
+/// [`Filesystem::write_stream`] has no timeout unless one is set here.
 ///
 /// # Examples
 ///
@@ -234,6 +405,7 @@ impl WriteEntry {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct WriteOptions {
     user: Option<String>,
+    request_timeout: RequestTimeout,
     octet_stream: bool,
     gzip: bool,
     /// Sorted (a `BTreeMap`, unlike Python's insertion-ordered `dict`), so the
@@ -255,6 +427,24 @@ impl WriteOptions {
     #[must_use]
     pub fn user(mut self, user: impl Into<String>) -> Self {
         self.user = Some(user.into());
+        self
+    }
+
+    /// Bounds each upload request in place of the configured request
+    /// timeout; `None`, or a zero duration, for no limit. For
+    /// [`Filesystem::write_stream`], which has no timeout by default, it
+    /// bounds the whole transfer.
+    ///
+    /// # Arguments
+    ///
+    /// * `timeout` - the per-call request timeout.
+    ///
+    /// # Returns
+    ///
+    /// The options, for chaining.
+    #[must_use]
+    pub fn request_timeout(mut self, timeout: Option<Duration>) -> Self {
+        self.request_timeout = RequestTimeout::set(timeout);
         self
     }
 
@@ -468,6 +658,7 @@ pub struct WatchOptions {
     allow_network_mounts: bool,
     user: Option<String>,
     timeout: Option<Duration>,
+    request_timeout: RequestTimeout,
 }
 
 impl Default for WatchOptions {
@@ -478,6 +669,7 @@ impl Default for WatchOptions {
             allow_network_mounts: false,
             user: None,
             timeout: Some(DEFAULT_WATCH_TIMEOUT),
+            request_timeout: RequestTimeout::default(),
         }
     }
 }
@@ -561,6 +753,24 @@ impl WatchOptions {
     #[must_use]
     pub fn timeout(mut self, timeout: Option<Duration>) -> Self {
         self.timeout = no_limit_if_zero(timeout);
+        self
+    }
+
+    /// Bounds how long the watch may take to open (envd's start event) in
+    /// place of the configured request timeout; `None`, or a zero duration,
+    /// for no limit. The watch itself is bounded by
+    /// [`timeout`](Self::timeout).
+    ///
+    /// # Arguments
+    ///
+    /// * `timeout` - the per-call request timeout.
+    ///
+    /// # Returns
+    ///
+    /// The options, for chaining.
+    #[must_use]
+    pub fn request_timeout(mut self, timeout: Option<Duration>) -> Self {
+        self.request_timeout = RequestTimeout::set(timeout);
         self
     }
 
@@ -696,8 +906,11 @@ impl FileStream {
     /// # Examples
     ///
     /// ```no_run
+    /// use e2b_client::FileOptions;
+    ///
     /// # async fn demo(sandbox: e2b_client::Sandbox) -> e2b_client::Result<()> {
-    /// let mut stream = sandbox.files().read_stream("/home/user/big.log", None).await?;
+    /// let files = sandbox.files();
+    /// let mut stream = files.read_stream("/home/user/big.log", &FileOptions::default()).await?;
     /// let mut total = 0;
     /// while let Some(chunk) = stream.next_chunk().await? {
     ///     total += chunk.len();
@@ -714,8 +927,10 @@ impl FileStream {
 /// The filesystem service of one sandbox. Get it from
 /// [`crate::Sandbox::files`].
 ///
-/// Every method takes an optional `user`: the sandbox user to act as, which
-/// also decides how relative paths resolve. `None` uses the sandbox default.
+/// Every method takes an options value with the sandbox user to act as
+/// (which also decides how relative paths resolve; unset uses the sandbox
+/// default) and a per-call request timeout ([`FileOptions`],
+/// [`ListOptions`], [`WriteOptions`], [`WatchOptions`]).
 #[derive(Debug, Clone)]
 pub struct Filesystem {
     envd: Arc<EnvdClient>,
@@ -859,7 +1074,7 @@ impl Filesystem {
     /// # Arguments
     ///
     /// * `path` - the file to read.
-    /// * `user` - the user to read as.
+    /// * `options` - the user and the request timeout.
     ///
     /// # Returns
     ///
@@ -869,11 +1084,11 @@ impl Filesystem {
     ///
     /// [`Error::Envd`] (404 when the file does not exist), or
     /// [`Error::Transport`].
-    pub async fn read(&self, path: &str, user: Option<&str>) -> Result<Bytes> {
+    pub async fn read(&self, path: &str, options: &FileOptions) -> Result<Bytes> {
         let response = self
             .envd
-            .http_request(Method::GET, FILES_ROUTE)
-            .query(&self.file_query(path, user))
+            .http_request(Method::GET, FILES_ROUTE, options.request_timeout)
+            .query(&self.file_query(path, options.user.as_deref()))
             .send()
             .await
             .map_err(Error::transport)?;
@@ -888,7 +1103,7 @@ impl Filesystem {
     /// # Arguments
     ///
     /// * `path` - the file to read.
-    /// * `user` - the user to read as.
+    /// * `options` - the user and the request timeout.
     ///
     /// # Returns
     ///
@@ -897,25 +1112,25 @@ impl Filesystem {
     /// # Errors
     ///
     /// As [`Filesystem::read`].
-    pub async fn read_to_string(&self, path: &str, user: Option<&str>) -> Result<String> {
-        let bytes = self.read(path, user).await?;
+    pub async fn read_to_string(&self, path: &str, options: &FileOptions) -> Result<String> {
+        let bytes = self.read(path, options).await?;
         Ok(String::from_utf8_lossy(&bytes).into_owned())
     }
 
     /// Downloads a file as a stream of chunks (`GET /files?path=...`),
     /// without holding the whole file in memory.
     ///
-    /// No timeout applies at all, including the wait for envd's response
+    /// No timeout applies by default, including the wait for envd's response
     /// headers, because a deadline would cut off any download that outlasts
     /// it; this is the SDK's default. A server that accepts the connection
-    /// and never answers therefore hangs this call. Bound it yourself with
-    /// `tokio::time::timeout` around this call and [`FileStream::next_chunk`]
-    /// if needed.
+    /// and never answers therefore hangs this call. Set
+    /// [`FileOptions::request_timeout`] to bound the whole download, or wrap
+    /// this call and [`FileStream::next_chunk`] in `tokio::time::timeout`.
     ///
     /// # Arguments
     ///
     /// * `path` - the file to read.
-    /// * `user` - the user to read as.
+    /// * `options` - the user and the request timeout.
     ///
     /// # Returns
     ///
@@ -927,11 +1142,13 @@ impl Filesystem {
     ///
     /// [`Error::Envd`] (404 when the file does not exist), or
     /// [`Error::Transport`].
-    pub async fn read_stream(&self, path: &str, user: Option<&str>) -> Result<FileStream> {
+    pub async fn read_stream(&self, path: &str, options: &FileOptions) -> Result<FileStream> {
+        // No timeout unless the caller set one: `resolve(None)`.
+        let timeout = options.request_timeout.resolve(None);
         let response = self
             .envd
-            .http_request_with_timeout(Method::GET, FILES_ROUTE, None)
-            .query(&self.file_query(path, user))
+            .http_request_with_timeout(Method::GET, FILES_ROUTE, timeout)
+            .query(&self.file_query(path, options.user.as_deref()))
             .send()
             .await
             .map_err(Error::transport)?;
@@ -944,13 +1161,14 @@ impl Filesystem {
     /// Uploads a file, creating parent directories and overwriting any
     /// existing file (`POST /files?path=...`, multipart field `file`, the SDKs'
     /// default upload encoding: JS `dist/index.js:2226-2249`). It is a
-    /// one-entry [`Filesystem::write_files`] with default options.
+    /// one-entry [`Filesystem::write_files`] with `options`, so octet-stream,
+    /// gzip and metadata apply to it too.
     ///
     /// # Arguments
     ///
     /// * `path` - where to write.
     /// * `data` - the content (`&'static str`, `String`, `Vec<u8>`, `Bytes`...).
-    /// * `user` - the user to write as (and who will own the file).
+    /// * `options` - the user, encoding, metadata and request timeout.
     ///
     /// # Returns
     ///
@@ -958,19 +1176,17 @@ impl Filesystem {
     ///
     /// # Errors
     ///
-    /// [`Error::Envd`] for a non-2xx answer, [`Error::Protocol`] if envd
-    /// reports no written file, [`Error::Decode`] or [`Error::Transport`].
+    /// [`Error::InvalidArgument`] for invalid metadata (see
+    /// [`WriteOptions::metadata`]), [`Error::Envd`] for a non-2xx answer,
+    /// [`Error::Protocol`] if envd reports no written file, [`Error::Decode`]
+    /// or [`Error::Transport`].
     pub async fn write(
         &self,
         path: &str,
         data: impl Into<Bytes>,
-        user: Option<&str>,
+        options: &WriteOptions,
     ) -> Result<WriteInfo> {
-        let options = WriteOptions {
-            user: user.map(str::to_owned),
-            ..WriteOptions::default()
-        };
-        self.write_files(&[WriteEntry::new(path, data)], &options)
+        self.write_files(&[WriteEntry::new(path, data)], options)
             .await?
             .into_iter()
             .next()
@@ -984,7 +1200,8 @@ impl Filesystem {
     /// `path` query only when there is exactly one file. Octet-stream and
     /// gzip send one request per file, concurrently; on envd older than
     /// 0.5.7 they fall back to uncompressed multipart. Every request is
-    /// bounded by the client's request timeout.
+    /// bounded by the request timeout ([`WriteOptions::request_timeout`],
+    /// else the configured one).
     ///
     /// The octet-stream requests all start at once, with no limit, as the
     /// SDK's `asyncio.gather` does: a batch of N files opens N requests to
@@ -994,7 +1211,7 @@ impl Filesystem {
     /// # Arguments
     ///
     /// * `entries` - the files.
-    /// * `options` - user and encoding.
+    /// * `options` - user, encoding, metadata and request timeout.
     ///
     /// # Returns
     ///
@@ -1036,7 +1253,7 @@ impl Filesystem {
             return Ok(Vec::new());
         }
         let metadata = options.metadata_headers(self.envd.version())?;
-        let timeout = self.envd.request_timeout();
+        let timeout = self.envd.timeout_for(options.request_timeout);
         if self.uses_octet_stream(options) {
             // `Bytes::clone` is a reference-count bump, not a copy of the data.
             // `map` builds the upload futures lazily; none runs until
@@ -1072,8 +1289,9 @@ impl Filesystem {
     /// (`POST /files?path=...`, `application/octet-stream`), creating parent
     /// directories and overwriting any existing file.
     ///
-    /// No request timeout applies, because a deadline would cut off any
-    /// transfer that outlasts it; this matches the SDKs. On envd older than
+    /// No request timeout applies unless [`WriteOptions::request_timeout`]
+    /// sets one, because a deadline would cut off any transfer that outlasts
+    /// it; this matches the SDKs. On envd older than
     /// 0.5.7 the upload falls back to a streamed multipart body, uncompressed,
     /// as in the SDKs.
     ///
@@ -1083,7 +1301,8 @@ impl Filesystem {
     /// * `reader` - the content, read to its end (a socket, a byte slice, a
     ///   `tokio::fs::File`...). It must be `Send + 'static` because the HTTP
     ///   client may poll the body on another task, so it cannot borrow local data.
-    /// * `options` - user, gzip and metadata (`octet_stream` is implied).
+    /// * `options` - user, gzip, metadata and request timeout (`octet_stream`
+    ///   is implied).
     ///
     /// # Returns
     ///
@@ -1116,6 +1335,8 @@ impl Filesystem {
         options: &WriteOptions,
     ) -> Result<WriteInfo> {
         let metadata = options.metadata_headers(self.envd.version())?;
+        // No timeout unless the caller set one: `resolve(None)`.
+        let timeout = options.request_timeout.resolve(None);
         // `BufReader` adds the buffered-read interface (`AsyncBufRead`) the
         // gzip encoder needs; reads still happen only as the body is sent.
         let reader = BufReader::new(reader);
@@ -1125,7 +1346,7 @@ impl Filesystem {
             } else {
                 reqwest::Body::wrap_stream(ReaderStream::new(reader))
             };
-            self.post_octet_stream(path, body, options, &metadata, None)
+            self.post_octet_stream(path, body, options, &metadata, timeout)
                 .await?
         } else {
             // `Part::stream` has no length, so the part is sent chunked.
@@ -1134,7 +1355,7 @@ impl Filesystem {
             let body = reqwest::Body::wrap_stream(ReaderStream::new(reader));
             let part = Part::stream(body).file_name(path.to_owned());
             let form = Form::new().part("file", part);
-            self.post_multipart(form, Some(path), options, &metadata, None)
+            self.post_multipart(form, Some(path), options, &metadata, timeout)
                 .await?
         };
         written.into_iter().next().ok_or_else(no_written_file)
@@ -1145,8 +1366,8 @@ impl Filesystem {
     /// # Arguments
     ///
     /// * `path` - the directory.
-    /// * `depth` - how many levels to descend; 1 lists only direct children.
-    /// * `user` - the user to act as.
+    /// * `options` - the depth (default 1, direct children only), the user
+    ///   and the request timeout.
     ///
     /// # Returns
     ///
@@ -1154,11 +1375,11 @@ impl Filesystem {
     ///
     /// # Errors
     ///
-    /// [`Error::InvalidArgument`] if `depth` is 0
+    /// [`Error::InvalidArgument`] if the depth is 0
     /// (`e2b/sandbox_async/filesystem/filesystem.py:508-509`), [`Error::Rpc`]
     /// (`not_found` for a missing directory), or [`Error::Transport`].
-    pub async fn list(&self, path: &str, depth: u32, user: Option<&str>) -> Result<Vec<EntryInfo>> {
-        if depth == 0 {
+    pub async fn list(&self, path: &str, options: &ListOptions) -> Result<Vec<EntryInfo>> {
+        if options.depth == 0 {
             return Err(Error::InvalidArgument("depth should be at least 1".into()));
         }
         let response: ListDirResponse = self
@@ -1166,8 +1387,12 @@ impl Filesystem {
             .unary(
                 filesystem_pb::SERVICE,
                 "ListDir",
-                &ListDirRequest { path, depth },
-                self.envd.user_headers(user)?,
+                &ListDirRequest {
+                    path,
+                    depth: options.depth,
+                },
+                self.envd.user_headers(options.file.user.as_deref())?,
+                options.file.request_timeout,
             )
             .await?;
         Ok(response.entries.into_iter().map(EntryInfo::from).collect())
@@ -1178,7 +1403,7 @@ impl Filesystem {
     /// # Arguments
     ///
     /// * `path` - the path.
-    /// * `user` - the user to act as.
+    /// * `options` - the user and the request timeout.
     ///
     /// # Returns
     ///
@@ -1188,14 +1413,15 @@ impl Filesystem {
     ///
     /// [`Error::Rpc`] (`not_found` for a missing path), [`Error::Protocol`]
     /// if envd returns no entry, or [`Error::Transport`].
-    pub async fn get_info(&self, path: &str, user: Option<&str>) -> Result<EntryInfo> {
+    pub async fn get_info(&self, path: &str, options: &FileOptions) -> Result<EntryInfo> {
         let response: EntryResponse = self
             .envd
             .unary(
                 filesystem_pb::SERVICE,
                 "Stat",
                 &PathRequest { path },
-                self.envd.user_headers(user)?,
+                self.envd.user_headers(options.user.as_deref())?,
+                options.request_timeout,
             )
             .await?;
         entry_of(response)
@@ -1206,7 +1432,7 @@ impl Filesystem {
     /// # Arguments
     ///
     /// * `path` - the path.
-    /// * `user` - the user to act as.
+    /// * `options` - the user and the request timeout.
     ///
     /// # Returns
     ///
@@ -1215,8 +1441,8 @@ impl Filesystem {
     /// # Errors
     ///
     /// Errors of [`Filesystem::get_info`] other than `not_found`.
-    pub async fn exists(&self, path: &str, user: Option<&str>) -> Result<bool> {
-        match self.get_info(path, user).await {
+    pub async fn exists(&self, path: &str, options: &FileOptions) -> Result<bool> {
+        match self.get_info(path, options).await {
             Ok(_) => Ok(true),
             Err(Error::Rpc {
                 code: ConnectCode::NotFound,
@@ -1231,7 +1457,7 @@ impl Filesystem {
     /// # Arguments
     ///
     /// * `path` - the directory to create.
-    /// * `user` - the user to act as.
+    /// * `options` - the user and the request timeout.
     ///
     /// # Returns
     ///
@@ -1241,14 +1467,15 @@ impl Filesystem {
     /// # Errors
     ///
     /// [`Error::Rpc`] other than `already_exists`, or [`Error::Transport`].
-    pub async fn make_dir(&self, path: &str, user: Option<&str>) -> Result<bool> {
+    pub async fn make_dir(&self, path: &str, options: &FileOptions) -> Result<bool> {
         let result: Result<EntryResponse> = self
             .envd
             .unary(
                 filesystem_pb::SERVICE,
                 "MakeDir",
                 &PathRequest { path },
-                self.envd.user_headers(user)?,
+                self.envd.user_headers(options.user.as_deref())?,
+                options.request_timeout,
             )
             .await;
         match result {
@@ -1267,7 +1494,7 @@ impl Filesystem {
     ///
     /// * `source` - the current path.
     /// * `destination` - the new path.
-    /// * `user` - the user to act as.
+    /// * `options` - the user and the request timeout.
     ///
     /// # Returns
     ///
@@ -1281,7 +1508,7 @@ impl Filesystem {
         &self,
         source: &str,
         destination: &str,
-        user: Option<&str>,
+        options: &FileOptions,
     ) -> Result<EntryInfo> {
         let response: EntryResponse = self
             .envd
@@ -1292,7 +1519,8 @@ impl Filesystem {
                     source,
                     destination,
                 },
-                self.envd.user_headers(user)?,
+                self.envd.user_headers(options.user.as_deref())?,
+                options.request_timeout,
             )
             .await?;
         entry_of(response)
@@ -1303,19 +1531,20 @@ impl Filesystem {
     /// # Arguments
     ///
     /// * `path` - the path to remove.
-    /// * `user` - the user to act as.
+    /// * `options` - the user and the request timeout.
     ///
     /// # Errors
     ///
     /// [`Error::Rpc`] (`not_found` for a missing path) or [`Error::Transport`].
-    pub async fn remove(&self, path: &str, user: Option<&str>) -> Result<()> {
+    pub async fn remove(&self, path: &str, options: &FileOptions) -> Result<()> {
         let _: Empty = self
             .envd
             .unary(
                 filesystem_pb::SERVICE,
                 "Remove",
                 &PathRequest { path },
-                self.envd.user_headers(user)?,
+                self.envd.user_headers(options.user.as_deref())?,
+                options.request_timeout,
             )
             .await?;
         Ok(())
@@ -1324,7 +1553,8 @@ impl Filesystem {
     /// Watches a directory for changes (`WatchDir`).
     ///
     /// The watch is open once envd confirms it with a start event, awaited
-    /// within the request timeout. It then lasts until the handle is
+    /// within the request timeout ([`WatchOptions::request_timeout`], else
+    /// the configured one). It then lasts until the handle is
     /// dropped or the watch timeout of `options` passes. Version gates are
     /// checked first, so an option the sandbox's envd is too old for sends
     /// nothing.
@@ -1332,7 +1562,8 @@ impl Filesystem {
     /// # Arguments
     ///
     /// * `path` - the directory to watch.
-    /// * `options` - recursion, entry info, network mounts, user and timeout.
+    /// * `options` - recursion, entry info, network mounts, user, timeout and
+    ///   request timeout.
     ///
     /// # Returns
     ///
@@ -1350,11 +1581,11 @@ impl Filesystem {
     ///
     /// ```no_run
     /// # async fn demo(sandbox: e2b_client::Sandbox) -> e2b_client::Result<()> {
-    /// use e2b_client::WatchOptions;
+    /// use e2b_client::{WatchOptions, WriteOptions};
     ///
     /// let files = sandbox.files();
     /// let mut watch = files.watch_dir("/tmp", &WatchOptions::default().recursive(true)).await?;
-    /// files.write("/tmp/new.txt", "x", None).await?;
+    /// files.write("/tmp/new.txt", "x", &WriteOptions::default()).await?;
     /// let first = watch.next_event().await?;
     /// # let _ = first;
     /// # Ok(())
@@ -1372,7 +1603,7 @@ impl Filesystem {
         headers.extend(keepalive_headers());
         let stream = self
             .envd
-            .within_request_timeout(async {
+            .within_request_timeout(options.request_timeout, async {
                 let mut stream: ConnectStream<WatchDirResponse> = self
                     .envd
                     .server_stream(
@@ -1536,6 +1767,7 @@ mod tests {
             WriteOptions::default(),
             WriteOptions {
                 user: None,
+                request_timeout: RequestTimeout::default(),
                 octet_stream: false,
                 gzip: false,
                 metadata: BTreeMap::new(),

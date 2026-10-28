@@ -12,7 +12,7 @@ use async_compression::tokio::bufread::GzipDecoder;
 use common::{
     client_with_timeout, sandbox, sandbox_from_json_with_client, sandbox_json, sandbox_with_version,
 };
-use e2b_client::{Error, Sandbox, WriteOptions};
+use e2b_client::{Error, FileOptions, Sandbox, WriteOptions};
 use serde_json::json;
 use tokio::io::{AsyncRead, AsyncReadExt, ReadBuf};
 use wiremock::matchers::{body_string_contains, header, method, path, query_param};
@@ -211,7 +211,10 @@ async fn write_stream_is_not_bounded_by_the_request_timeout() {
         .files()
         .write_stream("/w/slow.bin", &b"slow"[..], &WriteOptions::default())
         .await;
-    let buffered = sandbox.files().write("/w/slow.bin", "slow", None).await;
+    let buffered = sandbox
+        .files()
+        .write("/w/slow.bin", "slow", &WriteOptions::default())
+        .await;
 
     // Assert: the streamed upload outlasts the request timeout; the
     // in-memory one, which the timeout bounds, does not.
@@ -260,7 +263,7 @@ async fn read_stream_yields_the_body_in_chunks() {
     // Act
     let mut stream = sandbox
         .files()
-        .read_stream("/w/big.bin", Some("root"))
+        .read_stream("/w/big.bin", &FileOptions::new().user("root"))
         .await
         .expect("read_stream");
     let mut received = Vec::with_capacity(data.len());
@@ -289,7 +292,10 @@ async fn read_stream_is_not_bounded_by_the_request_timeout() {
 
     // Act
     let streamed = async {
-        let mut stream = sandbox.files().read_stream("/w/slow", None).await?;
+        let mut stream = sandbox
+            .files()
+            .read_stream("/w/slow", &FileOptions::default())
+            .await?;
         let mut received = Vec::new();
         while let Some(chunk) = stream.next_chunk().await? {
             received.extend_from_slice(&chunk);
@@ -297,7 +303,10 @@ async fn read_stream_is_not_bounded_by_the_request_timeout() {
         Ok::<_, Error>(received)
     }
     .await;
-    let buffered = sandbox.files().read("/w/slow", None).await;
+    let buffered = sandbox
+        .files()
+        .read("/w/slow", &FileOptions::default())
+        .await;
 
     // Assert
     assert_eq!(streamed.expect("read_stream"), b"slow");
@@ -317,7 +326,10 @@ async fn read_stream_of_a_missing_file_is_envd_not_found() {
         .await;
 
     // Act: `read_stream` itself must fail, before any chunk is pulled.
-    let result = sandbox.files().read_stream("/w/missing", None).await;
+    let result = sandbox
+        .files()
+        .read_stream("/w/missing", &FileOptions::default())
+        .await;
 
     // Assert
     let err = result.expect_err("missing file");

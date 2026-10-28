@@ -145,7 +145,7 @@ impl EnvdClient {
 }   // server_stream, client_stream and http_request_with_timeout are unchanged
 ```
 
-Callers without options (`Commands`, `Pty`, `InputStream`, `Sandbox::is_running`, `Sandbox::mcp_token`) pass `RequestTimeout::default()`, the configured timeout, until Task 7 gives the commands and PTY calls their own. `read_stream` and `write_stream` resolve the per-call value against "no limit", so they stay unbounded unless the caller sets one.
+Callers without options (`Commands`, `Pty`, `Sandbox::is_running`) pass `RequestTimeout::default()`, and `Sandbox::mcp_token` passes `FileOptions::new().user(MCP_USER)`, the configured timeout, until Task 7 gives the commands and PTY calls their own. `read_stream` and `write_stream` resolve the per-call value against "no limit", so they stay unbounded unless the caller sets one.
 
 **Filesystem (Tasks 5, 9, 10).** Every call ends with an options reference:
 
@@ -268,7 +268,7 @@ SDK sources are e2b 2.61.0, the same packages as `docs/protocol-notes.md` (`py:`
 | `src/filesystem.rs` | 2 (`map_err`), 4 (`WatchOptions::timeout`), 5 (`FileOptions`, `ListOptions`, signatures), 9 (`max_concurrency`), 10 (`EntryInfo::from`) |
 | `src/commands.rs` | 2 (`map_err`), 4 (`CommandOptions::timeout`), 5 (`RequestTimeout::default()` callers), 7 (`CommandConnectOptions`, `request_timeout`), 12 (`#[non_exhaustive]`) |
 | `src/pty.rs` | 4 (`PtyOptions::timeout`), 5 (callers), 7 (`PtyConnectOptions`, `request_timeout`), 8 (defaults), 11 (rustdoc and behaviour of `connect`) |
-| `src/stream_input.rs` | 4 (`StreamInputOptions::timeout`), 5 (callers) |
+| `src/stream_input.rs` | 4 (`StreamInputOptions::timeout`) |
 | `src/lib.rs` (re-exports, crate docs) | 2, 5, 7, 9, 12, 14 |
 | every `src/*.rs` (examples) | 14 |
 | `tests/error_taxonomy.rs` (new) | 2 |
@@ -2158,7 +2158,9 @@ git commit -m "feat: a zero timeout means no limit, as the SDK's timeout=0"
 - Modify (call sites): `tests/envd_api.rs`, `tests/envd_stream_files.rs`, `tests/envd_write.rs`, `tests/zero_timeouts.rs` (Task 4's `list` call), `tests/live_files.rs`, `tests/live_lifecycle.rs`
 - Modify: `README.md` (lines 20, 34-35, 92, 101, 115-118, 169; the Files row)
 - Modify: `docs/protocol-notes.md`, `docs/verification/s4-evidence-map.md` (the CLM-0172 row)
-- Create: `changelog/<ts>-m4-task-05-file-options.md`
+- Create: `changelog/<ts>-m4-task-05-filesystem-options.md`
+
+> **Corrected (issue #93, 2026-10-28).** `src/stream_input.rs` needs no change: `InputStream` sends through `client_stream`, never `unary`, `within_request_timeout` or `http_request`, so "API after M4" no longer lists it among the `RequestTimeout::default()` callers. `tests/envd_watch.rs` has no call site to convert (`watch_dir` keeps its shape). `mcp_token`'s `read_to_string` is at `src/sandbox.rs:352`. The changelog slug is `filesystem-options`. The live check ran `live_files` with `--test-threads=1` and then `live_sweep` with the same `E2B_TEST_RUN_ID`, so the sweep removes only that run's leftovers; Step 10 now says so. In `tests/envd_file_options.rs`, `list_options_default_to_depth_one_and_reject_zero` builds its sandbox with `sandbox(&server)` (so `client_for` is not imported), and `is_transport_timeout` drops its pre-Task-2 comment. `Filesystem::write`'s rustdoc also lists `Error::InvalidArgument` for invalid metadata, since `write` now honours `WriteOptions::metadata`. No later task changes: Tasks 7, 9, 10, 12 and 14 already use these names and call shapes.
 
 **Design:**
 - One `RequestTimeout` value per options struct, resolved in exactly one place, `EnvdClient::timeout_for`.
@@ -3072,14 +3074,14 @@ In `docs/verification/s4-evidence-map.md`, the CLM-0172 row from Task 4 gets `te
 Run `just lint`, `just test` and `just doc`. This task rewrites every call in `tests/live_files.rs`, so run that binary once on hosted, then the sweep:
 
 ```bash
-E2B_TEST_TARGET=hosted E2B_TEST_RUN_ID=dev-$(date -u +%Y%m%dT%H%M%SZ)-$$ \
-  cargo test --test live_files -- --ignored --test-threads=4 2>&1 | tee target/live-logs/task-05-live-files.log
-E2B_TEST_TARGET=hosted cargo test --test live_sweep -- --ignored
+export E2B_TEST_TARGET=hosted E2B_TEST_RUN_ID=dev-$(date -u +%Y%m%dT%H%M%SZ)-$$
+cargo test --test live_files -- --ignored --test-threads=1 2>&1 | tee target/live-logs/task-05-live-files.log
+cargo test --test live_sweep -- --ignored
 ```
 
 Report the pass count in the PR. `tests/live_lifecycle.rs` only changes argument shapes, so `cargo build --tests` covers it.
 
-Write `changelog/<ts>-m4-task-05-file-options.md`:
+Write `changelog/<ts>-m4-task-05-filesystem-options.md`:
 
 ```markdown
 # M4 Task 5: Filesystem options and per-call request timeouts

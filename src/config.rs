@@ -45,6 +45,46 @@ pub(crate) fn no_limit_if_zero(timeout: Option<Duration>) -> Option<Duration> {
     timeout.filter(|timeout| !timeout.is_zero())
 }
 
+/// A per-call request timeout, as an options struct stores it: unset uses
+/// the configured [`ConnectionConfig::request_timeout`]; set to `None` (or
+/// zero) means no limit; set to a duration means that duration. Only the
+/// options structs' `request_timeout` setters make one.
+///
+/// Python note: this is the SDK's `request_timeout: Optional[float] = None`
+/// argument, where `None` means "use the connection's". Rust needs the
+/// extra `Option` level to tell "not given" from "given as no limit".
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) struct RequestTimeout(Option<Option<Duration>>);
+
+impl RequestTimeout {
+    /// A timeout the caller set explicitly; zero counts as no limit.
+    ///
+    /// # Arguments
+    ///
+    /// * `timeout` - the per-call timeout, or `None` for no limit.
+    ///
+    /// # Returns
+    ///
+    /// The set value.
+    pub(crate) fn set(timeout: Option<Duration>) -> Self {
+        Self(Some(no_limit_if_zero(timeout)))
+    }
+
+    /// The timeout to apply.
+    ///
+    /// # Arguments
+    ///
+    /// * `configured` - what applies when the caller set nothing.
+    ///
+    /// # Returns
+    ///
+    /// The caller's value when set, else `configured`.
+    pub(crate) fn resolve(self, configured: Option<Duration>) -> Option<Duration> {
+        // `unwrap_or` on the outer `Option`: "not set" falls back.
+        self.0.unwrap_or(configured)
+    }
+}
+
 /// Hosted E2B domains whose envd RPC traffic goes through the shared
 /// `sandbox.<domain>` endpoint instead of the per-sandbox host
 /// (`e2b/sandbox_domains.py:1-9`).
@@ -551,6 +591,23 @@ mod tests {
             .build_with_env(env_of(&[]))
             .expect("config");
         assert_eq!(config.request_timeout(), None);
+    }
+
+    #[test]
+    fn request_timeout_resolves_unset_none_zero_and_a_value() {
+        let configured = Some(Duration::from_secs(60));
+        let short = Duration::from_millis(200);
+        assert_eq!(RequestTimeout::default().resolve(configured), configured);
+        assert_eq!(RequestTimeout::set(None).resolve(configured), None);
+        assert_eq!(
+            RequestTimeout::set(Some(Duration::ZERO)).resolve(configured),
+            None
+        );
+        assert_eq!(
+            RequestTimeout::set(Some(short)).resolve(configured),
+            Some(short)
+        );
+        assert_eq!(RequestTimeout::default().resolve(None), None);
     }
 
     #[test]

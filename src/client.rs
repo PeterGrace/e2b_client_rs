@@ -859,13 +859,14 @@ impl Client {
     /// # Examples
     ///
     /// ```no_run
-    /// use e2b_client::{Client, CreateSandboxParams};
+    /// use e2b_client::{Client, CreateSandboxParams, WriteOptions};
     ///
     /// # async fn demo(client: Client) -> e2b_client::Result<()> {
     /// let volume = client.create_volume("data").await?;
     /// let params = CreateSandboxParams::new("base").volume_mount(volume.name(), "/mnt/data");
     /// let sandbox = client.create_sandbox(&params).await?;
-    /// sandbox.files().write("/mnt/data/kept.txt", "outlives the sandbox", None).await?;
+    /// let files = sandbox.files();
+    /// files.write("/mnt/data/kept.txt", "outlives the sandbox", &WriteOptions::default()).await?;
     /// sandbox.kill().await?;
     /// client.destroy_volume(volume.volume_id()).await?;
     /// # Ok(())
