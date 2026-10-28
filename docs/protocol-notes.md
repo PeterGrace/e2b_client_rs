@@ -27,6 +27,7 @@ NOTICE for.
 | `E2B_SANDBOX_URL` override for envd traffic | `py: connection_config.py:237-239, 341-342`; `js: 1113-1114, 1127` |
 | Explicit value, then env var, then default (`value or env or default`, so empty counts as unset) | `py: connection_config.py:289-291, 310-318` |
 | Default request timeout 60 s | `py: connection_config.py:32` |
+| A zero request timeout disables it, as `request_timeout=0` | `py: api/__init__.py:280` |
 | API key header `X-API-KEY` | `py: api/__init__.py:250-251`; `js: 1528` |
 | envd port 49983 | `py: connection_config.py:201`; `js: 1143, 5784` |
 
@@ -198,7 +199,7 @@ alphabet). Compression is off in both directions (`py: envd/client_shared.py:133
 | Unary `Content-Type: application/json`; streaming `application/connect+json` | `connect-es: protocol-connect/content-type.js:37-40`; `protocol-connect/request-header.js:31-37` |
 | `Connect-Protocol-Version: 1` | `connect-es: protocol-connect/headers.js:27`; `protocol-connect/version.js:28`; `protocol-connect/request-header.js:38` |
 | Deadline header `Connect-Timeout-Ms` | `connect-es: protocol-connect/headers.js:26`; `protocol-connect/request-header.js:28-30` |
-| Timeouts sent as whole ms, at least 1 | `py: envd/utils.py:15-24` |
+| Timeouts sent as whole ms, at least 1; `None` or a zero duration sends no header and sets no client-side deadline (the SDK's `timeout_to_ms` maps `0` and `None` to no deadline) | `py: envd/utils.py:15-24` |
 | Envelope: 1 flag byte + 4-byte big-endian length + payload | `connect-es: protocol/envelope.js:38` |
 | End-of-stream flag `0x02`; payload `{"error"?: {...}, "metadata"?: {...}}` | `connect-es: protocol-connect/end-stream.js:30, 37-73` |
 | Error JSON: `code` is a snake_case string, `message` a string | `connect-es: protocol-connect/error-json.js:42-60`; `protocol-connect/code-string.js:24-31` |
@@ -255,7 +256,7 @@ bounded queue by a background task.
 | The handle sends `start` first, then one `data` per queued chunk, and a `keepalive` after 50 s without input | `py: sandbox_async/commands/command_input_handle.py:91-131`; `py: sandbox/commands/stream_input.py:10-37`; `js: 2781-2870` |
 | `close()` ends the request stream, then waits for the call to finish | `py: sandbox_async/commands/command_input_handle.py:71-83` |
 | Keepalive interval 50 s (`KEEPALIVE_PING_INTERVAL_SEC`) | `py: connection_config.py:48-49` |
-| Stream deadline defaults to 60 s (`STREAM_INPUT_TIMEOUT`), sent as `Connect-Timeout-Ms`; `None` disables it | `py: connection_config.py:33`; `py: sandbox_async/commands/command.py:150-174` |
+| Stream deadline defaults to 60 s (`STREAM_INPUT_TIMEOUT`), sent as `Connect-Timeout-Ms`; `None` or zero disables it | `py: connection_config.py:33`; `py: sandbox_async/commands/command.py:150-174` |
 | No envd version gate | `py: sandbox_async/commands/command.py:150-174`; `py: envd/versions.py:1-11` |
 
 The SDK's queue is unbounded; `InputStream::send` waits once 64 chunks are
@@ -372,7 +373,7 @@ is the SDK's `stop()`.
 | `FilesystemEvent {name = 1, type = 2, entry = 3?}`; `name` is relative to the watched directory; `entry` only with `include_entry`, and may be absent for removals and renames away | `py: envd/filesystem/filesystem_pb.py:457-497`; `py: sandbox/filesystem/watch_handle.py:49-70` |
 | `EventType`: `UNSPECIFIED = 0`, `CREATE = 1`, `WRITE = 2`, `REMOVE = 3`, `RENAME = 4`, `CHMOD = 5`; unspecified and unknown types are dropped, as are keepalives | `py: envd/filesystem/filesystem_pb.py:774-810`; `py: sandbox/filesystem/watch_handle.py:36-46`; `py: sandbox_async/filesystem/watch_handle.py:47-64` |
 | Version gates, checked before any request: `recursive` needs envd 0.1.4, `include_entry` 0.6.3, `allow_network_mounts` 0.6.4 (the SDKs raise `TemplateException`; here `Error::InvalidArgument`) | `py: sandbox_async/filesystem/filesystem.py:705-721`; `py: envd/versions.py:3, 10, 11` |
-| Headers: the user header and `Keepalive-Ping-Interval: 50`; the watch timeout (default 60 s; the SDK's `0`/`None` for none is only `None` here, since `Some(Duration::ZERO)` is sent as `Connect-Timeout-Ms: 1` and ends the watch at once, as for the other options structs) is sent as `Connect-Timeout-Ms` and bounds the whole stream | `py: sandbox_async/filesystem/filesystem.py:685, 723-740` |
+| Headers: the user header and `Keepalive-Ping-Interval: 50`; the watch timeout (default 60 s; `None` or zero for no limit, as the SDK's `0`/`None`) is sent as `Connect-Timeout-Ms` and bounds the whole stream | `py: sandbox_async/filesystem/filesystem.py:685, 723-740` |
 | The stream must open with `start`, awaited within the request timeout; anything else is an error | `py: sandbox_async/filesystem/filesystem.py:742-766` |
 
 The SDK's `on_event`/`on_exit` callbacks are replaced by the handle's

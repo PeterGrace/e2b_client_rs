@@ -7,6 +7,7 @@ use std::time::Duration;
 use bytes::{Bytes, BytesMut};
 use reqwest::header::HeaderMap;
 
+use crate::config::no_limit_if_zero;
 use crate::envd::connect::{ConnectStream, Empty};
 use crate::envd::process_pb::{
     self, CloseStdinRequest, ConnectRequest, EventResponse, ListRequest, ListResponse,
@@ -123,8 +124,9 @@ impl CommandOptions {
         self
     }
 
-    /// Bounds how long the command's output stream may stay open; `None` for
-    /// no limit. Defaults to [`DEFAULT_COMMAND_TIMEOUT`].
+    /// Bounds how long the command's output stream may stay open; `None`, or
+    /// a zero duration (the SDK's `timeout=0`), for no limit. Defaults to
+    /// [`DEFAULT_COMMAND_TIMEOUT`].
     ///
     /// # Arguments
     ///
@@ -135,7 +137,7 @@ impl CommandOptions {
     /// The options, for chaining.
     #[must_use]
     pub fn timeout(mut self, timeout: Option<Duration>) -> Self {
-        self.timeout = timeout;
+        self.timeout = no_limit_if_zero(timeout);
         self
     }
 }
@@ -315,7 +317,8 @@ impl Commands {
     /// # Arguments
     ///
     /// * `pid` - the process ID.
-    /// * `timeout` - the stream deadline, or `None` for no limit.
+    /// * `timeout` - the stream deadline, or `None` (or a zero duration, the
+    ///   SDK's `timeout=0`) for no limit.
     ///
     /// # Returns
     ///
@@ -329,8 +332,13 @@ impl Commands {
         let request = ConnectRequest {
             process: ProcessSelector::Pid(pid),
         };
-        self.open("Connect", &request, keepalive_headers(), timeout)
-            .await
+        self.open(
+            "Connect",
+            &request,
+            keepalive_headers(),
+            no_limit_if_zero(timeout),
+        )
+        .await
     }
 
     /// Opens a `Start`/`Connect` stream and wraps it in a [`CommandHandle`].

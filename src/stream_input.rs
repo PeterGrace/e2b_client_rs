@@ -11,6 +11,7 @@ use reqwest::header::HeaderMap;
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 
+use crate::config::no_limit_if_zero;
 use crate::envd::EnvdClient;
 use crate::envd::connect::encode_envelope;
 use crate::envd::process_pb::{self, ProcessInput, ProcessSelector, StreamInputRequest};
@@ -61,7 +62,8 @@ impl Default for StreamInputOptions {
 }
 
 impl StreamInputOptions {
-    /// Bounds the whole input stream; `None` for no limit. Defaults to
+    /// Bounds the whole input stream; `None`, or a zero duration (the SDK's
+    /// `timeout=0`), for no limit. Defaults to
     /// [`DEFAULT_STREAM_INPUT_TIMEOUT`].
     ///
     /// Keepalives do not extend this deadline: they only keep idle proxies
@@ -76,7 +78,7 @@ impl StreamInputOptions {
     /// The options, for chaining.
     #[must_use]
     pub fn timeout(mut self, timeout: Option<Duration>) -> Self {
-        self.timeout = timeout;
+        self.timeout = no_limit_if_zero(timeout);
         self
     }
 }

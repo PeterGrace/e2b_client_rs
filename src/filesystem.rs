@@ -16,6 +16,7 @@ use serde::Deserialize;
 use tokio::io::{AsyncBufRead, AsyncRead, BufReader};
 use tokio_util::io::ReaderStream;
 
+use crate::config::no_limit_if_zero;
 use crate::envd::connect::{ConnectStream, Empty};
 use crate::envd::filesystem_pb::{
     self, EntryInfoWire, EntryResponse, ListDirRequest, ListDirResponse, MoveRequest, PathRequest,
@@ -545,13 +546,10 @@ impl WatchOptions {
         self
     }
 
-    /// Bounds the whole watch; `None` for no limit. Defaults to
-    /// [`DEFAULT_WATCH_TIMEOUT`] (60 s), as in the SDKs. The deadline counts
-    /// from when the watch opens, not from the last event.
-    ///
-    /// Python note: the SDK's `timeout=0` means no limit, but here only
-    /// `None` does. `Some(Duration::ZERO)` is a deadline that has already
-    /// passed (sent as `Connect-Timeout-Ms: 1`), so the watch ends at once.
+    /// Bounds the whole watch; `None`, or a zero duration (the SDK's
+    /// `timeout=0`), for no limit. Defaults to [`DEFAULT_WATCH_TIMEOUT`]
+    /// (60 s), as in the SDKs. The deadline counts from when the watch opens,
+    /// not from the last event.
     ///
     /// # Arguments
     ///
@@ -562,7 +560,7 @@ impl WatchOptions {
     /// The options, for chaining.
     #[must_use]
     pub fn timeout(mut self, timeout: Option<Duration>) -> Self {
-        self.timeout = timeout;
+        self.timeout = no_limit_if_zero(timeout);
         self
     }
 
