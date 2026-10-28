@@ -42,7 +42,7 @@ Deferred:
 | Batch metrics (`GET /sandboxes/metrics?sandbox_ids=`): the SDK has the generated call but no public method uses it | none | not planned |
 | Sandbox logs, secrets, templates and git | none | logs, secrets and git unscheduled; template builds are out of scope by design |
 | The deprecated `secure` create flag and `keep_memory` aliases | none | not planned: the SDK ignores `secure`, and `keep_memory` is only an alias of `mode` |
-| `#[non_exhaustive]` review, error taxonomy, dropping the v1 fallback, naming (including whether the `*_with` options methods of Task 7 should replace the v0.1 signatures, with #54), MSRV | CLM-0119..0121, #30, #52 to #57 | M4 |
+| `#[non_exhaustive]` review, error taxonomy, dropping the v1 fallback, naming (including whether the `*_with` options methods of Task 7 should replace the v0.1 signatures, with #54), MSRV; a refused filesystem-only pause (409) reading as "already paused" (#81, found in Task 7) | CLM-0119..0121, #30, #52 to #57, #81 | M4 |
 | Live CI job, publish dry-run | CLM-0123, 0124 | M5 |
 | Re-running the full sandbawks suite with cluster headroom (decides CLM-0118) | #27 | its own issue, not code |
 
