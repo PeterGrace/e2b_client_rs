@@ -223,7 +223,7 @@ async fn clm_0013_connect_running_sandbox_runs_commands() {
     // Act
     let connected = sandbox
         .client()
-        .connect_sandbox(sandbox.sandbox_id(), None)
+        .connect_sandbox(sandbox.sandbox_id(), &ConnectOptions::new())
         .await
         .expect("connect");
 
@@ -246,7 +246,7 @@ async fn clm_0014_connect_resumes_paused_sandbox_with_files() {
         .write("/tmp/state.txt", "persisted", &WriteOptions::default())
         .await
         .expect("write");
-    assert!(sandbox.pause().await.expect("pause"));
+    assert!(sandbox.pause(&PauseOptions::new()).await.expect("pause"));
     // Without this, a server whose pause is a no-op passes the test vacuously.
     assert_eq!(
         sandbox.get_info().await.expect("info after pause").state,
@@ -256,7 +256,10 @@ async fn clm_0014_connect_resumes_paused_sandbox_with_files() {
     // Act
     let resumed = sandbox
         .client()
-        .connect_sandbox(sandbox.sandbox_id(), Some(Duration::from_secs(120)))
+        .connect_sandbox(
+            sandbox.sandbox_id(),
+            &ConnectOptions::new().timeout(Duration::from_secs(120)),
+        )
         .await
         .expect("resume");
 
@@ -286,7 +289,7 @@ async fn clm_0014_connect_resumes_paused_sandbox_with_files() {
 async fn clm_0015_connect_unknown_sandbox_is_not_found() {
     // Act
     let error = client()
-        .connect_sandbox(MISSING_ID, None)
+        .connect_sandbox(MISSING_ID, &ConnectOptions::new())
         .await
         .expect_err("unknown sandbox must not connect");
 
@@ -374,7 +377,7 @@ async fn clm_0019_list_filters_by_state() {
             .timeout(Duration::from_secs(120)),
     )
     .await;
-    assert!(paused.pause().await.expect("pause"));
+    assert!(paused.pause(&PauseOptions::new()).await.expect("pause"));
     let base = ListSandboxesParams::new().metadata("list-test", &tag);
     let base = &base;
 
@@ -496,7 +499,7 @@ async fn clm_0023_pause_running_sandbox() {
     // Act
     let paused = sandbox
         .client()
-        .pause_sandbox(sandbox.sandbox_id())
+        .pause_sandbox(sandbox.sandbox_id(), &PauseOptions::new())
         .await
         .expect("pause");
 
@@ -513,12 +516,17 @@ async fn clm_0023_pause_running_sandbox() {
 async fn clm_0024_pause_paused_sandbox_is_false() {
     // Arrange
     let sandbox = LiveSandbox::create(&params().timeout(Duration::from_secs(120))).await;
-    assert!(sandbox.pause().await.expect("first pause"));
+    assert!(
+        sandbox
+            .pause(&PauseOptions::new())
+            .await
+            .expect("first pause")
+    );
 
     // Act
     let second = sandbox
         .client()
-        .pause_sandbox(sandbox.sandbox_id())
+        .pause_sandbox(sandbox.sandbox_id(), &PauseOptions::new())
         .await
         .expect("second pause");
 
@@ -531,13 +539,18 @@ async fn clm_0024_pause_paused_sandbox_is_false() {
 async fn clm_0171_moded_pause_of_a_paused_sandbox_is_false() {
     // Arrange
     let sandbox = LiveSandbox::create(&params().timeout(Duration::from_secs(120))).await;
-    assert!(sandbox.pause().await.expect("first pause"));
+    assert!(
+        sandbox
+            .pause(&PauseOptions::new())
+            .await
+            .expect("first pause")
+    );
 
     // Act: with a mode, the 409 body is read; hosted E2B's says "already
     // paused", which must still be `false` rather than an error.
     let second = sandbox
         .client()
-        .pause_sandbox_with(
+        .pause_sandbox(
             sandbox.sandbox_id(),
             &PauseOptions::new().mode(SnapshotMode::Filesystem),
         )
@@ -940,17 +953,17 @@ async fn clm_0146_resume_restores_memory_or_reboots() {
     };
 
     // Act 1: a full pause, then a restore.
-    assert!(sandbox.pause_with(&full).await.expect("first pause"));
+    assert!(sandbox.pause(&full).await.expect("first pause"));
     let restored = client
-        .connect_sandbox_with(sandbox.sandbox_id(), &resume(OnResume::Restore))
+        .connect_sandbox(sandbox.sandbox_id(), &resume(OnResume::Restore))
         .await
         .expect("restore");
     let kept_after_restore = exists(&restored, IN_MEMORY_MARKER).await;
 
     // Act 2: another full pause, then a reboot.
-    assert!(restored.pause_with(&full).await.expect("second pause"));
+    assert!(restored.pause(&full).await.expect("second pause"));
     let rebooted = client
-        .connect_sandbox_with(sandbox.sandbox_id(), &resume(OnResume::Reboot))
+        .connect_sandbox(sandbox.sandbox_id(), &resume(OnResume::Reboot))
         .await
         .expect("reboot");
 
@@ -977,12 +990,15 @@ async fn clm_0146_filesystem_pause_cold_boots() {
     // or the node (409, an error since issue #81); either is an environment
     // limit, to be recorded as such, not worked around.
     let paused = sandbox
-        .pause_with(&PauseOptions::new().mode(SnapshotMode::Filesystem))
+        .pause(&PauseOptions::new().mode(SnapshotMode::Filesystem))
         .await
         .expect("filesystem pause (HTTP 400 or 409 means the team or node lacks it)");
     let resumed = sandbox
         .client()
-        .connect_sandbox(sandbox.sandbox_id(), Some(Duration::from_secs(120)))
+        .connect_sandbox(
+            sandbox.sandbox_id(),
+            &ConnectOptions::new().timeout(Duration::from_secs(120)),
+        )
         .await
         .expect("resume");
 
@@ -1330,7 +1346,7 @@ async fn clm_0150_mcp_gateway_starts_and_exposes_url_and_token() {
         .to_owned();
     let connected = sandbox
         .client()
-        .connect_sandbox(sandbox.sandbox_id(), None)
+        .connect_sandbox(sandbox.sandbox_id(), &ConnectOptions::new())
         .await
         .expect("connect");
     let from_file = connected

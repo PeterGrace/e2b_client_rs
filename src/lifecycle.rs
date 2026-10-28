@@ -291,8 +291,8 @@ pub(crate) fn deserialize_known_mode<'de, D: Deserializer<'de>>(
     })
 }
 
-/// Options for [`crate::Client::pause_sandbox_with`] and
-/// [`crate::Sandbox::pause_with`]: what the pause keeps (the SDK's `mode` on
+/// Options for [`crate::Client::pause_sandbox`] and
+/// [`crate::Sandbox::pause`]: what the pause keeps (the SDK's `mode` on
 /// `pause`, `e2b/sandbox_async/sandbox_api.py:399-432`).
 ///
 /// # Examples
@@ -322,7 +322,7 @@ impl PauseOptions {
     /// What the pause keeps. With [`SnapshotMode::Filesystem`] only the
     /// filesystem is kept, and resuming cold-boots the sandbox; such a
     /// sandbox must be resumed with [`crate::Client::connect_sandbox`], as
-    /// auto-resume refuses it. See [`crate::Client::pause_sandbox_with`] for
+    /// auto-resume refuses it. See [`crate::Client::pause_sandbox`] for
     /// how the API may refuse a filesystem-only pause.
     ///
     /// # Arguments
@@ -367,7 +367,7 @@ pub enum OnResume {
     Reboot,
 }
 
-/// Options for [`crate::Client::connect_sandbox_with`]: a new timeout and
+/// Options for [`crate::Client::connect_sandbox`]: a new timeout and
 /// how a paused sandbox resumes (the SDK's `timeout` and `on_resume` on
 /// `connect`, `e2b/sandbox_async/sandbox_api.py:498-520`).
 ///

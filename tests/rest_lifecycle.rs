@@ -383,7 +383,7 @@ async fn expect_post(
 #[tokio::test]
 async fn pause_sends_memory_from_the_mode() {
     // Arrange: one mock per body; a request with any other body gets
-    // wiremock's 404, which `pause_sandbox_with` reports as not found.
+    // wiremock's 404, which `pause_sandbox` reports as not found.
     let server = MockServer::start().await;
     for (body, label) in [
         (json!({"memory": true}), "full"),
@@ -404,19 +404,19 @@ async fn pause_sends_memory_from_the_mode() {
     let filesystem = PauseOptions::new().mode(SnapshotMode::Filesystem);
 
     // Act and Assert: each call matches only its own mock.
+    assert!(client.pause_sandbox(SANDBOX_ID, &full).await.expect("full"));
     assert!(
         client
-            .pause_sandbox_with(SANDBOX_ID, &full)
-            .await
-            .expect("full")
-    );
-    assert!(
-        client
-            .pause_sandbox_with(SANDBOX_ID, &filesystem)
+            .pause_sandbox(SANDBOX_ID, &filesystem)
             .await
             .expect("filesystem")
     );
-    assert!(client.pause_sandbox(SANDBOX_ID).await.expect("default"));
+    assert!(
+        client
+            .pause_sandbox(SANDBOX_ID, &PauseOptions::new())
+            .await
+            .expect("default")
+    );
 }
 
 /// Hosted E2B's 409 for pausing a sandbox that is already paused (live,
@@ -465,11 +465,11 @@ async fn a_moded_pause_reads_only_an_already_paused_409_as_false() {
     let filesystem = PauseOptions::new().mode(SnapshotMode::Filesystem);
 
     // Act
-    let already = client.pause_sandbox_with("already", &filesystem).await;
-    let refused = client.pause_sandbox_with("refused", &filesystem).await;
-    let empty = client.pause_sandbox_with("empty", &filesystem).await;
-    let disabled = client.pause_sandbox_with("disabled", &filesystem).await;
-    let missing = client.pause_sandbox_with("missing", &filesystem).await;
+    let already = client.pause_sandbox("already", &filesystem).await;
+    let refused = client.pause_sandbox("refused", &filesystem).await;
+    let empty = client.pause_sandbox("empty", &filesystem).await;
+    let disabled = client.pause_sandbox("disabled", &filesystem).await;
+    let missing = client.pause_sandbox("missing", &filesystem).await;
 
     // Assert
     assert!(!already.expect("an already-paused 409 is Ok(false)"));
@@ -518,8 +518,8 @@ async fn a_full_pause_also_reads_the_409_body() {
     let full = PauseOptions::new().mode(SnapshotMode::Full);
 
     // Act
-    let already = client.pause_sandbox_with("already", &full).await;
-    let refused = client.pause_sandbox_with("refused", &full).await;
+    let already = client.pause_sandbox("already", &full).await;
+    let refused = client.pause_sandbox("refused", &full).await;
 
     // Assert
     assert!(!already.expect("already paused"));
@@ -545,7 +545,7 @@ async fn a_pause_without_a_mode_reads_every_409_as_already_paused() {
 
     // Act
     let paused = client_for(&server)
-        .pause_sandbox_with(SANDBOX_ID, &PauseOptions::new())
+        .pause_sandbox(SANDBOX_ID, &PauseOptions::new())
         .await;
 
     // Assert
@@ -553,7 +553,7 @@ async fn a_pause_without_a_mode_reads_every_409_as_already_paused() {
 }
 
 #[tokio::test]
-async fn sandbox_pause_with_sends_the_mode() {
+async fn sandbox_pause_sends_the_mode() {
     let server = MockServer::start().await;
     let sandbox = common::sandbox(&server).await;
     expect_post(
@@ -566,7 +566,7 @@ async fn sandbox_pause_with_sends_the_mode() {
     .await;
 
     let paused = sandbox
-        .pause_with(&PauseOptions::new().mode(SnapshotMode::Filesystem))
+        .pause(&PauseOptions::new().mode(SnapshotMode::Filesystem))
         .await
         .expect("pause");
 
@@ -602,16 +602,16 @@ async fn connect_sends_memory_false_only_for_a_reboot() {
 
     // Act and Assert: each call matches only its own mock.
     let sandbox = client
-        .connect_sandbox_with(SANDBOX_ID, &reboot)
+        .connect_sandbox(SANDBOX_ID, &reboot)
         .await
         .expect("reboot");
     assert_eq!(sandbox.sandbox_id(), SANDBOX_ID);
     client
-        .connect_sandbox_with(SANDBOX_ID, &restore_with_timeout)
+        .connect_sandbox(SANDBOX_ID, &restore_with_timeout)
         .await
         .expect("restore with a timeout");
     client
-        .connect_sandbox_with(SANDBOX_ID, &restore)
+        .connect_sandbox(SANDBOX_ID, &restore)
         .await
         .expect("restore");
 }

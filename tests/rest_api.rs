@@ -5,7 +5,9 @@ mod common;
 use std::time::Duration;
 
 use common::{API_KEY, SANDBOX_ID, client_for, sandbox_json};
-use e2b_client::{CreateSandboxParams, Error, ListSandboxesParams, SandboxState};
+use e2b_client::{
+    ConnectOptions, CreateSandboxParams, Error, ListSandboxesParams, PauseOptions, SandboxState,
+};
 use serde_json::json;
 use wiremock::matchers::{body_json, header, method, path, query_param, query_param_is_missing};
 use wiremock::{Mock, MockServer, ResponseTemplate};
@@ -136,7 +138,10 @@ async fn connect_sandbox_uses_v2_with_timeout() {
         .await;
 
     let sandbox = client_for(&server)
-        .connect_sandbox(SANDBOX_ID, Some(Duration::from_secs(120)))
+        .connect_sandbox(
+            SANDBOX_ID,
+            &ConnectOptions::new().timeout(Duration::from_secs(120)),
+        )
         .await
         .expect("connect");
 
@@ -155,7 +160,7 @@ async fn connect_sandbox_without_timeout_sends_empty_body() {
         .await;
 
     client_for(&server)
-        .connect_sandbox(SANDBOX_ID, None)
+        .connect_sandbox(SANDBOX_ID, &ConnectOptions::new())
         .await
         .expect("connect");
 }
@@ -183,7 +188,7 @@ async fn connect_sandbox_v2_404_is_not_found_without_a_v1_request() {
 
     // Act
     let err = client_for(&server)
-        .connect_sandbox(SANDBOX_ID, None)
+        .connect_sandbox(SANDBOX_ID, &ConnectOptions::new())
         .await
         .expect_err("a v2 404 is not found");
 
@@ -208,7 +213,7 @@ async fn connect_missing_sandbox_is_not_found() {
         .await;
 
     let err = client_for(&server)
-        .connect_sandbox(SANDBOX_ID, None)
+        .connect_sandbox(SANDBOX_ID, &ConnectOptions::new())
         .await
         .expect_err("error");
 
@@ -354,14 +359,22 @@ async fn pause_sandbox_without_a_mode_maps_status_codes() {
     }
     let client = client_for(&server);
 
-    assert!(client.pause_sandbox("ok").await.expect("pause"));
+    assert!(
+        client
+            .pause_sandbox("ok", &PauseOptions::new())
+            .await
+            .expect("pause")
+    );
     assert!(
         !client
-            .pause_sandbox("already")
+            .pause_sandbox("already", &PauseOptions::new())
             .await
             .expect("already paused")
     );
-    let err = client.pause_sandbox("missing").await.expect_err("missing");
+    let err = client
+        .pause_sandbox("missing", &PauseOptions::new())
+        .await
+        .expect_err("missing");
     assert!(matches!(err, Error::SandboxNotFound(_)), "{err:?}");
 }
 
@@ -460,7 +473,7 @@ async fn sandbox_handle_delegates_lifecycle_calls() {
         sandbox.get_info().await.expect("info").sandbox_id,
         SANDBOX_ID
     );
-    assert!(sandbox.pause().await.expect("pause"));
+    assert!(sandbox.pause(&PauseOptions::new()).await.expect("pause"));
     sandbox
         .set_timeout(Duration::from_secs(10))
         .await
@@ -480,11 +493,13 @@ async fn every_rest_request_carries_the_api_key() {
     // Act: `let _ =` discards each call's result on purpose.
     let _ = client.create_sandbox(&CreateSandboxParams::default()).await;
     // v2 connect only: a 404 is not found, with no v1 retry.
-    let _ = client.connect_sandbox(SANDBOX_ID, None).await;
+    let _ = client
+        .connect_sandbox(SANDBOX_ID, &ConnectOptions::new())
+        .await;
     let _ = client.get_sandbox_info(SANDBOX_ID).await;
     let _ = client.list_sandboxes(&ListSandboxesParams::new()).await;
     let _ = client.kill_sandbox(SANDBOX_ID).await;
-    let _ = client.pause_sandbox(SANDBOX_ID).await;
+    let _ = client.pause_sandbox(SANDBOX_ID, &PauseOptions::new()).await;
     let _ = client.set_sandbox_timeout(SANDBOX_ID, timeout).await;
     let _ = client.refresh_sandbox(SANDBOX_ID, None).await;
 

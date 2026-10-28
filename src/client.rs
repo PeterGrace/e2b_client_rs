@@ -206,15 +206,19 @@ impl Client {
     }
 
     /// Connects to a sandbox, resuming it first if it is paused
-    /// (`POST /v2/sandboxes/{id}/connect`). A paused sandbox is restored
-    /// with the API's default; [`Client::connect_sandbox_with`] can reboot it
-    /// instead.
+    /// (`POST /v2/sandboxes/{id}/connect`, the SDK's
+    /// `connect(timeout, on_resume)`, `e2b/sandbox_async/sandbox_api.py:498-520`).
+    ///
+    /// [`ConnectOptions::timeout`](crate::ConnectOptions::timeout) sets a new
+    /// lifetime from now; without one the sandbox keeps its current lifetime.
+    /// [`OnResume::Reboot`](crate::OnResume::Reboot) sends `memory: false`;
+    /// a restore, the API's default, sends no `memory` field.
     ///
     /// # Arguments
     ///
     /// * `sandbox_id` - the sandbox to connect to.
-    /// * `timeout` - a new sandbox lifetime from now; `None` sends none, so
-    ///   the server keeps the sandbox's current lifetime.
+    /// * `options` - the timeout and the resume mode;
+    ///   [`ConnectOptions::new`](crate::ConnectOptions::new) for neither.
     ///
     /// # Returns
     ///
@@ -223,42 +227,24 @@ impl Client {
     /// # Errors
     ///
     /// [`Error::SandboxNotFound`] for HTTP 404, [`Error::Api`] for other
-    /// non-2xx answers, [`Error::Transport`] for connection failures.
+    /// non-2xx answers (the API documents refusing a reboot this way where
+    /// that capability is not enabled), [`Error::Transport`] for connection
+    /// failures.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::time::Duration;
+    /// use e2b_client::{Client, ConnectOptions};
+    ///
+    /// # async fn demo(client: &Client) -> e2b_client::Result<()> {
+    /// let options = ConnectOptions::new().timeout(Duration::from_secs(600));
+    /// let sandbox = client.connect_sandbox("sbx-1", &options).await?;
+    /// println!("connected to {}", sandbox.sandbox_id());
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn connect_sandbox(
-        &self,
-        sandbox_id: &str,
-        timeout: Option<Duration>,
-    ) -> Result<Sandbox> {
-        let options = match timeout {
-            Some(timeout) => ConnectOptions::new().timeout(timeout),
-            None => ConnectOptions::new(),
-        };
-        self.connect_sandbox_with(sandbox_id, &options).await
-    }
-
-    /// [`Client::connect_sandbox`] with the SDK 2.61 options: the timeout and
-    /// how a paused sandbox resumes (`connect(timeout, on_resume)`,
-    /// `e2b/sandbox_async/sandbox_api.py:498-520`).
-    ///
-    /// [`OnResume::Reboot`](crate::OnResume::Reboot) sends `memory: false`;
-    /// a restore, the API's default, sends no `memory` field. The timeout
-    /// behaves as in [`Client::connect_sandbox`].
-    ///
-    /// # Arguments
-    ///
-    /// * `sandbox_id` - the sandbox to connect to.
-    /// * `options` - the timeout and the resume mode.
-    ///
-    /// # Returns
-    ///
-    /// A [`Sandbox`] handle.
-    ///
-    /// # Errors
-    ///
-    /// As [`Client::connect_sandbox`]. The API documents that it refuses a
-    /// reboot with an error status ([`Error::Api`]) where that capability is
-    /// not enabled, rather than falling back to a memory restore.
-    pub async fn connect_sandbox_with(
         &self,
         sandbox_id: &str,
         options: &ConnectOptions,
@@ -430,33 +416,13 @@ impl Client {
         ensure_success(response).await.map(|_| true)
     }
 
-    /// Pauses a sandbox (`POST /sandboxes/{id}/pause`) with the API's
-    /// default snapshot. Resume it with [`Client::connect_sandbox`];
-    /// [`Client::pause_sandbox_with`] chooses what the pause keeps.
+    /// Pauses a sandbox (`POST /sandboxes/{id}/pause`, the SDK's
+    /// `pause(mode)`, `e2b/sandbox_async/sandbox_api.py:399-432`). Resume it
+    /// with [`Client::connect_sandbox`].
     ///
-    /// # Arguments
-    ///
-    /// * `sandbox_id` - the sandbox to pause.
-    ///
-    /// # Returns
-    ///
-    /// `true` if it was paused, `false` if it was already paused (any HTTP
-    /// 409, as in the SDK).
-    ///
-    /// # Errors
-    ///
-    /// [`Error::SandboxNotFound`] for HTTP 404, [`Error::Api`] for other
-    /// non-2xx answers, [`Error::Transport`] for connection failures.
-    pub async fn pause_sandbox(&self, sandbox_id: &str) -> Result<bool> {
-        self.pause_sandbox_with(sandbox_id, &PauseOptions::new())
-            .await
-    }
-
-    /// [`Client::pause_sandbox`] with the SDK 2.61 options: what the pause
-    /// keeps (`pause(mode)`, `e2b/sandbox_async/sandbox_api.py:399-432`).
     /// The body is `{"memory": true}` for [`SnapshotMode::Full`],
-    /// `{"memory": false}` for [`SnapshotMode::Filesystem`], and `{}` when no
-    /// mode is set.
+    /// `{"memory": false}` for [`SnapshotMode::Filesystem`], and `{}` with
+    /// [`PauseOptions::new`](crate::PauseOptions::new), the API's default.
     ///
     /// # Arguments
     ///
@@ -471,22 +437,33 @@ impl Client {
     ///
     /// # Errors
     ///
-    /// As [`Client::pause_sandbox`], and with a mode: an [`Error::Api`] with
-    /// status 409 for any other 409, which is the API refusing that mode
-    /// (for example `snapshot_filesystem_only_unsupported_node`, the node
-    /// predates filesystem-only snapshots). SDK 2.61 returns `false` for
-    /// every 409 (`e2b/sandbox_async/sandbox_api.py:421-423`); the crate
-    /// departs from it here so a refusal is not mistaken for a pause. A
-    /// filesystem-only pause refused for the team is an [`Error::Api`] with
-    /// status 400.
+    /// [`Error::SandboxNotFound`] for HTTP 404, [`Error::Transport`] for
+    /// connection failures, and [`Error::Api`] for other non-2xx answers,
+    /// including, with a mode, any 409 that is not "already paused": the
+    /// API refusing that mode (for example
+    /// `snapshot_filesystem_only_unsupported_node`, the node predates
+    /// filesystem-only snapshots). SDK 2.61 returns `false` for every 409
+    /// (`e2b/sandbox_async/sandbox_api.py:421-423`); the crate departs from
+    /// it here so a refusal is not mistaken for a pause. A filesystem-only
+    /// pause refused for the team is an [`Error::Api`] with status 400.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use e2b_client::{Client, PauseOptions, SnapshotMode};
+    ///
+    /// # async fn demo(client: &Client) -> e2b_client::Result<()> {
+    /// let options = PauseOptions::new().mode(SnapshotMode::Filesystem);
+    /// if !client.pause_sandbox("sbx-1", &options).await? {
+    ///     println!("it was already paused");
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
     ///
     /// [`SnapshotMode::Full`]: crate::SnapshotMode::Full
     /// [`SnapshotMode::Filesystem`]: crate::SnapshotMode::Filesystem
-    pub async fn pause_sandbox_with(
-        &self,
-        sandbox_id: &str,
-        options: &PauseOptions,
-    ) -> Result<bool> {
+    pub async fn pause_sandbox(&self, sandbox_id: &str, options: &PauseOptions) -> Result<bool> {
         let body = PauseBody {
             memory: options.memory(),
         };
