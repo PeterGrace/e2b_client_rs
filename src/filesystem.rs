@@ -9,6 +9,7 @@ use std::time::Duration;
 use async_compression::tokio::bufread::GzipEncoder;
 use bytes::Bytes;
 use chrono::{DateTime, Utc};
+use futures_util::{TryFutureExt, TryStreamExt};
 use reqwest::Method;
 use reqwest::header::{CONTENT_ENCODING, CONTENT_TYPE, HeaderMap, HeaderName, HeaderValue};
 use reqwest::multipart::{Form, Part};
@@ -43,6 +44,12 @@ const TOKEN_PUNCTUATION: &[u8] = b"!#$%&'*+-.^_`|~";
 /// The SDKs' default bound on a directory watch (`timeout=60`,
 /// `e2b/sandbox_async/filesystem/filesystem.py:685`).
 pub const DEFAULT_WATCH_TIMEOUT: Duration = Duration::from_secs(60);
+
+/// How many octet-stream or gzip uploads [`Filesystem::write_files`] keeps in
+/// flight by default ([`WriteOptions::max_concurrency`]). The SDK starts them
+/// all at once (`asyncio.gather`); a cap keeps a large batch from opening
+/// one connection per file.
+pub const DEFAULT_UPLOAD_CONCURRENCY: usize = 8;
 
 /// What kind of filesystem entry something is.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -402,7 +409,7 @@ impl ListOptions {
 ///     .metadata("team", "m2");
 /// # let _ = options;
 /// ```
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WriteOptions {
     user: Option<String>,
     request_timeout: RequestTimeout,
@@ -411,6 +418,22 @@ pub struct WriteOptions {
     /// Sorted (a `BTreeMap`, unlike Python's insertion-ordered `dict`), so the
     /// `X-Metadata-*` headers always go out in the same order.
     metadata: BTreeMap<String, String>,
+    max_concurrency: usize,
+}
+
+// Written by hand rather than derived: a derived `Default` would set the cap
+// to `usize::default()`, which is 0.
+impl Default for WriteOptions {
+    fn default() -> Self {
+        Self {
+            user: None,
+            request_timeout: RequestTimeout::default(),
+            octet_stream: false,
+            gzip: false,
+            metadata: BTreeMap::new(),
+            max_concurrency: DEFAULT_UPLOAD_CONCURRENCY,
+        }
+    }
 }
 
 impl WriteOptions {
@@ -480,6 +503,29 @@ impl WriteOptions {
     #[must_use]
     pub fn gzip(mut self, gzip: bool) -> Self {
         self.gzip = gzip;
+        self
+    }
+
+    /// How many octet-stream or gzip uploads [`Filesystem::write_files`]
+    /// keeps in flight at once; the rest start as earlier ones finish.
+    /// Defaults to [`DEFAULT_UPLOAD_CONCURRENCY`] (8). Multipart sends one
+    /// request for the whole batch, and [`Filesystem::write_stream`] uploads
+    /// one file, so the cap does not limit either.
+    ///
+    /// # Arguments
+    ///
+    /// * `max_concurrency` - at least 1. A zero is bad input whatever the
+    ///   encoding: [`Filesystem::write_files`] and [`Filesystem::write`]
+    ///   fail with [`Error::InvalidArgument`] before any request, multipart
+    ///   included (the default encoding, and envd older than 0.5.7).
+    ///   [`Filesystem::write_stream`] ignores the value.
+    ///
+    /// # Returns
+    ///
+    /// The options, for chaining.
+    #[must_use]
+    pub fn max_concurrency(mut self, max_concurrency: usize) -> Self {
+        self.max_concurrency = max_concurrency;
         self
     }
 
@@ -1177,7 +1223,8 @@ impl Filesystem {
     /// # Errors
     ///
     /// [`Error::InvalidArgument`] for invalid metadata (see
-    /// [`WriteOptions::metadata`]), [`Error::Envd`] for a non-2xx answer,
+    /// [`WriteOptions::metadata`]) or a zero
+    /// [`WriteOptions::max_concurrency`], [`Error::Envd`] for a non-2xx answer,
     /// [`Error::Protocol`] if envd reports no written file, [`Error::Decode`]
     /// or [`Error::Transport`].
     pub async fn write(
@@ -1203,28 +1250,31 @@ impl Filesystem {
     /// bounded by the request timeout ([`WriteOptions::request_timeout`],
     /// else the configured one).
     ///
-    /// The octet-stream requests all start at once, with no limit, as the
-    /// SDK's `asyncio.gather` does: a batch of N files opens N requests to
-    /// envd. For a very large batch, call `write_files` on chunks of
-    /// `entries` (`entries.chunks(64)`) to bound it.
+    /// The octet-stream requests run concurrently, at most
+    /// [`WriteOptions::max_concurrency`] at a time (8 by default), where the
+    /// SDK's `asyncio.gather` starts them all at once. Results come back in
+    /// the order of `entries` whatever order the uploads finish in.
     ///
     /// # Arguments
     ///
     /// * `entries` - the files.
-    /// * `options` - user, encoding, metadata and request timeout.
+    /// * `options` - user, encoding, metadata, request timeout and upload
+    ///   concurrency.
     ///
     /// # Returns
     ///
     /// What envd reports about each written file, in envd's order (for
     /// octet-stream, the order of `entries`). An empty `entries` returns an
     /// empty list without a request (and without checking the metadata, as
-    /// in the SDK).
+    /// in the SDK, or the concurrency cap).
     ///
     /// # Errors
     ///
     /// [`Error::InvalidArgument`] for invalid metadata, or metadata on envd
     /// older than 0.6.2, before any request is sent (see
-    /// [`WriteOptions::metadata`]). Otherwise as [`Filesystem::write`]. With
+    /// [`WriteOptions::metadata`]). [`Error::InvalidArgument`] for a zero
+    /// [`WriteOptions::max_concurrency`], before any request. Otherwise as
+    /// [`Filesystem::write`]. With
     /// octet-stream, the first failing
     /// upload's error is returned, and the other uploads are dropped
     /// (cancelled) where still running.
@@ -1253,20 +1303,47 @@ impl Filesystem {
             return Ok(Vec::new());
         }
         let metadata = options.metadata_headers(self.envd.version())?;
+        if options.max_concurrency == 0 {
+            return Err(Error::InvalidArgument(
+                "max_concurrency should be at least 1".into(),
+            ));
+        }
         let timeout = self.envd.timeout_for(options.request_timeout);
         if self.uses_octet_stream(options) {
             // `Bytes::clone` is a reference-count bump, not a copy of the data.
-            // `map` builds the upload futures lazily; none runs until
-            // `try_join_all` polls them all together, like `asyncio.gather`.
-            let uploads = entries.iter().map(|entry| {
-                let body = if options.gzip {
-                    gzip_body(std::io::Cursor::new(entry.data.clone()))
-                } else {
-                    reqwest::Body::from(entry.data.clone())
-                };
-                self.post_octet_stream(&entry.path, body, options, &metadata, timeout)
-            });
-            let written = futures_util::future::try_join_all(uploads).await?;
+            // `stream::iter` yields one not-yet-started upload per entry, and
+            // `try_buffer_unordered(n)` runs at most `n` of them at once, like a
+            // bounded `asyncio.gather`. It yields each result as it finishes,
+            // so an error surfaces at once even while an earlier entry is
+            // still uploading (`try_buffered` would hold it back until every
+            // earlier entry answered). `try_for_each` stops at the first error
+            // and drops the stream, which cancels the uploads still in flight;
+            // each result is stored at its entry's index to keep entry order.
+            let uploads =
+                futures_util::stream::iter(entries.iter().enumerate().map(|(index, entry)| {
+                    let body = if options.gzip {
+                        gzip_body(std::io::Cursor::new(entry.data.clone()))
+                    } else {
+                        reqwest::Body::from(entry.data.clone())
+                    };
+                    let upload =
+                        self.post_octet_stream(&entry.path, body, options, &metadata, timeout);
+                    // The stream must yield `Result<future, error>`; `map_ok` tags
+                    // the upload's answer with its entry index. `move` copies
+                    // `index` (a `usize`) into the closure.
+                    Ok(upload.map_ok(move |infos| (index, infos)))
+                }));
+            // `Vec::new` does not allocate, so this costs one slot per entry.
+            let mut written: Vec<Vec<WriteInfo>> = std::iter::repeat_with(Vec::new)
+                .take(entries.len())
+                .collect();
+            uploads
+                .try_buffer_unordered(options.max_concurrency)
+                .try_for_each(|(index, infos)| {
+                    written[index] = infos;
+                    std::future::ready(Ok(()))
+                })
+                .await?;
             return Ok(written.into_iter().flatten().collect());
         }
         let form = entries.iter().fold(Form::new(), |form, entry| {
@@ -1771,6 +1848,7 @@ mod tests {
                 octet_stream: false,
                 gzip: false,
                 metadata: BTreeMap::new(),
+                max_concurrency: DEFAULT_UPLOAD_CONCURRENCY,
             }
         );
         let options = WriteOptions::default()
@@ -1779,6 +1857,15 @@ mod tests {
             .gzip(true);
         assert_eq!(options.user.as_deref(), Some("root"));
         assert!(options.octet_stream && options.gzip);
+    }
+
+    #[test]
+    fn write_options_default_to_eight_uploads_in_flight() {
+        assert_eq!(WriteOptions::default().max_concurrency, 8);
+        assert_eq!(
+            WriteOptions::default().max_concurrency(3).max_concurrency,
+            3
+        );
     }
 
     #[test]

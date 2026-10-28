@@ -5,19 +5,22 @@
 mod common;
 
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use async_compression::tokio::bufread::GzipDecoder;
 use common::{ACCESS_TOKEN, sandbox, sandbox_with_version};
 use e2b_client::Sandbox;
-use e2b_client::{Error, FileOptions, FileType, WriteEntry, WriteOptions};
+use e2b_client::{
+    DEFAULT_UPLOAD_CONCURRENCY, Error, FileOptions, FileType, WriteEntry, WriteOptions,
+};
 use serde_json::json;
 use tokio::io::AsyncReadExt;
 use wiremock::matchers::{
     body_bytes, body_json, body_string_contains, header, method, path, query_param,
     query_param_is_missing,
 };
-use wiremock::{Mock, MockServer, Request, ResponseTemplate};
+use wiremock::{Mock, MockServer, Request, Respond, ResponseTemplate};
 
 /// Whether a request carries no `path` query parameter.
 fn has_no_path_param(request: &Request) -> bool {
@@ -622,4 +625,158 @@ async fn upload_response_and_stat_report_metadata() {
     // Assert: the map when envd reports one, else empty in both.
     assert_eq!(with, (team_m2(), team_m2()));
     assert!(without.0.is_empty() && without.1.is_empty(), "{without:?}");
+}
+
+/// Answers every octet-stream upload after `delay`, recording when each one
+/// arrived. wiremock calls `respond` as a request arrives and only then
+/// waits out the delay, so each arrival opens a window of `delay` during
+/// which that upload is in flight.
+struct GaugedUploads {
+    delay: Duration,
+    arrivals: Arc<Mutex<Vec<Instant>>>,
+}
+
+impl Respond for GaugedUploads {
+    fn respond(&self, request: &Request) -> ResponseTemplate {
+        self.arrivals
+            .lock()
+            .expect("arrivals lock")
+            .push(Instant::now());
+        let target = request
+            .url
+            .query_pairs()
+            .find(|(key, _)| key == "path")
+            .map(|(_, value)| value.into_owned())
+            .unwrap_or_default();
+        written(&[target.as_str()]).set_delay(self.delay)
+    }
+}
+
+/// The largest number of uploads whose `[arrival, arrival + delay)` windows
+/// overlap. Under a cap of `n` the client sends upload `n + 1` only after a
+/// response, which is at least `delay` after the first arrival, so this is
+/// exactly the number in flight, with no wall-clock ceiling to flake on.
+fn peak_in_flight(arrivals: &[Instant], delay: Duration) -> usize {
+    arrivals
+        .iter()
+        .map(|&start| {
+            arrivals
+                .iter()
+                .filter(|&&other| other <= start && start < other + delay)
+                .count()
+        })
+        .max()
+        .unwrap_or(0)
+}
+
+/// Uploads `count` files as octet-stream with `options`, each answered after
+/// `delay`, and returns the peak number of uploads in flight.
+async fn gauged_batch(count: usize, delay: Duration, options: WriteOptions) -> usize {
+    let server = MockServer::start().await;
+    let sandbox = sandbox_with_version(&server, "0.5.7").await;
+    let arrivals = Arc::new(Mutex::new(Vec::with_capacity(count)));
+    Mock::given(method("POST"))
+        .and(path("/files"))
+        .respond_with(GaugedUploads {
+            delay,
+            arrivals: Arc::clone(&arrivals),
+        })
+        .expect(u64::try_from(count).expect("count fits u64"))
+        .mount(&server)
+        .await;
+    let entries: Vec<WriteEntry> = (0..count)
+        .map(|index| WriteEntry::new(format!("/w/{index}"), "x"))
+        .collect();
+    let written = sandbox
+        .files()
+        .write_files(&entries, &options.octet_stream(true))
+        .await
+        .expect("write_files");
+    assert_eq!(written.len(), count);
+    let arrivals = arrivals.lock().expect("arrivals lock");
+    assert_eq!(arrivals.len(), count);
+    peak_in_flight(&arrivals, delay)
+}
+
+#[tokio::test]
+async fn octet_stream_uploads_are_capped_at_max_concurrency() {
+    // Arrange and act: 6 uploads of 500 ms each, at most 2 at a time.
+    let peak = gauged_batch(
+        6,
+        Duration::from_millis(500),
+        WriteOptions::default().max_concurrency(2),
+    )
+    .await;
+
+    // Assert: exactly 2 were ever in flight together.
+    assert_eq!(peak, 2);
+}
+
+#[tokio::test]
+async fn the_default_cap_is_eight_uploads_in_flight() {
+    // Arrange and act: 9 uploads of 500 ms each with the default options.
+    let peak = gauged_batch(9, Duration::from_millis(500), WriteOptions::default()).await;
+
+    // Assert: the 9th waited for a slot, so exactly 8 overlapped.
+    assert_eq!(DEFAULT_UPLOAD_CONCURRENCY, 8);
+    assert_eq!(peak, 8);
+}
+
+#[tokio::test]
+async fn capped_uploads_keep_the_entry_order() {
+    // Arrange: the first file answers last, the last file first.
+    let server = MockServer::start().await;
+    let sandbox = sandbox_with_version(&server, "0.5.7").await;
+    for (target, delay_ms) in [("/w/1", 600), ("/w/2", 300), ("/w/3", 0)] {
+        Mock::given(method("POST"))
+            .and(path("/files"))
+            .and(query_param("path", target))
+            .respond_with(written(&[target]).set_delay(Duration::from_millis(delay_ms)))
+            .expect(1)
+            .mount(&server)
+            .await;
+    }
+    let entries = ["/w/1", "/w/2", "/w/3"].map(|target| WriteEntry::new(target, "x"));
+
+    // Act
+    let written = sandbox
+        .files()
+        .write_files(
+            &entries,
+            &WriteOptions::default()
+                .octet_stream(true)
+                .max_concurrency(3),
+        )
+        .await
+        .expect("write_files");
+
+    // Assert: results follow `entries`, not completion order.
+    let paths: Vec<&str> = written.iter().map(|info| info.path.as_str()).collect();
+    assert_eq!(paths, ["/w/1", "/w/2", "/w/3"]);
+}
+
+#[tokio::test]
+async fn a_zero_max_concurrency_is_rejected_before_sending() {
+    // Arrange
+    let server = MockServer::start().await;
+    let sandbox = sandbox_with_version(&server, "0.5.7").await;
+
+    // Act
+    let error = sandbox
+        .files()
+        .write_files(
+            &two_entries(),
+            &WriteOptions::default()
+                .octet_stream(true)
+                .max_concurrency(0),
+        )
+        .await
+        .expect_err("zero concurrency");
+
+    // Assert
+    assert!(
+        matches!(&error, Error::InvalidArgument(message) if message.contains("max_concurrency")),
+        "{error:?}"
+    );
+    assert_no_file_requests(&server).await;
 }

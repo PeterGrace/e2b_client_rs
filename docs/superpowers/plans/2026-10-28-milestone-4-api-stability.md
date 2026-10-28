@@ -6,7 +6,7 @@
 
 **Architecture:** No new modules for features. The changes are signature and behaviour changes inside the existing modules: `src/error.rs` (classifiers, the opaque `TransportError`), `src/client.rs` and `src/sandbox.rs` (one connect and one pause method each), `src/filesystem.rs` (`FileOptions`, `ListOptions`, the upload cap, `is_symlink`), `src/commands.rs` and `src/pty.rs` (connect options, request timeouts, the PTY default), and `src/config.rs` (the shared timeout helpers). Every call that takes options resolves its request timeout through one helper, and every timeout setter treats zero as "no limit" through another. The API review is recorded in a new `docs/api-review.md`, enforced by a new trait test (`tests/api_traits.rs`), a new doc-example test (`tests/doc_examples.rs`) and a `[lints]` table in `Cargo.toml`.
 
-**Tech Stack:** Rust 2024 (MSRV 1.89, CI through `dtolnay/rust-toolchain@master` with `toolchain: "1.89"`), reqwest 0.13 (now private), serde/serde_json, secrecy 0.10 (re-exported), futures-util 0.3 (`TryStreamExt::try_buffered`), tokio, wiremock, `just`, claims MCP.
+**Tech Stack:** Rust 2024 (MSRV 1.89, CI through `dtolnay/rust-toolchain@master` with `toolchain: "1.89"`), reqwest 0.13 (now private), serde/serde_json, secrecy 0.10 (re-exported), futures-util 0.3 (`TryStreamExt::try_buffer_unordered`), tokio, wiremock, `just`, claims MCP.
 
 **Design:** `docs/superpowers/specs/2026-10-26-claims-audit-and-publishability-design.md`, sections "Decisions" (item 5, the v1 fallback), "Claim hierarchy" (S5) and "Milestones" (M4). As for M2 and M3, the spec's "short design" for this milestone is this plan's "Decisions", "API after M4" and "Verified facts" sections.
 
@@ -226,7 +226,7 @@ SDK sources are e2b 2.61.0, the same packages as `docs/protocol-notes.md` (`py:`
 | `commands.connect(pid, timeout=60, request_timeout)`, `pty.connect(pid, timeout=60, request_timeout)`, `pty.create(..., timeout=60, request_timeout)`, `watch_dir(..., request_timeout, timeout=60)` | `py: sandbox_async/commands/command.py:346-350`; `py: sandbox_async/commands/pty.py:139-147, 207-212`; `py: sandbox_async/filesystem/filesystem.py:684-685` |
 | `EntryInfo.is_symlink` is proto field 12; the SDK maps `is_symlink` to `SYMLINK`, else maps `type` | `py: envd/filesystem/filesystem_pb.py:240, 299-303`; `py: sandbox/filesystem/filesystem.py:130-148` |
 | reqwest 0.13.5 `Error::{is_timeout, is_connect, is_request, is_body, is_decode, status, url}` | `reqwest-0.13.5/src/error.rs:63, 119, 152, 158, 191, 196, 201` |
-| futures-util 0.3.34 `TryStreamExt::try_buffered(n)` (keeps order) and `try_buffer_unordered(n)`, both behind feature `alloc` (already enabled) | `futures-util-0.3.34/src/stream/try_stream/mod.rs:1035-1037, 1111-1113` |
+| futures-util 0.3.34 `TryStreamExt::try_buffered(n)` (keeps order, but holds a later error behind an earlier upload that has not answered: its queue is a `FuturesOrdered`) and `try_buffer_unordered(n)` (yields as each finishes), both behind feature `alloc` (already enabled); Task 9 uses `try_buffer_unordered` (corrected in issue #53) | `futures-util-0.3.34/src/stream/try_stream/mod.rs:1035-1037, 1111-1113`; `try_buffered.rs` |
 | secrecy 0.10.3: `pub type SecretString = SecretBox<str>`; `ExposeSecret` | `secrecy-0.10.3/src/lib.rs:214, 262` |
 | The crate builds with `cargo +1.89 check --all-targets`; the highest dependency `rust-version` is uuid 1.29.0's 1.89 | plan session, 2026-10-28 (`cargo metadata`, `uuid-1.29.0/Cargo.toml:14`) |
 | `RUSTFLAGS="-W missing_docs -W missing_debug_implementations" cargo check --lib` gives no warnings today; `clippy::missing_errors_doc` and `missing_panics_doc` give none | plan session, 2026-10-28 |
@@ -4469,7 +4469,9 @@ git commit -m "feat!: no PTY deadline by default (#55)"
 - Modify: `docs/protocol-notes.md` (the octet-stream row, line 335)
 - Create: `changelog/<ts>-m4-task-09-upload-cap.md`
 
-`futures_util::stream::iter` turns the uploads into a stream. `TryStreamExt::try_buffered(n)` polls at most `n` of them at once and yields results in input order (`futures-util-0.3.34/src/stream/try_stream/mod.rs:1111-1113`, behind `alloc`, which is already enabled). `try_collect` returns at the first `Err` and drops the stream, so uploads still in flight are cancelled, as `try_join_all` does today.
+> **Corrected (issue #53, 2026-10-28).** `try_buffered` does not fail fast: `TryBuffered` keeps its in-flight uploads in a `FuturesOrdered`, which yields only in input order, so an error from entry 2 waits until entry 1 answers. With it, the existing `octet_stream_batch_fails_fast_without_waiting_for_the_other_uploads` (a 5 s upload first, a 507 second) failed after 5.05 s. The shipped code tags each upload with its entry index (`TryFutureExt::map_ok`), runs them through `TryStreamExt::try_buffer_unordered(n)` (same cap, results as they finish) and stores each result at its index with `try_for_each`, which stops at the first error and drops the rest; Step 3's code and the Cargo.toml comment below now say so (read `src/filesystem.rs`, `write_files`). The imports are `use futures_util::{TryFutureExt, TryStreamExt};`. `docs/protocol-notes.md` also gains an "At most 8 octet-stream uploads in flight" bullet under "Deliberate differences from the SDKs", and the `write_files` rustdoc says an empty `entries` skips the cap check too. The changelog is `changelog/2026-10-28T14-17-25Z-m4-task-09-upload-cap.md`. No later task changes: Tasks 12 and 14 name only `max_concurrency`, `DEFAULT_UPLOAD_CONCURRENCY` and `WriteOptions::new`/`default`, which are as planned; the Task 12 table's `Default` for `WriteOptions` is still implemented, by hand.
+
+`futures_util::stream::iter` turns the uploads into a stream. `TryStreamExt::try_buffer_unordered(n)` polls at most `n` of them at once and yields each result as it finishes (behind `alloc`, which is already enabled); each result carries its entry index and is stored at that index, so the results keep input order. `try_for_each` returns at the first `Err` and drops the stream, so uploads still in flight are cancelled, as `try_join_all` did. (`try_buffered(n)` keeps order itself but holds an error behind every earlier upload, so it does not fail fast.)
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -4694,29 +4696,44 @@ Replace the octet-stream branch with:
 ```rust
         if self.uses_octet_stream(options) {
             // `Bytes::clone` is a reference-count bump, not a copy of the data.
-            // `stream::iter` yields one not-yet-started upload per entry;
-            // `try_buffered(n)` runs at most `n` of them at once and hands the
-            // results back in entry order, like a bounded `asyncio.gather`.
-            // `try_collect` stops at the first error and drops the stream,
-            // which cancels the uploads still in flight.
-            let uploads = futures_util::stream::iter(entries.iter().map(|entry| {
-                let body = if options.gzip {
-                    gzip_body(std::io::Cursor::new(entry.data.clone()))
-                } else {
-                    reqwest::Body::from(entry.data.clone())
-                };
-                // `try_buffered` wants a stream of `Result<future, error>`.
-                Ok(self.post_octet_stream(&entry.path, body, options, &metadata, timeout))
-            }));
-            let written: Vec<Vec<WriteInfo>> = uploads
-                .try_buffered(options.max_concurrency)
-                .try_collect()
+            // `stream::iter` yields one not-yet-started upload per entry, and
+            // `try_buffer_unordered(n)` runs at most `n` of them at once, like a
+            // bounded `asyncio.gather`. It yields each result as it finishes,
+            // so an error surfaces at once even while an earlier entry is
+            // still uploading (`try_buffered` would hold it back until every
+            // earlier entry answered). `try_for_each` stops at the first error
+            // and drops the stream, which cancels the uploads still in flight;
+            // each result is stored at its entry's index to keep entry order.
+            let uploads =
+                futures_util::stream::iter(entries.iter().enumerate().map(|(index, entry)| {
+                    let body = if options.gzip {
+                        gzip_body(std::io::Cursor::new(entry.data.clone()))
+                    } else {
+                        reqwest::Body::from(entry.data.clone())
+                    };
+                    let upload =
+                        self.post_octet_stream(&entry.path, body, options, &metadata, timeout);
+                    // The stream must yield `Result<future, error>`; `map_ok` tags
+                    // the upload's answer with its entry index. `move` copies
+                    // `index` (a `usize`) into the closure.
+                    Ok(upload.map_ok(move |infos| (index, infos)))
+                }));
+            // `Vec::new` does not allocate, so this costs one slot per entry.
+            let mut written: Vec<Vec<WriteInfo>> = std::iter::repeat_with(Vec::new)
+                .take(entries.len())
+                .collect();
+            uploads
+                .try_buffer_unordered(options.max_concurrency)
+                .try_for_each(|(index, infos)| {
+                    written[index] = infos;
+                    std::future::ready(Ok(()))
+                })
                 .await?;
             return Ok(written.into_iter().flatten().collect());
         }
 ```
 
-Add `use futures_util::TryStreamExt;` to the imports. The old `futures_util::future::try_join_all` use goes; if it was the last user of the path in the crate, nothing else changes, because `alloc` stays enabled for `try_buffered`. Update the Cargo.toml comment on futures-util to "`alloc` for `TryStreamExt::try_buffered`, which runs capped concurrent uploads", without changing the dependency line.
+Add `use futures_util::{TryFutureExt, TryStreamExt};` to the imports. The old `futures_util::future::try_join_all` use goes; if it was the last user of the path in the crate, nothing else changes, because `alloc` stays enabled for `try_buffer_unordered`. Update the Cargo.toml comment on futures-util to "`alloc` for `TryStreamExt::try_buffer_unordered`, which runs capped concurrent uploads", without changing the dependency line.
 
 The `write_files` rustdoc paragraph "The octet-stream requests all start at once..." becomes:
 
@@ -4757,7 +4774,7 @@ Claim: CLM-0176 (S3).
 ## What changed
 
 - `WriteOptions::max_concurrency(n)` and `DEFAULT_UPLOAD_CONCURRENCY` (8).
-  Octet-stream and gzip uploads run through `try_buffered(n)`: at most `n`
+  Octet-stream and gzip uploads run through `try_buffer_unordered(n)`: at most `n`
   in flight, results in entry order, the first error fails the batch and
   cancels the rest. `max_concurrency(0)` is `Error::InvalidArgument`
   before any request.
