@@ -17,7 +17,10 @@ tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 ## Quick start
 
 ```rust,no_run
-use e2b_client::{Client, CommandOptions, CreateSandboxParams, FileOptions, WriteOptions};
+use e2b_client::{
+    Client, CommandOptions, ConnectOptions, CreateSandboxParams, FileOptions, PauseOptions,
+    WriteOptions,
+};
 
 #[tokio::main]
 async fn main() -> e2b_client::Result<()> {
@@ -37,8 +40,10 @@ async fn main() -> e2b_client::Result<()> {
     assert_eq!(text, "hi there");
 
     // Pause, then resume by connecting again.
-    sandbox.pause().await?;
-    let sandbox = client.connect_sandbox(sandbox.sandbox_id(), None).await?;
+    sandbox.pause(&PauseOptions::new()).await?;
+    let sandbox = client
+        .connect_sandbox(sandbox.sandbox_id(), &ConnectOptions::new())
+        .await?;
 
     sandbox.kill().await?;
     Ok(())
@@ -53,7 +58,7 @@ async fn main() -> e2b_client::Result<()> {
 | Lifecycle (REST) | `Client::{create_sandbox, connect_sandbox, get_sandbox_info, list_sandboxes, pause_sandbox, kill_sandbox, set_sandbox_timeout, refresh_sandbox}` and the same on `Sandbox`; `ListSandboxesParams::{metadata, state, template, started_after, order}` |
 | Hosts and metrics | `Sandbox::get_host(port)` gives the host name that reaches a port inside the sandbox; `Sandbox::get_metrics` / `Client::get_sandbox_metrics` read CPU, memory and disk samples (`MetricsParams::{start, end}`) |
 | Network | `CreateSandboxParams::network(NetworkConfig)`: `allow_out`, `deny_out` (`ALL_TRAFFIC`), `dns_servers`, per-host header `rule`s, `allow_public_traffic`, `mask_request_host`, `https_ports`; `Sandbox::update_network(NetworkUpdate)` and `Client::update_sandbox_network` replace a running sandbox's egress without a restart |
-| Lifecycle settings | `CreateSandboxParams::lifecycle(Lifecycle)`: `on_timeout` (`OnTimeout::Kill`, or a pause with a `SnapshotMode`) and `auto_resume`; `idempotency_key`; `Sandbox::pause_with(PauseOptions)` and `Client::connect_sandbox_with(ConnectOptions)` choose a full or filesystem-only snapshot and a restore or a reboot (`OnResume`) |
+| Lifecycle settings | `CreateSandboxParams::lifecycle(Lifecycle)`: `on_timeout` (`OnTimeout::Kill`, or a pause with a `SnapshotMode`) and `auto_resume`; `idempotency_key`; `Client::pause_sandbox(id, &PauseOptions)` / `Sandbox::pause(&PauseOptions)` and `Client::connect_sandbox(id, &ConnectOptions)` choose a full or filesystem-only snapshot and a restore or a reboot (`OnResume`) |
 | Snapshots and fork | `Sandbox::{create_snapshot, list_snapshots, fork}`, `Client::{create_snapshot, list_snapshots, delete_snapshot, fork_sandbox}`; a snapshot ID is a template, so `CreateSandboxParams::new(snapshot_id)` starts a sandbox from it; `fork` returns one result per copy (up to `MAX_FORK_COUNT`) |
 | Volumes | `Client::{create_volume, get_volume, list_volumes, destroy_volume}` (the volume token stays a `SecretString`); `CreateSandboxParams::volume_mount(name, path)` |
 | MCP gateway | `CreateSandboxParams::mcp(config)` starts the gateway (on the `mcp-gateway` template unless one is given); `Sandbox::{mcp_url, mcp_token}` |

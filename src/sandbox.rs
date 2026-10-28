@@ -590,39 +590,35 @@ impl Sandbox {
         self.client.kill_sandbox(&self.sandbox_id).await
     }
 
-    /// Pauses the sandbox. See [`Client::pause_sandbox`].
-    ///
-    /// # Returns
-    ///
-    /// `true` if it was paused, `false` if it was already paused.
-    ///
-    /// # Errors
-    ///
-    /// As [`Client::pause_sandbox`].
-    pub async fn pause(&self) -> Result<bool> {
-        self.client.pause_sandbox(&self.sandbox_id).await
-    }
-
     /// Pauses the sandbox, choosing what the pause keeps. See
-    /// [`Client::pause_sandbox_with`].
+    /// [`Client::pause_sandbox`].
     ///
     /// # Arguments
     ///
-    /// * `options` - what the pause keeps.
+    /// * `options` - what the pause keeps; [`PauseOptions::new`] for the
+    ///   API's default.
     ///
     /// # Returns
     ///
     /// `true` if it was paused, `false` if it was already paused (see
-    /// [`Client::pause_sandbox_with`] for how a 409 is read when a mode is
-    /// set).
+    /// [`Client::pause_sandbox`] for how a 409 is read when a mode is set).
     ///
     /// # Errors
     ///
-    /// As [`Client::pause_sandbox_with`].
-    pub async fn pause_with(&self, options: &PauseOptions) -> Result<bool> {
-        self.client
-            .pause_sandbox_with(&self.sandbox_id, options)
-            .await
+    /// As [`Client::pause_sandbox`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use e2b_client::{PauseOptions, Sandbox};
+    ///
+    /// # async fn demo(sandbox: &Sandbox) -> e2b_client::Result<()> {
+    /// sandbox.pause(&PauseOptions::new()).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn pause(&self, options: &PauseOptions) -> Result<bool> {
+        self.client.pause_sandbox(&self.sandbox_id, options).await
     }
 
     /// Sets the sandbox's remaining lifetime. See [`Client::set_sandbox_timeout`].

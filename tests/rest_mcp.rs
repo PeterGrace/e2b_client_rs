@@ -7,7 +7,7 @@ use common::{
     SANDBOX_ID, client_for, decode_request_envelope, end_stream, message, sandbox_json,
     stream_response,
 };
-use e2b_client::{CreateSandboxParams, Error};
+use e2b_client::{ConnectOptions, CreateSandboxParams, Error};
 use secrecy::ExposeSecret;
 use serde_json::{Map, Value, json};
 use wiremock::matchers::{body_json, method, path, query_param};
@@ -274,7 +274,7 @@ async fn a_connected_handle_reads_the_token_file_as_root() {
         .mount(&server)
         .await;
     let sandbox = client_for(&server)
-        .connect_sandbox(SANDBOX_ID, None)
+        .connect_sandbox(SANDBOX_ID, &ConnectOptions::new())
         .await
         .expect("connect");
 
@@ -320,7 +320,7 @@ async fn a_failed_token_read_is_not_cached() {
         .mount(&server)
         .await;
     let sandbox = client_for(&server)
-        .connect_sandbox(SANDBOX_ID, None)
+        .connect_sandbox(SANDBOX_ID, &ConnectOptions::new())
         .await
         .expect("connect");
 

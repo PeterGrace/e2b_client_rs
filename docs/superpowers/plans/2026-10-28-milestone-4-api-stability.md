@@ -3134,7 +3134,10 @@ git commit -m "feat!: filesystem options structs with a per-call request timeout
 - Modify: `src/lifecycle.rs` (rustdoc links at lines 294-295, 325 and 370)
 - Modify: `tests/rest_api.rs` (lines 139, 158, 181, 200, 346-353, 452, 472, 476), `tests/rest_lifecycle.rs` (every `pause_sandbox`, `pause_sandbox_with`, `pause_with` and `connect_sandbox_with` call), `tests/rest_mcp.rs` (lines 277, 323), `tests/live_lifecycle.rs` (lines 225, 248, 258, 288, 376, 498, 515, 520, 533, 539, 938-948, 975, 980, 1319; 533 and 539 are Task 3's `clm_0171`; corrected in issue #81)
 - Modify: `README.md` (quick start, lines 20 and 39-40; rows at lines 52 and 55)
-- Create: `changelog/<ts>-m4-task-06-one-connect-and-pause.md`
+- Create: `changelog/<ts>-m4-task-06-one-connect-one-pause.md`
+- Modify: `docs/verification/s4-evidence-map.md` (row CLM-0159; corrected in issue #94)
+
+> **Corrected (issue #94, 2026-10-28).** After Task 5 the call sites moved: `tests/rest_api.rs` `connect_sandbox` at 139, 158, 186, 211, 483, `pause_sandbox` at 357, 360, 364, 487, `sandbox.pause()` at 463; `tests/live_lifecycle.rs` `connect_sandbox` at 226, 259, 289, 985, 1333, `pause_sandbox`/`pause_sandbox_with` at 499, 521, 540, `.pause()` at 249, 377, 516, 534, `.pause_with(` at 943, 951, 980, `connect_sandbox_with` at 945, 953; `src/sandbox.rs` `pause`/`pause_with` at 593-627. `tests/live_support/mod.rs` has no call to change. The rename of `sandbox_pause_with_sends_the_mode` also touches the CLM-0159 row of `docs/verification/s4-evidence-map.md`: its Test cell names the new test, and its Notes say `{}` comes from `PauseOptions::new()` and `Sandbox::pause` posts to its own id. The README quick start's `use` keeps Task 5's `FileOptions` and `WriteOptions` beside `ConnectOptions` and `PauseOptions`, wrapped over four lines, and its lifecycle row is line 56. The changelog slug is `one-connect-one-pause`. The issue's check `grep -rn "connect_sandbox_with\|pause_sandbox_with\|pause_with" src tests README.md` still matches `OnTimeout::pause_with`, the `pause_with_a_*` lifecycle tests and the `connect_sandbox_without_*`/`pause_sandbox_without_*` test names, all different items; the exact check is `grep -rnw "connect_sandbox_with\|pause_sandbox_with" src tests README.md` plus `grep -rn "\.pause_with(\|Sandbox::pause_with" src tests README.md`, both empty.
 
 Decision 3. The `_with` twins become the only methods. They take their options structs, and the v0.1 short forms go, so 0.2 has one method per operation. Tasks 1 and 3 have landed, so the bodies moved here are their final ones.
 
@@ -3216,12 +3219,17 @@ Delete `connect_sandbox` (lines 204-240 after Task 1) and rename `connect_sandbo
     ///
     /// ```no_run
     /// use std::time::Duration;
-    /// use e2b_client::{Client, ConnectOptions};
+    /// use e2b_client::{Client, ConnectOptions, OnResume};
     ///
     /// # async fn demo(client: &Client) -> e2b_client::Result<()> {
+    /// // Resume from the memory snapshot, with ten minutes to live.
     /// let options = ConnectOptions::new().timeout(Duration::from_secs(600));
     /// let sandbox = client.connect_sandbox("sbx-1", &options).await?;
     /// println!("connected to {}", sandbox.sandbox_id());
+    /// // Or boot it cold from its filesystem.
+    /// let reboot = ConnectOptions::new().on_resume(OnResume::Reboot);
+    /// let rebooted = client.connect_sandbox("sbx-2", &reboot).await?;
+    /// println!("rebooted {}", rebooted.sandbox_id());
     /// # Ok(())
     /// # }
     /// ```
@@ -3371,7 +3379,7 @@ Run on hosted, one at a time: `clm_0014_connect_resumes_paused_sandbox_with_file
 Run: `just lint && just test && just doc`
 Expected: all green.
 
-Create `changelog/<date -u +%Y-%m-%dT%H-%M-%SZ>-m4-task-06-one-connect-and-pause.md`:
+Create `changelog/<date -u +%Y-%m-%dT%H-%M-%SZ>-m4-task-06-one-connect-one-pause.md`:
 
 ```markdown
 # M4 Task 6: one connect and one pause method (issue #<N>)
