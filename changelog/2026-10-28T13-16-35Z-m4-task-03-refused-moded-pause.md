@@ -33,3 +33,11 @@ Decided by pgrace while planning M4.
   evidence-map line numbers); Task 6's `tests/live_lifecycle.rs`,
   `src/client.rs` and `src/sandbox.rs` line numbers are moved to the
   post-Task-3 files.
+
+## Review follow-up
+
+- The "Pause" row in `docs/protocol-notes.md` says the "already paused"
+  match is case-sensitive and that sandbawks's wording is not yet checked.
+  Task 17 in the plan now records what sandbawks sends to `clm_0171`.
+- `clm_0146`'s assertion message says what a `false` from a running
+  sandbox's filesystem pause now means.
