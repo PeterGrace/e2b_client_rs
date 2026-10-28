@@ -49,6 +49,21 @@ sandbawks), so the recipe exited 101. Neither API key is in the log. A dry run
 with an unknown target (`just test-live-paced nosuchtarget 1 clm_0007`) gave
 the header, one `RESULT ... FAIL` and a failed sweep, and created nothing.
 
+## Review changes
+
+- `gap` and `filter` are assigned with just's `quote()`, so a `$(` or a
+  backtick in a filter is matched literally instead of run by bash.
+- The paced recipe's last line, `run log: <path>`, is also written to the log,
+  so a background run is done when its log prints it (as Task 17 says).
+  `just test-live` is unchanged.
+- Recheck run `20261028T152914Z-sandbawks-paced-726401` on `0591c6a`: one test
+  (anchored filter), `PASS`, 0 leftovers, the log ends with `run log:`. The
+  three-test validation log stays as the run of record.
+- Not changed: the snapshot and volume sweeps 404 on sandbawks, so the recipe
+  exits non-zero there even when every test passes. That is the sweep's
+  behaviour (`tests/live_sweep.rs`), outside this task; left for the
+  coordinator to decide.
+
 ## Breaking changes
 
 None. No Rust code changed; `Cargo.lock` is unchanged.

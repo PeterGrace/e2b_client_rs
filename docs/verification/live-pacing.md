@@ -72,3 +72,10 @@ No test hit a readiness failure, so the rerun path was not exercised live; the
 marker regex was checked against the four messages (each classified as
 readiness) and against `exit code 75` and `HTTP 404` (each left as `FAIL`).
 Neither API key appears in the log.
+
+After review (quoting `gap` and `filter`, and writing `run log:` to the log),
+[`runs/20261028T152914Z-sandbawks-paced-726401.log`](runs/20261028T152914Z-sandbawks-paced-726401.log)
+reran `clm_0007_create_returns_running_sandbox` with the anchored filter
+`'^clm_0007_create_returns_running_sandbox$'` and a 5 s gap on commit `0591c6a`:
+`PASS`, 0 leftover sandboxes, the same two 404 sweeps, and the log ends with
+`run log:`. Neither API key appears in it.
