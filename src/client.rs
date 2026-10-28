@@ -169,7 +169,10 @@ impl Client {
     /// not start the sandbox is killed and the error is
     /// [`Error::McpGateway`] with the gateway's stderr for a non-zero exit,
     /// or the error of the command call itself (for example
-    /// [`Error::Rpc`]).
+    /// [`Error::Rpc`]). If this future is dropped while the gateway is
+    /// starting (for example by a `tokio::time::timeout` around the call),
+    /// the kill does not run and the sandbox lives until its timeout, as
+    /// in the SDKs.
     pub async fn create_sandbox(&self, params: &CreateSandboxParams) -> Result<Sandbox> {
         // Every check runs before any request, in the SDK's order: the key
         // (`sandbox_async/sandbox_api.py:228`), then the lifecycle (`:232`).
