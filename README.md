@@ -146,7 +146,9 @@ async fn tour(sandbox: &Sandbox) -> e2b_client::Result<()> {
     sandbox.commands().close_stdin(handle.pid()).await?;
     assert_eq!(handle.wait().await?.stdout, "one two\n");
 
-    // An interactive terminal.
+    // An interactive terminal. It has no deadline by default (the SDKs use
+    // 60 s, which ends the shell mid-session); set one with
+    // `PtyOptions::default().timeout(Some(..))`.
     let mut pty = sandbox
         .pty()
         .create(PtySize::new(80, 24), &PtyOptions::default())
