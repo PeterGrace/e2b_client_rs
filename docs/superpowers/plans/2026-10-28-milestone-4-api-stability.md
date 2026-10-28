@@ -549,6 +549,7 @@ git commit -m "feat!: drop the v1 connect fallback"
 - Modify: `src/error.rs` (`TransportError`, `Error::Transport`, `#[non_exhaustive]` on `Api`, `Rpc` and `Envd`, the classifiers, `Error::transport`, the `is_not_found` example, unit tests)
 - Modify: `src/lib.rs` (line 104: `TransportError`; `pub use secrecy;`)
 - Modify: `src/client.rs`, `src/envd/connect.rs`, `src/envd/mod.rs`, `src/filesystem.rs`, `src/sandbox.rs` (`.map_err(Error::transport)` at every reqwest conversion; the list is in Step 3)
+- Modify: `src/filesystem.rs:1083-1084` (the `write_stream` rustdoc names reqwest; Step 6)
 - Modify, adding `..` to the patterns: `tests/envd_api.rs`, `tests/envd_stream_files.rs`, `tests/envd_write.rs`, `tests/rest_api.rs`, `tests/rest_fork.rs`, `tests/rest_lifecycle.rs`, `tests/rest_network.rs`, `tests/rest_snapshots.rs`, `tests/rest_volumes.rs` (the list is in Step 4)
 - Create: `tests/error_taxonomy.rs`
 - Modify: `README.md` (the "Errors" row, line 63), `docs/protocol-notes.md` (new section "Error classification"), `docs/verification/s4-evidence-map.md` (row CLM-0169)
@@ -1284,9 +1285,17 @@ Then check CLM-0170 by inspection. `cargo doc --no-deps` must show no `reqwest` 
 cargo doc --no-deps && ! grep -rl "reqwest" target/doc/e2b_client/ --include=*.html
 ```
 
-Expected: the command exits 0 and prints nothing. If a page names reqwest, a public signature or impl still exposes it: fix it, don't hide it.
+Expected: the command exits 0 and prints nothing. It relies on Step 6's rewording of the one public rustdoc line that names reqwest in prose (`src/filesystem.rs:1083-1084`; `grep -rn "^\s*///.*reqwest" src` finds no other public one today, `gzip_body` at `src/filesystem.rs:1435` being private). If a page still names reqwest, look at what names it: a type path (`reqwest::...` in a signature, a field or an impl) means the API still exposes it, so fix the exposure, don't hide it; prose means a doc comment to reword the same way.
 
 - [ ] **Step 6: Docs**
+
+`src/filesystem.rs:1083-1084`, the `reader` argument of `write_stream`, stops naming the HTTP client, so the public docs no longer say "reqwest" (Step 5's check):
+
+```rust
+    /// * `reader` - the content, read to its end (a socket, a byte slice, a
+    ///   `tokio::fs::File`...). It must be `Send + 'static` because the HTTP
+    ///   client may poll the body on another task, so it cannot borrow local data.
+```
 
 `README.md`, replace the "Errors" row (line 63) with:
 
@@ -2775,7 +2784,7 @@ The unit test `write_options_default_to_multipart_and_chain` (lines 1543-1557) c
 
 - [ ] **Step 6: The new signatures (`src/filesystem.rs`)**
 
-Replace each method's signature and the lines that use `user`. The rustdoc `# Arguments` entry `* `user` - ...` becomes `* `options` - the user and the request timeout.` (`list`: "the depth, the user and the request timeout"; `write`: "the user, encoding, metadata and request timeout").
+Replace each method's signature and the lines that use `user`. Task 2 has landed by now, so every reqwest result converts with `.map_err(Error::transport)`, as below; `?` on a reqwest error no longer compiles. The rustdoc `# Arguments` entry `* `user` - ...` becomes `* `options` - the user and the request timeout.` (`list`: "the depth, the user and the request timeout"; `write`: "the user, encoding, metadata and request timeout").
 
 ```rust
     pub async fn read(&self, path: &str, options: &FileOptions) -> Result<Bytes> {
@@ -2784,11 +2793,12 @@ Replace each method's signature and the lines that use `user`. The rustdoc `# Ar
             .http_request(Method::GET, FILES_ROUTE, options.request_timeout)
             .query(&self.file_query(path, options.user.as_deref()))
             .send()
-            .await?;
+            .await
+            .map_err(Error::transport)?;
         if !response.status().is_success() {
             return Err(envd_http_error(response).await);
         }
-        Ok(response.bytes().await?)
+        response.bytes().await.map_err(Error::transport)
     }
 
     pub async fn read_to_string(&self, path: &str, options: &FileOptions) -> Result<String> {
@@ -2804,7 +2814,8 @@ Replace each method's signature and the lines that use `user`. The rustdoc `# Ar
             .http_request_with_timeout(Method::GET, FILES_ROUTE, timeout)
             .query(&self.file_query(path, options.user.as_deref()))
             .send()
-            .await?;
+            .await
+            .map_err(Error::transport)?;
         if !response.status().is_success() {
             return Err(envd_http_error(response).await);
         }
@@ -3646,7 +3657,7 @@ async fn the_stream_deadline_is_not_the_request_timeout() {
 }
 ```
 
-The last test cannot delay part of a wiremock body, so it only checks that the two values travel separately: the header carries the stream deadline, and the 200 ms request timeout does not end the read. The existing `slow_stream_open_times_out_with_request_timeout` (`tests/envd_api.rs`) keeps covering the configured timeout.
+The last test cannot delay part of a wiremock body, so it only checks that the two values travel separately: the header carries the stream deadline, and the 200 ms request timeout does not end the read. It is not evidence for CLM-0174: Task 18 cites the tests that prove the claim (the default and chosen deadlines, and the per-call request timeout bounding `connect`, `start` and `create`), not this one (brooke-reviews, PR #89). The existing `slow_stream_open_times_out_with_request_timeout` (`tests/envd_api.rs`) keeps covering the configured timeout.
 
 Add unit tests for the defaults. `src/commands.rs` has no test module yet; add one at the end of the file:
 
@@ -4430,66 +4441,91 @@ git commit -m "feat!: no PTY deadline by default (#55)"
 
 - [ ] **Step 1: Write the failing tests**
 
-Append to `tests/envd_write.rs`. Import `DEFAULT_UPLOAD_CONCURRENCY` from `e2b_client`, and `wiremock::matchers::query_param` (already imported):
+Append to `tests/envd_write.rs`. Import `DEFAULT_UPLOAD_CONCURRENCY` from `e2b_client`, `std::sync::{Arc, Mutex}`, and add `Respond` to the `wiremock::{Mock, MockServer, Request, ResponseTemplate}` import (`tests/envd_write.rs:20`; `written` at line 37 and `Instant` at line 8 already exist). The two cap tests count uploads in flight from their arrival times (brooke-reviews, PR #89), so they have no wall-clock ceiling to flake on a busy runner:
 
 ```rust
-/// Mounts one octet-stream answer per target, each after `delay`.
-async fn mount_slow_uploads(server: &MockServer, targets: &[String], delay: Duration) {
-    for target in targets {
-        Mock::given(method("POST"))
-            .and(path("/files"))
-            .and(query_param("path", target.as_str()))
-            .respond_with(written(&[target.as_str()]).set_delay(delay))
-            .expect(1)
-            .mount(server)
-            .await;
+/// Answers every octet-stream upload after `delay`, recording when each one
+/// arrived. wiremock calls `respond` as a request arrives and only then
+/// waits out the delay, so each arrival opens a window of `delay` during
+/// which that upload is in flight.
+struct GaugedUploads {
+    delay: Duration,
+    arrivals: Arc<Mutex<Vec<Instant>>>,
+}
+
+impl Respond for GaugedUploads {
+    fn respond(&self, request: &Request) -> ResponseTemplate {
+        self.arrivals.lock().expect("arrivals lock").push(Instant::now());
+        let target = request
+            .url
+            .query_pairs()
+            .find(|(key, _)| key == "path")
+            .map(|(_, value)| value.into_owned())
+            .unwrap_or_default();
+        written(&[target.as_str()]).set_delay(self.delay)
     }
 }
 
+/// The largest number of uploads whose `[arrival, arrival + delay)` windows
+/// overlap. Under a cap of `n` the client sends upload `n + 1` only after a
+/// response, which is at least `delay` after the first arrival, so this is
+/// exactly the number in flight, with no wall-clock ceiling to flake on.
+fn peak_in_flight(arrivals: &[Instant], delay: Duration) -> usize {
+    arrivals
+        .iter()
+        .map(|&start| {
+            arrivals
+                .iter()
+                .filter(|&&other| other <= start && start < other + delay)
+                .count()
+        })
+        .max()
+        .unwrap_or(0)
+}
+
 /// Uploads `count` files as octet-stream with `options`, each answered after
-/// `delay`, and returns how long the batch took.
-async fn timed_batch(count: usize, delay: Duration, options: WriteOptions) -> Duration {
+/// `delay`, and returns the peak number of uploads in flight.
+async fn gauged_batch(count: usize, delay: Duration, options: WriteOptions) -> usize {
     let server = MockServer::start().await;
     let sandbox = sandbox_with_version(&server, "0.5.7").await;
-    let targets: Vec<String> = (0..count).map(|index| format!("/w/{index}")).collect();
-    mount_slow_uploads(&server, &targets, delay).await;
-    let entries: Vec<WriteEntry> = targets
-        .iter()
-        .map(|target| WriteEntry::new(target.clone(), "x"))
+    let arrivals = Arc::new(Mutex::new(Vec::with_capacity(count)));
+    Mock::given(method("POST"))
+        .and(path("/files"))
+        .respond_with(GaugedUploads { delay, arrivals: Arc::clone(&arrivals) })
+        .expect(u64::try_from(count).expect("count fits u64"))
+        .mount(&server)
+        .await;
+    let entries: Vec<WriteEntry> = (0..count)
+        .map(|index| WriteEntry::new(format!("/w/{index}"), "x"))
         .collect();
-    let started = Instant::now();
     let written = sandbox
         .files()
         .write_files(&entries, &options.octet_stream(true))
         .await
         .expect("write_files");
     assert_eq!(written.len(), count);
-    started.elapsed()
+    let arrivals = arrivals.lock().expect("arrivals lock");
+    assert_eq!(arrivals.len(), count);
+    peak_in_flight(&arrivals, delay)
 }
 
 #[tokio::test]
 async fn octet_stream_uploads_are_capped_at_max_concurrency() {
-    // Arrange and act: 6 uploads of 300 ms each, at most 2 at a time.
-    let delay = Duration::from_millis(300);
-    let elapsed = timed_batch(6, delay, WriteOptions::default().max_concurrency(2)).await;
+    // Arrange and act: 6 uploads of 500 ms each, at most 2 at a time.
+    let peak = gauged_batch(6, Duration::from_millis(500), WriteOptions::default().max_concurrency(2)).await;
 
-    // Assert: 2 at a time takes at least 3 rounds (900 ms); one at a time
-    // would take 6 (1.8 s), so the cap is 2, not 1, and not more than 2.
-    assert!(elapsed >= delay * 3, "more than 2 uploads overlapped: {elapsed:?}");
-    assert!(elapsed < delay * 6 - Duration::from_millis(100), "uploads ran one at a time: {elapsed:?}");
+    // Assert: exactly 2 were ever in flight together.
+    assert_eq!(peak, 2);
 }
 
 #[tokio::test]
 async fn the_default_cap_is_eight_uploads_in_flight() {
-    // Arrange and act: 500 ms uploads; 8 fit in one round, 9 need two.
-    let delay = Duration::from_millis(500);
-    let eight = timed_batch(8, delay, WriteOptions::default()).await;
-    let nine = timed_batch(9, delay, WriteOptions::default()).await;
+    // Arrange and act: 9 uploads of 500 ms each with the default options.
+    let peak = gauged_batch(9, Duration::from_millis(500), WriteOptions::default()).await;
 
-    // Assert: exactly 8 in flight, so 8 take one round and 9 take two.
+    // Assert: the 9th waited for a slot, so exactly 8 overlapped.
     assert_eq!(DEFAULT_UPLOAD_CONCURRENCY, 8);
-    assert!(eight < delay * 2 - Duration::from_millis(100), "8 uploads took two rounds: {eight:?}");
-    assert!(nine >= delay * 2, "9 uploads fit in one round: {nine:?}");
+    assert_eq!(peak, 8);
 }
 
 #[tokio::test]
@@ -8296,7 +8332,7 @@ Done by the coordinator session, which alone writes the ledger. The ledger work 
   | CLM-0171 | test | Task 3's mock tests in `tests/rest_lifecycle.rs` |
   | CLM-0172 | test | `tests/zero_timeouts.rs` @ Task 4's merge |
   | CLM-0173 | test | `tests/envd_file_options.rs` @ Task 5's merge; plus the `live_files` tests @ hosted (regression through the new signatures) |
-  | CLM-0174 | test | `tests/envd_connect_options.rs` @ Task 7's merge; plus demonstration `clm_0040_connect_attaches_to_running_command @ hosted` |
+  | CLM-0174 | test | `tests/envd_connect_options.rs` @ Task 7's merge: `command_connect_defaults_to_the_sdk_sixty_seconds`, `command_connect_sends_the_chosen_deadline`, `command_connect_without_a_deadline_sends_no_header`, `pty_connect_has_no_deadline_by_default` (Task 8's replacement of `pty_connect_defaults_to_the_sdk_sixty_seconds`), `a_shorter_request_timeout_bounds_the_wait_for_the_start_event`, `a_longer_request_timeout_overrides_the_configured_one`, `command_options_request_timeout_bounds_start`, `pty_options_request_timeout_bounds_create` (not `the_stream_deadline_is_not_the_request_timeout`, which only shows the two values travel separately); plus demonstration `clm_0040_connect_attaches_to_running_command @ hosted` |
   | CLM-0175 | demonstration | `clm_0175_* @ hosted, <hosted log>`; plus Task 8's mock test for the default |
   | CLM-0176 | test | Task 9's tests in `tests/envd_write.rs` |
   | CLM-0177 | test | Task 10's two mock tests in `tests/envd_api.rs`; plus demonstration `clm_0177_* @ hosted` |
