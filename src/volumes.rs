@@ -17,7 +17,10 @@ use serde::{Deserialize, Serialize};
 /// Volumes are persistent and billed: they outlive every sandbox that mounts
 /// them until [`crate::Client::destroy_volume`] removes them.
 ///
-/// `Debug` prints the ID, name and domain but never the token.
+/// `Debug` prints the ID, name and domain but never the token. `Clone`
+/// copies the token too, still wrapped (Python note: Rust values are moved,
+/// not shared, unless cloned, so a handle you also pass on needs a clone).
+#[derive(Clone)]
 pub struct Volume {
     volume_id: String,
     name: String,
@@ -197,6 +200,9 @@ mod tests {
             debug.contains("vol-1") && debug.contains("byoc.test"),
             "{debug}"
         );
+        let copy = volume.clone();
+        assert_eq!(copy.token().expose_secret(), "tok-secret");
+        assert!(!format!("{copy:?}").contains("tok-secret"));
     }
 
     #[test]
