@@ -103,10 +103,9 @@ impl PtySize {
 ///     .timeout(Some(Duration::from_secs(3600)));
 /// # let _ = options;
 /// ```
-// Every field's own default is the option's default (no deadline, #55), so
-// `Default` is derived: `#[derive(Default)]` is Python's "every field takes
-// its zero value", here an empty map, `None`s and the configured request
-// timeout.
+// `Default` is derived because every field's own default is the option's
+// default (no deadline, #55): an empty map, `None`s and the unset
+// `RequestTimeout`, which means the configured request timeout.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct PtyOptions {
     envs: HashMap<String, String>,
