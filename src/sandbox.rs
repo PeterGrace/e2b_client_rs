@@ -374,10 +374,19 @@ impl Sandbox {
     pub(crate) async fn start_mcp_gateway(&self, config: &Map<String, Value>) -> Result<()> {
         let command = gateway_command(config)?;
         let token = SecretString::from(uuid::Uuid::new_v4().to_string());
-        let options = CommandOptions::default()
-            .user(MCP_USER)
-            .env(MCP_TOKEN_ENV, token.expose_secret());
-        let result = self.commands().run(&command, &options).await?;
+        // `CommandOptions::env` keeps its own plain `String` copy of the
+        // token, and so does the request body. Building the options inline
+        // makes them a temporary, dropped at the end of this statement, so
+        // that copy is gone before the token is stored below.
+        let result = self
+            .commands()
+            .run(
+                &command,
+                &CommandOptions::default()
+                    .user(MCP_USER)
+                    .env(MCP_TOKEN_ENV, token.expose_secret()),
+            )
+            .await?;
         if !result.success() {
             return Err(Error::McpGateway(result.stderr));
         }
