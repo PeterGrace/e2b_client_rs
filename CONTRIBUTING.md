@@ -12,6 +12,7 @@ You need a stable Rust toolchain (with `rustfmt` and `clippy`) and
 | `just test` | Unit, mock-server and doc tests |
 | `just doc` | Build the docs with warnings as errors |
 | `just test-live <target>` | Live tests against `hosted` E2B or `sandbawks` (see below) |
+| `just test-live-paced <target> [gap] [filter]` | Live tests one at a time with a gap, rerunning readiness failures once (see `docs/verification/live-pacing.md`) |
 | `cargo +1.89 check --all-targets --locked` | Check the minimum supported Rust version (CI job `msrv`) |
 
 CI (`.github/workflows/ci.yml`) runs `just lint`, `just test` and `just doc` on
@@ -69,7 +70,11 @@ E2B_DOMAIN_SANDBAWKS=<server-domain>
 E2B_TEMPLATE_SANDBAWKS=<template-on-that-server>   # optional, default `base`
 ```
 
-Then run `just test-live sandbawks`. The live harness refuses to run while the
+Then run `just test-live sandbawks`, or, for a server with a small warm pool
+such as sandbawks, `just test-live-paced sandbawks`, which runs one test at a
+time and reruns readiness failures once
+([docs/verification/live-pacing.md](docs/verification/live-pacing.md)). The
+live harness refuses to run while the
 standard `E2B_API_KEY`, `E2B_API_URL`, `E2B_DOMAIN` or `E2B_SANDBOX_URL`
 variables are set, so a run cannot silently talk to the wrong server. It does
 not support a single shared envd endpoint (`E2B_SANDBOX_URL`); use the client's
