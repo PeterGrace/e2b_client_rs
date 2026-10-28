@@ -5892,7 +5892,7 @@ git commit -m "feat: API review: non_exhaustive events and signals, new() on eve
 - Modify: `docs/api-review.md` (link the policy), if Task 12 has landed; otherwise Task 12 adds the link
 - Create: `changelog/<ts>-m4-task-13-msrv-and-semver.md`
 
-> **Corrected (issue #96, 2026-10-28).** The changelog entry shipped as `changelog/<ts>-m4-task-13-msrv-semver.md` (the issue's name). Everything else landed as written: 1.88 fails on `uuid@1.29.0 requires rustc 1.89.0`, 1.89 builds, and every "Where it appears" cell matched the signatures.
+> **Corrected (issue #96, 2026-10-28).** The changelog entry shipped as `changelog/<ts>-m4-task-13-msrv-semver.md` (the issue's name). Everything else landed as written: 1.88 fails on `uuid@1.29.0 requires rustc 1.89.0`, 1.89 builds, and every "Where it appears" cell matched the signatures. The `msrv` job's comment on `--locked` is fixed in Step 3 below: Cargo ignores a dependency's `Cargo.lock` (git ones included), so the lock is not what users get; the README's MSRV bullet says how a downstream build on 1.89 stays on compatible versions.
 
 - [ ] **Step 1: Confirm the floor before pinning it**
 
@@ -5923,8 +5923,9 @@ In `.github/workflows/ci.yml`, after the `check` job:
 ```yaml
   msrv:
     # The minimum supported Rust version in Cargo.toml (`rust-version`).
-    # `--locked` checks the committed Cargo.lock, which is what users of a
-    # git dependency get.
+    # `--locked` makes this a reproducible check of this repository's
+    # Cargo.lock. Cargo ignores a dependency's lockfile, so downstream
+    # builds resolve their own versions (README, "Versioning").
     name: MSRV (Rust 1.89)
     runs-on: ubuntu-latest
     steps:

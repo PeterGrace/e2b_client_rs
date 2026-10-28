@@ -219,7 +219,13 @@ Every wire detail, with citations into the official SDK sources, is in
   listed in its changelog entry.
 - **Minimum supported Rust version: 1.89.** It is `rust-version` in
   `Cargo.toml` and is checked in CI. Raising it is a minor release, never a
-  patch release.
+  patch release. CI checks this repository's `Cargo.lock`, which Cargo
+  ignores when the crate is a dependency: your own lockfile picks the
+  transitive versions. On Rust 1.89 exactly, a newer transitive release may
+  need a newer Rust. Cargo's MSRV-aware resolver (resolver 3, the default for
+  edition 2024) avoids that by preferring versions that build on your
+  `rust-version`, or on your toolchain when none is set. With an older
+  resolver, pin the offending crate with `cargo update <crate> --precise <version>`.
 - **Public dependencies.** These crates' types or traits appear in the API,
   so a breaking release of one of them (a new major version, or a new minor
   version before 1.0) is a breaking release of this crate too:

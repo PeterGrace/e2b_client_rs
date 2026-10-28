@@ -30,8 +30,9 @@ jobs:
 
   msrv:
     # The minimum supported Rust version in Cargo.toml (`rust-version`).
-    # `--locked` checks the committed Cargo.lock, which is what users of a
-    # git dependency get.
+    # `--locked` makes this a reproducible check of this repository's
+    # Cargo.lock. Cargo ignores a dependency's lockfile, so downstream
+    # builds resolve their own versions (README, "Versioning").
     name: MSRV (Rust 1.89)
     runs-on: ubuntu-latest
     steps:
