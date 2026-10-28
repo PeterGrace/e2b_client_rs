@@ -1,4 +1,5 @@
-//! Kills every sandbox, and deletes every snapshot, this run left behind.
+//! Kills every sandbox, and deletes every snapshot and volume, this run left
+//! behind.
 //! `just test-live` runs it last.
 
 mod live_support;
@@ -122,4 +123,39 @@ async fn delete_when_unused(client: &Client, snapshot_id: &str) {
         },
     )
     .await;
+}
+
+#[tokio::test]
+#[ignore = "live: run with `just test-live <target>`"]
+async fn sweep_leftover_volumes_of_this_run() {
+    // Volumes are persistent and billed, and outlive every sandbox that
+    // mounts them, so a test that panics before its own destroy would leak
+    // one. The live tests name theirs with `resource_name`, and nothing else
+    // ties a volume to the run.
+    //
+    // Whether hosted E2B refuses to destroy a volume a running sandbox
+    // mounts is not known yet (the team's volumes were not enabled when this
+    // was written), so the run's sandboxes go first, as for snapshots.
+    let client = client();
+    kill_leftover_sandboxes(&client).await;
+    let marker = resource_name("");
+    let leftovers: Vec<String> = client
+        .list_volumes()
+        .await
+        .expect("list volumes")
+        .into_iter()
+        .filter(|volume| volume.name.contains(&marker))
+        .map(|volume| volume.volume_id)
+        .collect();
+    for volume_id in &leftovers {
+        client
+            .destroy_volume(volume_id)
+            .await
+            .expect("destroy leftover volume");
+    }
+    eprintln!(
+        "sweep: destroyed {} leftover volume(s) of run {}",
+        leftovers.len(),
+        run_id()
+    );
 }

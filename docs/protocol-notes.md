@@ -62,7 +62,7 @@ All JSON. Request/response models are the generated OpenAPI models under
 | Call | Route and status handling | Citation |
 |---|---|---|
 | Create | `POST /v2/sandboxes`, 201 → `Sandbox` | `py: api/client/api/sandboxes/post_v2_sandboxes.py:24-25, 39-42`; `py: sandbox_async/sandbox_api.py:256-277`; `js: 5566` |
-| Create body | `templateID`, `timeout`, `autoPause`, `autoPauseMemory`, `autoResume`, `metadata`, `envVars`, `allow_internet_access` (snake_case in the spec), `network` (see "Network"); header `Idempotency-Key` when a key is given | `py: api/client/models/new_sandbox_v2.py:112-132, 145-171`; `py: sandbox_async/sandbox_api.py:237-260` |
+| Create body | `templateID`, `timeout`, `autoPause`, `autoPauseMemory`, `autoResume`, `metadata`, `envVars`, `allow_internet_access` (snake_case in the spec), `network` (see "Network"), `volumeMounts` (see "Volumes"); header `Idempotency-Key` when a key is given | `py: api/client/models/new_sandbox_v2.py:97-132, 145-171`; `py: sandbox_async/sandbox_api.py:237-260` |
 | Create lifecycle | `autoPause` only when `on_timeout` is set (`true` for pause, `false` for kill); `autoPauseMemory` only for a pause with a mode (`full` → `true`, `filesystem` → `false`), else omitted and the API default (full) applies; `autoResume: {enabled}` only when `auto_resume` is set | `py: sandbox/sandbox_api.py:639-662, 1054-1125`; `py: api/client/models/new_sandbox_v2.py:113-118`; `py: api/client/models/sandbox_auto_resume_config.py:18, 28` |
 | Lifecycle checks | before any request, `InvalidArgument`: `auto_resume: true` without `on_timeout` pause (unset counts as kill), and `auto_resume: true` with mode `filesystem`. The SDK's third check, a mode on a kill, cannot be written here: `OnTimeout::Kill` has no mode | `py: sandbox/sandbox_api.py:1095-1114` |
 | Idempotency key | `Idempotency-Key` header on `POST /v2/sandboxes`, only when given; 1-255 characters, then only `[a-z0-9-]`, else `InvalidArgument` before any request; checked before the lifecycle | `py: api/client/api/sandboxes/post_v2_sandboxes.py:17-21`; `py: retry.py:29-44`; `py: sandbox_async/sandbox_api.py:228-232`; `js: 5568` |
@@ -71,7 +71,7 @@ All JSON. Request/response models are the generated OpenAPI models under
 | Connect v1 (fallback) | `POST /sandboxes/{id}/connect`, body `{timeout, memory?}`, `timeout` required (300 s sent when the caller set none); `memory: false` for a reboot, as on v2 | `py: api/client/api/sandboxes/post_sandboxes_sandbox_id_connect.py:22-23`; `py: api/client/models/connect_sandbox.py:13-43` |
 | Default sandbox timeout 300 s | | `py: sandbox/main.py:30` |
 | Get | `GET /sandboxes/{id}` → `SandboxDetail`; 404 → not found | `py: api/client/api/sandboxes/get_sandboxes_sandbox_id.py:17-18`; `py: sandbox_async/sandbox_api.py:118-135`; `js: 5289` |
-| Detail fields | `startedAt`, `endAt`, `cpuCount`, `memoryMB`, `diskSizeMB`, `state`, `metadata`, `domain`, ... | `py: api/client/models/sandbox_detail.py:174-218` |
+| Detail fields | `startedAt`, `endAt`, `cpuCount`, `memoryMB`, `diskSizeMB`, `state`, `metadata`, `domain`, `volumeMounts` (see "Volumes"), ... | `py: api/client/models/sandbox_detail.py:174-250` |
 | Detail `lifecycle` | `{onTimeout: pause\|kill, autoResume: bool}`; an unknown, missing or `null` `onTimeout` reads as `TimeoutAction::Unknown` (the SDK raises on these); a missing `autoResume` reads as `false`; `lifecycle` absent or `null` → `None` | `py: api/client/models/sandbox_lifecycle.py:44-46`; `py: api/client/models/sandbox_detail.py:43, 227-232` |
 | Detail `pauseMode` | `full` or `filesystem`: what the latest pause saved; returned once a pause has finished and omitted while running or still pausing (hosted E2B adds it a poll after `state` turns `paused`, live 2026-10-27); unknown values read as `None` | `py: api/client/models/sandbox_detail.py:44-47, 234-239`; `py: api/client/models/sandbox_pause_mode.py:5-6` |
 | State values | `running`, `paused` | `py: api/client/models/sandbox_state.py:5-6` |
@@ -132,6 +132,27 @@ The crate builds the requests with `SnapshotOptions` and
 | The source is briefly paused, snapshotted with its full memory and resumed, keeping its ID and expiry; every fork boots from that one snapshot, taken once whatever the count | `py: sandbox_async/main.py:400-420`; `py: api/client/models/sandbox_fork_request.py:17-19` |
 | `SandboxForkResult` is `{sandbox?, error?: {code, message}}`; the API sets exactly one. An error wins over a sandbox, and an entry with neither is an error ("Failed to start forked sandbox" in the SDK, `Error::Protocol` here). A per-fork error is `Error::Api { status: code, message }`, a per-fork 404 included: it refers to something that fork needed, not the source. The SDK maps the code to an exception class; the crate keeps the code. The crate decodes each entry on its own, so a malformed one is that fork's `Error::Decode`, or `Error::Protocol` naming the sandbox when the entry has a `sandbox.sandboxID` (that fork may be running); the SDK fails the whole call on one. A per-fork 404 is still `is_not_found()`, as any API 404 is. A `null` body is `Error::Decode`, as the Python SDK raises on it (the JS SDK reads it as no forks) | `py: api/client/models/sandbox_fork_result.py:17-76`; `py: sandbox_async/sandbox_api.py:466-493`; `py: api/client/models/error.py:26-28`; `js: 5596-5604` |
 | Hosted E2B starts forks with the source's metadata (a fork's `get_info().metadata` carries the source's keys) and in state `running`, with a `/tmp` file the source wrote before the fork | live, hosted E2B, 2026-10-28 (`clm_0030_fork_starts_running_copies`) |
+
+## Volumes
+
+Volumes are persistent storage that outlives sandboxes and is mounted into
+them at create. The crate manages them with `Client::{create_volume,
+get_volume, list_volumes, destroy_volume}` and mounts them with
+`CreateSandboxParams::volume_mount` (`src/volumes.rs`, `src/client.rs`,
+`src/models.rs`). The volume content API (files in a volume, reached with the
+volume's token, without a sandbox) is not implemented.
+
+| Fact | Citation |
+|---|---|
+| Create: `POST /volumes` body `{name}`, 201 → `VolumeAndToken` `{volumeID, name, token, domain?}`; other statuses are errors | `py: api/client/api/volumes/post_volumes.py:21-52`; `py: api/client/models/volume_and_token.py:50-63`; `py: volume/volume_async.py:134-173` |
+| Get: `GET /volumes/{id}`, 200 → `VolumeAndToken`; 404 → not found (`Error::VolumeNotFound`, the SDK's `VolumeNotFoundException`); other statuses are errors. The ID is one path segment | `py: api/client/api/volumes/get_volumes_volume_id.py:17-43`; `py: volume/volume_async.py:197-237` |
+| List: `GET /volumes`, 200 → `[{volumeID, name}]` (no tokens, no paging); a `null` body reads as none | `py: api/client/api/volumes/get_volumes.py:15-42`; `py: volume/volume_async.py:240-262`; `py: volume/types.py:11-18` |
+| Destroy: `DELETE /volumes/{id}`, 204 → `true`, 404 → `false`; other statuses are errors | `py: api/client/api/volumes/delete_volumes_volume_id.py:16-41`; `py: volume/volume_async.py:265-285` |
+| `domain` is set only for teams on a custom (BYOC) cluster; an empty or missing one reads as `None` (`domain if isinstance(domain, str) and domain else None`). The SDK then falls back to the configured domain for content requests; the crate, which has no content API, leaves that to the caller | `py: volume/types.py:21-30`; `py: volume/volume_async.py:159-163, 227-231` |
+| The token is a secret: `Volume` keeps it in a `SecretString`, and its `Debug` prints the ID, name and domain only | crate rule (CLM-0122's) |
+| Mounts at create: `volumeMounts: [{name, path}]` in the create body, left out when there are none (`volume_mounts if volume_mounts else UNSET`). The SDK takes a dict from path to volume (or volume name), so one path holds one mount; a second `volume_mount` at the same path replaces the first in its place, as a dict assignment does | `py: sandbox_async/main.py:203, 218-227`; `py: sandbox_async/sandbox_api.py:252`; `py: api/client/models/sandbox_volume_mount.py:10-43`; `py: api/client/models/new_sandbox_v2.py:97-102, 131-132` |
+| Mounts read back: `volumeMounts` in the detail and in list entries; missing or `null` reads as none (`d.pop("volumeMounts", UNSET) or []`) | `py: api/client/models/sandbox_detail.py:241-246`; `py: api/client/models/listed_sandbox.py:139-144` |
+| Hosted E2B, for a team without volumes: `POST /volumes` answers 403 `use of volumes is not enabled`, while `GET /volumes` answers 200 `[]`. A missing volume with a UUID-shaped ID is 404 `Volume not found` on get and destroy; an ID of another shape is 400 `Invalid volume ID` (an `Error::Api`, not `VolumeNotFound`, as in the SDK) | live, hosted E2B, 2026-10-28 (`clm_0148_missing_volume_is_not_found_and_not_destroyed`) |
 
 ## Connect-RPC framing
 
@@ -385,10 +406,11 @@ the download URL with its `signature` pair removed with a 4xx.
   output; here `next_event()` hands chunks to the caller and `wait()` only
   collects what is left, so output is held once.
 - **Not implemented yet.** Milestone 3: the remaining SDK 2.61 create
-  fields (volume mounts and the MCP gateway).
+  field (the MCP gateway).
   Milestone 4: the `is_symlink` file type (#30) and dropping the v1 connect
   fallback.
-  Unscheduled: sandbox health probing on transport errors. Out of scope by
+  Unscheduled: sandbox health probing on transport errors, and the volume
+  content API. Out of scope by
   design: template builds and a sync API.
 
 ## Verification against a live server

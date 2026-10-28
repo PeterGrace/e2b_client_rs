@@ -60,6 +60,11 @@ pub enum Error {
     #[error("sandbox {0} not found")]
     SandboxNotFound(String),
 
+    /// The REST API reported that the volume does not exist (HTTP 404 from
+    /// [`crate::Client::get_volume`]).
+    #[error("volume {0} not found")]
+    VolumeNotFound(String),
+
     /// An envd Connect-RPC call failed.
     #[error("envd RPC error ({code}): {message}")]
     Rpc {
@@ -99,14 +104,14 @@ pub enum Error {
 
 impl Error {
     /// Whether this error means "the thing you asked about does not exist":
-    /// a missing sandbox, an RPC `not_found`, or an HTTP 404 from the REST or
-    /// envd file API.
+    /// a missing sandbox or volume, an RPC `not_found`, or an HTTP 404 from
+    /// the REST or envd file API.
     ///
     /// # Returns
     ///
-    /// `true` for [`Error::SandboxNotFound`], [`Error::Rpc`] with
-    /// [`ConnectCode::NotFound`], and [`Error::Api`]/[`Error::Envd`] with
-    /// status 404.
+    /// `true` for [`Error::SandboxNotFound`], [`Error::VolumeNotFound`],
+    /// [`Error::Rpc`] with [`ConnectCode::NotFound`], and
+    /// [`Error::Api`]/[`Error::Envd`] with status 404.
     ///
     /// # Examples
     ///
@@ -119,7 +124,7 @@ impl Error {
     #[must_use]
     pub fn is_not_found(&self) -> bool {
         match self {
-            Self::SandboxNotFound(_) => true,
+            Self::SandboxNotFound(_) | Self::VolumeNotFound(_) => true,
             Self::Rpc { code, .. } => *code == ConnectCode::NotFound,
             Self::Api { status, .. } | Self::Envd { status, .. } => *status == 404,
             _ => false,
@@ -347,6 +352,7 @@ mod tests {
     #[test]
     fn is_not_found_covers_each_family() {
         assert!(Error::SandboxNotFound("sbx".into()).is_not_found());
+        assert!(Error::VolumeNotFound("vol".into()).is_not_found());
         assert!(
             Error::Api {
                 status: 404,
