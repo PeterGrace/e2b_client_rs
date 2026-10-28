@@ -113,7 +113,11 @@ pub enum Error {
     Protocol(String),
 
     /// A response body could not be decoded as the expected JSON shape.
-    #[error("could not decode response: {0}")]
+    ///
+    /// The `Display` is only "could not decode response"; the serde_json
+    /// detail is the [`std::error::Error::source`], as for
+    /// [`Error::Transport`], so a chain printer shows it once.
+    #[error("could not decode response")]
     Decode(#[from] serde_json::Error),
 
     /// A client-side deadline expired.
@@ -402,6 +406,11 @@ impl std::error::Error for TransportError {
 ///
 /// Source: `@connectrpc/connect` 2.2.0 `dist/cjs/code.js:31-91` (numeric values)
 /// and `dist/cjs/protocol-connect/code-string.js:24-31` (wire spelling).
+///
+/// Deliberately exhaustive (not `#[non_exhaustive]`): these 16 codes are the
+/// closed set of gRPC status codes, and the crate reports a wire code it does
+/// not recognise as one of them (from the HTTP status, else
+/// [`ConnectCode::Unknown`]), so a `match` without a `_` arm stays valid.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ConnectCode {
     /// The operation was cancelled.

@@ -62,6 +62,8 @@ async fn clm_0034_start_streams_chunks_then_exit() {
                 stderr.extend_from_slice(&chunk);
             }
             CommandEvent::Exit(command_exit) => exit = Some((now, command_exit)),
+            // `CommandEvent` is `#[non_exhaustive]`, so a catch-all arm is required.
+            other => panic!("unexpected command event {other:?}"),
         }
     }
 

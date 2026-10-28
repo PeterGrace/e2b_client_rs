@@ -53,6 +53,17 @@ pub struct FileUrlOptions {
 }
 
 impl FileUrlOptions {
+    /// The default options: envd's default user and a URL that does not
+    /// expire. The same as [`FileUrlOptions::default`].
+    ///
+    /// # Returns
+    ///
+    /// The options.
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     /// Sets the user the URL reads or writes as.
     ///
     /// # Arguments

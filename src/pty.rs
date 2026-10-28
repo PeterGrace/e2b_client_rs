@@ -41,6 +41,9 @@ const TERMINAL_ENV_DEFAULTS: [(&str, &str); 3] = [
 
 /// A terminal size in character cells.
 ///
+/// Deliberately exhaustive with public fields: a size is two numbers and
+/// will not grow, so callers may build it as a literal or destructure it.
+///
 /// # Examples
 ///
 /// ```
@@ -116,6 +119,18 @@ pub struct PtyOptions {
 }
 
 impl PtyOptions {
+    /// The default options: no extra environment, the sandbox's default
+    /// user and working directory, no deadline (#55) and the configured
+    /// request timeout. The same as [`PtyOptions::default`].
+    ///
+    /// # Returns
+    ///
+    /// The options.
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     /// Adds an environment variable for the shell.
     ///
     /// # Arguments

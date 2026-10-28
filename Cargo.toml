@@ -14,6 +14,12 @@ publish = false
 [lib]
 name = "e2b_client"
 
+# Every public item has rustdoc (CLM-0120) and a Debug impl (CLM-0179).
+# CI's `clippy -D warnings` turns these warnings into errors.
+[lints.rust]
+missing_docs = "warn"
+missing_debug_implementations = "warn"
+
 [dependencies]
 # Gzip-compresses uploads on the fly (the SDKs' `gzip=True` upload).
 async-compression = { version = "0.4.42", features = ["tokio", "gzip"] }

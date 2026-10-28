@@ -445,6 +445,19 @@ impl Default for WriteOptions {
 }
 
 impl WriteOptions {
+    /// The default options: the sandbox's default user, multipart upload,
+    /// no gzip, no metadata, at most [`DEFAULT_UPLOAD_CONCURRENCY`] uploads
+    /// in flight and the configured request timeout. The same as
+    /// [`WriteOptions::default`].
+    ///
+    /// # Returns
+    ///
+    /// The options.
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     /// Writes as `user` (who will own the files) instead of the sandbox's
     /// default user.
     ///
@@ -729,6 +742,19 @@ impl Default for WatchOptions {
 }
 
 impl WatchOptions {
+    /// The default options: not recursive, no entries in events, no
+    /// network mounts, the sandbox's default user, the
+    /// [`DEFAULT_WATCH_TIMEOUT`] deadline and the configured request
+    /// timeout. The same as [`WatchOptions::default`].
+    ///
+    /// # Returns
+    ///
+    /// The options.
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     /// Also watches subdirectories. Needs envd 0.1.4 or newer.
     ///
     /// # Arguments
