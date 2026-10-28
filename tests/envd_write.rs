@@ -10,7 +10,7 @@ use std::time::{Duration, Instant};
 use async_compression::tokio::bufread::GzipDecoder;
 use common::{ACCESS_TOKEN, sandbox, sandbox_with_version};
 use e2b_client::Sandbox;
-use e2b_client::{Error, FileType, WriteEntry, WriteOptions};
+use e2b_client::{Error, FileOptions, FileType, WriteEntry, WriteOptions};
 use serde_json::json;
 use tokio::io::AsyncReadExt;
 use wiremock::matchers::{
@@ -567,8 +567,14 @@ async fn reported_metadata(
         .mount(server)
         .await;
     let files = sandbox.files();
-    let written = files.write("/a", "x", None).await.expect("write");
-    let info = files.get_info("/a", None).await.expect("stat");
+    let written = files
+        .write("/a", "x", &WriteOptions::default())
+        .await
+        .expect("write");
+    let info = files
+        .get_info("/a", &FileOptions::default())
+        .await
+        .expect("stat");
     (written.metadata, info.metadata)
 }
 

@@ -7,9 +7,10 @@ use std::time::{Duration, Instant};
 
 use e2b_client::{
     ALL_TRAFFIC, CommandOptions, ConnectOptions, DEFAULT_MCP_TEMPLATE, EnvdVersion, Error,
-    ForkOptions, Lifecycle, ListSandboxesParams, ListSnapshotsParams, MetricsParams, NetworkConfig,
-    NetworkRule, NetworkUpdate, OnResume, OnTimeout, PauseOptions, Sandbox, SandboxInfo,
-    SandboxState, SnapshotMode, SnapshotOptions, SnapshotPage, SortOrder, TimeoutAction,
+    FileOptions, ForkOptions, Lifecycle, ListSandboxesParams, ListSnapshotsParams, MetricsParams,
+    NetworkConfig, NetworkRule, NetworkUpdate, OnResume, OnTimeout, PauseOptions, Sandbox,
+    SandboxInfo, SandboxState, SnapshotMode, SnapshotOptions, SnapshotPage, SortOrder,
+    TimeoutAction, WriteOptions,
 };
 use live_support::{
     LiveSandbox, RUN_METADATA_KEY, client, http_reply, no_http_reply_twice, params, params_from,
@@ -242,7 +243,7 @@ async fn clm_0014_connect_resumes_paused_sandbox_with_files() {
     let sandbox = LiveSandbox::create(&params().timeout(Duration::from_secs(180))).await;
     sandbox
         .files()
-        .write("/tmp/state.txt", "persisted", None)
+        .write("/tmp/state.txt", "persisted", &WriteOptions::default())
         .await
         .expect("write");
     assert!(sandbox.pause().await.expect("pause"));
@@ -262,7 +263,7 @@ async fn clm_0014_connect_resumes_paused_sandbox_with_files() {
     // Assert
     let text = resumed
         .files()
-        .read_to_string("/tmp/state.txt", None)
+        .read_to_string("/tmp/state.txt", &FileOptions::default())
         .await
         .expect("read after resume");
     assert_eq!(text, "persisted");
@@ -630,7 +631,11 @@ async fn clm_0028_get_host_reaches_a_port_in_the_sandbox() {
     let sandbox = LiveSandbox::new().await;
     sandbox
         .files()
-        .write("/tmp/www/hello.txt", "hello from 8000", None)
+        .write(
+            "/tmp/www/hello.txt",
+            "hello from 8000",
+            &WriteOptions::default(),
+        )
         .await
         .expect("write");
     let _server = sandbox
@@ -1005,7 +1010,11 @@ async fn clm_0030_snapshot_starts_sandboxes_with_its_files() {
     let source = LiveSandbox::new().await;
     source
         .files()
-        .write("/tmp/snapshot.txt", "from the snapshot", None)
+        .write(
+            "/tmp/snapshot.txt",
+            "from the snapshot",
+            &WriteOptions::default(),
+        )
         .await
         .expect("write");
     let options = SnapshotOptions::new().name(resource_name("starts"));
@@ -1015,7 +1024,7 @@ async fn clm_0030_snapshot_starts_sandboxes_with_its_files() {
     let copy = LiveSandbox::create(&params_from(&snapshot.snapshot_id)).await;
     let text = copy
         .files()
-        .read_to_string("/tmp/snapshot.txt", None)
+        .read_to_string("/tmp/snapshot.txt", &FileOptions::default())
         .await
         .expect("read in the copy");
 
@@ -1091,7 +1100,7 @@ async fn clm_0030_fork_starts_running_copies() {
     let source = LiveSandbox::new().await;
     source
         .files()
-        .write("/tmp/fork.txt", "from the source", None)
+        .write("/tmp/fork.txt", "from the source", &WriteOptions::default())
         .await
         .expect("write");
     let options = ForkOptions::new().count(2).timeout(Duration::from_secs(60));
@@ -1112,7 +1121,7 @@ async fn clm_0030_fork_starts_running_copies() {
         assert_ne!(fork.sandbox_id(), source.sandbox_id());
         let text = fork
             .files()
-            .read_to_string("/tmp/fork.txt", None)
+            .read_to_string("/tmp/fork.txt", &FileOptions::default())
             .await
             .expect("read in the fork");
         assert_eq!(text, "from the source");
@@ -1204,7 +1213,11 @@ async fn clm_0149_volume_mount_persists_across_sandboxes() {
         let writer = LiveSandbox::create(&mount).await;
         writer
             .files()
-            .write("/mnt/data/kept.txt", "on the volume", None)
+            .write(
+                "/mnt/data/kept.txt",
+                "on the volume",
+                &WriteOptions::default(),
+            )
             .await
             .expect("write through the mount");
         // Dropping `writer` at the end of this block kills it.
@@ -1214,7 +1227,7 @@ async fn clm_0149_volume_mount_persists_across_sandboxes() {
     let reader = LiveSandbox::create(&mount).await;
     let text = reader
         .files()
-        .read_to_string("/mnt/data/kept.txt", None)
+        .read_to_string("/mnt/data/kept.txt", &FileOptions::default())
         .await
         .expect("read through the mount");
 

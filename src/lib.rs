@@ -40,7 +40,7 @@
 //! # Quick start
 //!
 //! ```no_run
-//! use e2b_client::{Client, CommandOptions, CreateSandboxParams};
+//! use e2b_client::{Client, CommandOptions, CreateSandboxParams, FileOptions, WriteOptions};
 //!
 //! #[tokio::main]
 //! async fn main() -> e2b_client::Result<()> {
@@ -51,8 +51,9 @@
 //!     let result = sandbox.commands().run("uname -a", &CommandOptions::default()).await?;
 //!     println!("exit {}: {}", result.exit_code, result.stdout);
 //!
-//!     sandbox.files().write("/tmp/hello.txt", "hello", None).await?;
-//!     let text = sandbox.files().read_to_string("/tmp/hello.txt", None).await?;
+//!     let files = sandbox.files();
+//!     files.write("/tmp/hello.txt", "hello", &WriteOptions::default()).await?;
+//!     let text = files.read_to_string("/tmp/hello.txt", &FileOptions::default()).await?;
 //!     assert_eq!(text, "hello");
 //!
 //!     sandbox.kill().await?;
@@ -103,8 +104,9 @@ pub use config::{
 pub use envd::EnvdVersion;
 pub use error::{ConnectCode, Error, Result, TransportError};
 pub use filesystem::{
-    DEFAULT_WATCH_TIMEOUT, EntryInfo, FileStream, FileType, Filesystem, FilesystemEvent,
-    FilesystemEventType, WatchHandle, WatchOptions, WriteEntry, WriteInfo, WriteOptions,
+    DEFAULT_WATCH_TIMEOUT, EntryInfo, FileOptions, FileStream, FileType, Filesystem,
+    FilesystemEvent, FilesystemEventType, ListOptions, WatchHandle, WatchOptions, WriteEntry,
+    WriteInfo, WriteOptions,
 };
 pub use lifecycle::{
     ConnectOptions, Lifecycle, LifecycleInfo, OnResume, OnTimeout, PauseOptions, SnapshotMode,

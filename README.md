@@ -17,7 +17,7 @@ tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 ## Quick start
 
 ```rust,no_run
-use e2b_client::{Client, CommandOptions, CreateSandboxParams};
+use e2b_client::{Client, CommandOptions, CreateSandboxParams, FileOptions, WriteOptions};
 
 #[tokio::main]
 async fn main() -> e2b_client::Result<()> {
@@ -31,8 +31,9 @@ async fn main() -> e2b_client::Result<()> {
     assert_eq!(result.exit_code, 0);
 
     // Files.
-    sandbox.files().write("/tmp/hello.txt", "hi there", None).await?;
-    let text = sandbox.files().read_to_string("/tmp/hello.txt", None).await?;
+    let files = sandbox.files();
+    files.write("/tmp/hello.txt", "hi there", &WriteOptions::default()).await?;
+    let text = files.read_to_string("/tmp/hello.txt", &FileOptions::default()).await?;
     assert_eq!(text, "hi there");
 
     // Pause, then resume by connecting again.
@@ -58,7 +59,7 @@ async fn main() -> e2b_client::Result<()> {
 | MCP gateway | `CreateSandboxParams::mcp(config)` starts the gateway (on the `mcp-gateway` template unless one is given); `Sandbox::{mcp_url, mcp_token}` |
 | Processes (envd) | `Commands::{start, run, connect, list, send_stdin, close_stdin, stream_input, send_signal, kill}`; `CommandHandle::{next_event, wait}` streams stdout/stderr to an exit code; `InputStream::{send, close}` streams stdin in order over one call |
 | PTY sessions (envd) | `Pty::{create, connect, send_stdin, stream_input, resize, kill}`; `PtyHandle::{next_event, wait}` streams terminal output to an exit code |
-| Files (envd) | `Filesystem::{read, read_to_string, read_stream, write, write_files, write_stream, list, get_info, exists, make_dir, rename, remove, watch_dir}`; `WriteOptions` selects multipart, octet-stream or gzip uploads and attaches metadata; `FileStream::next_chunk` and `WatchHandle::next_event` stream downloads and directory events |
+| Files (envd) | `Filesystem::{read, read_to_string, read_stream, write, write_files, write_stream, list, get_info, exists, make_dir, rename, remove, watch_dir}`; every call takes an options value: `FileOptions::{user, request_timeout}`, `ListOptions::{depth, user, request_timeout}`, and `request_timeout` on `WriteOptions` and `WatchOptions`; `WriteOptions` selects multipart, octet-stream or gzip uploads and attaches metadata; `FileStream::next_chunk` and `WatchHandle::next_event` stream downloads and directory events |
 | Signed URLs | `Sandbox::{upload_url, download_url}` with `FileUrlOptions::{user, expires_in}`: plain HTTP links signed with the sandbox's envd access token |
 | Errors | `Error` (`thiserror`): REST status + E2B message, Connect error codes, envd HTTP errors, protocol, timeout, transport (`TransportError`, with `is_timeout`/`is_connect`), invalid argument; `status()` and the SDK's categories as `is_not_found`, `is_auth`, `is_rate_limited`, `is_service_busy`, `is_not_enough_space`, `is_sandbox_unreachable`, `is_timeout`, `is_retryable` |
 
@@ -73,8 +74,8 @@ sandbox), sandbox logs, secrets and git.
 use std::time::Duration;
 
 use e2b_client::{
-    ALL_TRAFFIC, Client, CreateSandboxParams, Lifecycle, NetworkConfig, OnTimeout,
-    SnapshotMode, SnapshotOptions,
+    ALL_TRAFFIC, Client, CreateSandboxParams, FileOptions, Lifecycle, NetworkConfig, OnTimeout,
+    SnapshotMode, SnapshotOptions, WriteOptions,
 };
 
 async fn snapshot_tour(client: &Client) -> e2b_client::Result<()> {
@@ -89,7 +90,10 @@ async fn snapshot_tour(client: &Client) -> e2b_client::Result<()> {
         .network(network)
         .lifecycle(lifecycle);
     let source = client.create_sandbox(&params).await?;
-    source.files().write("/tmp/state.txt", "warm", None).await?;
+    source
+        .files()
+        .write("/tmp/state.txt", "warm", &WriteOptions::default())
+        .await?;
 
     // A snapshot ID works as a template: start a second sandbox from it.
     let snapshot = source
@@ -98,7 +102,11 @@ async fn snapshot_tour(client: &Client) -> e2b_client::Result<()> {
     let copy = client
         .create_sandbox(&CreateSandboxParams::new(snapshot.snapshot_id.clone()))
         .await?;
-    assert_eq!(copy.files().read_to_string("/tmp/state.txt", None).await?, "warm");
+    let state = copy
+        .files()
+        .read_to_string("/tmp/state.txt", &FileOptions::default())
+        .await?;
+    assert_eq!(state, "warm");
 
     // A snapshot cannot be deleted while a sandbox started from it runs.
     copy.kill().await?;
@@ -114,7 +122,7 @@ async fn snapshot_tour(client: &Client) -> e2b_client::Result<()> {
 use std::time::Duration;
 
 use e2b_client::{
-    CommandOptions, FileUrlOptions, PtyEvent, PtyOptions, PtySize, Sandbox,
+    CommandOptions, FileOptions, FileUrlOptions, PtyEvent, PtyOptions, PtySize, Sandbox,
     StreamInputOptions, WatchOptions, WriteEntry, WriteOptions,
 };
 
@@ -166,7 +174,10 @@ async fn tour(sandbox: &Sandbox) -> e2b_client::Result<()> {
         .files()
         .write_stream("/tmp/big.bin", reader, &WriteOptions::default().gzip(true))
         .await?;
-    let mut download = sandbox.files().read_stream("/tmp/big.bin", None).await?;
+    let mut download = sandbox
+        .files()
+        .read_stream("/tmp/big.bin", &FileOptions::default())
+        .await?;
     while let Some(chunk) = download.next_chunk().await? {
         println!("{} bytes", chunk.len());
     }

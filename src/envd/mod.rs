@@ -17,7 +17,7 @@ use secrecy::{ExposeSecret, SecretString};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 
-use crate::config::{ConnectionConfig, ENVD_PORT};
+use crate::config::{ConnectionConfig, ENVD_PORT, RequestTimeout};
 use crate::error::{Error, Result};
 use connect::{
     CONTENT_TYPE_STREAM_JSON, CONTENT_TYPE_UNARY_JSON, ConnectStream, Empty, decode_unary,
@@ -264,14 +264,20 @@ impl EnvdClient {
         &self.direct_base
     }
 
-    /// The client's request timeout, which bounds unary calls, stream
+    /// The request timeout for one call: the caller's override, else the
+    /// client's configured request timeout. It bounds unary calls, stream
     /// opening and in-memory uploads.
+    ///
+    /// # Arguments
+    ///
+    /// * `request_timeout` - the call's override, or `RequestTimeout::default()`
+    ///   for the configured one.
     ///
     /// # Returns
     ///
-    /// The timeout, or `None` when requests are unbounded.
-    pub(crate) fn request_timeout(&self) -> Option<Duration> {
-        self.request_timeout
+    /// The timeout, or `None` when the call is unbounded.
+    pub(crate) fn timeout_for(&self, request_timeout: RequestTimeout) -> Option<Duration> {
+        request_timeout.resolve(self.request_timeout)
     }
 
     /// The user to act as: the caller's choice, or `"user"` on envd older than
@@ -315,6 +321,7 @@ impl EnvdClient {
     /// * `method` - e.g. `"List"`.
     /// * `request` - the request message.
     /// * `extra_headers` - per-call headers (e.g. the user header).
+    /// * `request_timeout` - the per-call override of the request timeout.
     ///
     /// # Returns
     ///
@@ -331,19 +338,18 @@ impl EnvdClient {
         method: &str,
         request: &Req,
         extra_headers: HeaderMap,
+        request_timeout: RequestTimeout,
     ) -> Result<Res> {
+        let timeout = self.timeout_for(request_timeout);
         let body = serde_json::to_vec(request)?;
         let mut builder = self
             .http
             .post(self.rpc_url(service, method))
             .headers(self.headers.clone())
             .headers(extra_headers)
-            .headers(protocol_headers(
-                CONTENT_TYPE_UNARY_JSON,
-                self.request_timeout,
-            ))
+            .headers(protocol_headers(CONTENT_TYPE_UNARY_JSON, timeout))
             .body(body);
-        if let Some(timeout) = self.request_timeout {
+        if let Some(timeout) = timeout {
             builder = builder.timeout(timeout);
         }
         let response = builder.send().await.map_err(Error::transport)?;
@@ -440,6 +446,7 @@ impl EnvdClient {
     ///
     /// # Arguments
     ///
+    /// * `request_timeout` - the per-call override of the request timeout.
     /// * `opening` - the future that opens the stream and reads its first
     ///   event.
     ///
@@ -453,9 +460,10 @@ impl EnvdClient {
     /// error of `opening`.
     pub(crate) async fn within_request_timeout<T>(
         &self,
+        request_timeout: RequestTimeout,
         opening: impl Future<Output = Result<T>>,
     ) -> Result<T> {
-        within(self.request_timeout, opening).await
+        within(self.timeout_for(request_timeout), opening).await
     }
 
     /// POSTs a streaming Connect call and returns the response once it is 200.
@@ -491,9 +499,24 @@ impl EnvdClient {
     }
 
     /// Starts a request to envd's plain HTTP API at `path`, with the sandbox
-    /// headers and the request timeout applied.
-    pub(crate) fn http_request(&self, method: Method, path: &str) -> RequestBuilder {
-        self.http_request_with_timeout(method, path, self.request_timeout)
+    /// headers and the call's request timeout applied.
+    ///
+    /// # Arguments
+    ///
+    /// * `method` - the HTTP method.
+    /// * `path` - the route, e.g. `/files`.
+    /// * `request_timeout` - the per-call override of the request timeout.
+    ///
+    /// # Returns
+    ///
+    /// The request builder.
+    pub(crate) fn http_request(
+        &self,
+        method: Method,
+        path: &str,
+        request_timeout: RequestTimeout,
+    ) -> RequestBuilder {
+        self.http_request_with_timeout(method, path, self.timeout_for(request_timeout))
     }
 
     /// Starts a request to envd's plain HTTP API at `path`, with the sandbox

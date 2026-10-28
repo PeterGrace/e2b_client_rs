@@ -9,7 +9,7 @@ use bytes::Bytes;
 use reqwest::header::HeaderMap;
 
 use crate::commands::{CommandExit, Commands, open_process_stream};
-use crate::config::no_limit_if_zero;
+use crate::config::{RequestTimeout, no_limit_if_zero};
 use crate::envd::connect::{ConnectStream, Empty};
 use crate::envd::process_pb::{
     self, ConnectRequest, EventResponse, ProcessConfig, ProcessInput, ProcessSelector, PtyConfig,
@@ -357,7 +357,13 @@ impl Pty {
         };
         let _: Empty = self
             .envd
-            .unary(process_pb::SERVICE, "SendInput", &request, HeaderMap::new())
+            .unary(
+                process_pb::SERVICE,
+                "SendInput",
+                &request,
+                HeaderMap::new(),
+                RequestTimeout::default(),
+            )
             .await?;
         Ok(())
     }
@@ -380,7 +386,13 @@ impl Pty {
         };
         let _: Empty = self
             .envd
-            .unary(process_pb::SERVICE, "Update", &request, HeaderMap::new())
+            .unary(
+                process_pb::SERVICE,
+                "Update",
+                &request,
+                HeaderMap::new(),
+                RequestTimeout::default(),
+            )
             .await?;
         Ok(())
     }

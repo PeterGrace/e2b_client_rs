@@ -9,7 +9,10 @@ use common::{
     ACCESS_TOKEN, SANDBOX_ID, decode_request_envelope, end_stream, envelope, message, sandbox,
     sandbox_from_json, sandbox_json, sandbox_with_version, stream_response,
 };
-use e2b_client::{CommandEvent, CommandOptions, ConnectCode, Error, FileType, Sandbox, Signal};
+use e2b_client::{
+    CommandEvent, CommandOptions, ConnectCode, Error, FileOptions, FileType, ListOptions, Sandbox,
+    Signal, WriteOptions,
+};
 use serde_json::{Value, json};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
@@ -139,7 +142,11 @@ async fn legacy_envd_defaults_to_user_account() {
         .run("true", &CommandOptions::default())
         .await
         .expect("run");
-    sandbox.files().read("a", None).await.expect("read");
+    sandbox
+        .files()
+        .read("a", &FileOptions::default())
+        .await
+        .expect("read");
 }
 
 #[tokio::test]
@@ -660,7 +667,7 @@ async fn read_file_downloads_bytes() {
 
     let bytes = sandbox
         .files()
-        .read("/tmp/a b.txt", None)
+        .read("/tmp/a b.txt", &FileOptions::default())
         .await
         .expect("read");
 
@@ -682,7 +689,7 @@ async fn read_missing_file_is_envd_not_found() {
 
     let err = sandbox
         .files()
-        .read_to_string("/nope", None)
+        .read_to_string("/nope", &FileOptions::default())
         .await
         .expect_err("error");
 
@@ -722,7 +729,11 @@ async fn write_file_uploads_multipart() {
 
     let info = sandbox
         .files()
-        .write("/tmp/out.txt", "file contents", Some("root"))
+        .write(
+            "/tmp/out.txt",
+            "file contents",
+            &WriteOptions::default().user("root"),
+        )
         .await
         .expect("write");
 
@@ -743,7 +754,7 @@ async fn write_file_with_empty_response_is_protocol_error() {
 
     let err = sandbox
         .files()
-        .write("/x", vec![1_u8, 2, 3], None)
+        .write("/x", vec![1_u8, 2, 3], &WriteOptions::default())
         .await
         .expect_err("error");
 
@@ -762,7 +773,7 @@ async fn write_file_disk_full_is_envd_error() {
 
     let err = sandbox
         .files()
-        .write("/x", "data", None)
+        .write("/x", "data", &WriteOptions::default())
         .await
         .expect_err("error");
 
@@ -794,8 +805,14 @@ async fn list_dir_and_stat_parse_entries() {
         .await;
     let files = sandbox.files();
 
-    let entries = files.list("/tmp", 2, None).await.expect("list");
-    let info = files.get_info("/tmp/a.txt", None).await.expect("stat");
+    let entries = files
+        .list("/tmp", &ListOptions::new().depth(2))
+        .await
+        .expect("list");
+    let info = files
+        .get_info("/tmp/a.txt", &FileOptions::default())
+        .await
+        .expect("stat");
 
     assert_eq!(entries.len(), 2);
     assert_eq!(entries[1].file_type, FileType::Directory);
@@ -810,7 +827,11 @@ async fn list_dir_with_zero_depth_is_rejected_locally() {
     let server = MockServer::start().await;
     let sandbox = sandbox(&server).await;
 
-    let err = sandbox.files().list("/", 0, None).await.expect_err("error");
+    let err = sandbox
+        .files()
+        .list("/", &ListOptions::new().depth(0))
+        .await
+        .expect_err("error");
 
     assert!(matches!(err, Error::InvalidArgument(_)), "{err:?}");
     let requests = server.received_requests().await.expect("recording");
@@ -851,8 +872,13 @@ async fn file_api_selects_the_user_with_the_username_query() {
     // Act: read then write, as an explicit user and as no user.
     for (sandbox, user) in [(&current, Some("root")), (&current, None), (&legacy, None)] {
         let files = sandbox.files();
-        let _ = files.read("/a", user).await;
-        let _ = files.write("/a", "x", user).await;
+        // `map_or_else(default, f)`: the default when `None`, else `f(user)`.
+        let read_options = user.map_or_else(FileOptions::new, |user| FileOptions::new().user(user));
+        let write_options = user.map_or_else(WriteOptions::default, |user| {
+            WriteOptions::default().user(user)
+        });
+        let _ = files.read("/a", &read_options).await;
+        let _ = files.write("/a", "x", &write_options).await;
     }
 
     // Assert: the explicit user is sent; no user sends none on current envd
@@ -889,8 +915,18 @@ async fn exists_maps_not_found_to_false() {
         .await;
     let files = sandbox.files();
 
-    assert!(files.exists("/present", None).await.expect("present"));
-    assert!(!files.exists("/absent", None).await.expect("absent"));
+    assert!(
+        files
+            .exists("/present", &FileOptions::default())
+            .await
+            .expect("present")
+    );
+    assert!(
+        !files
+            .exists("/absent", &FileOptions::default())
+            .await
+            .expect("absent")
+    );
 }
 
 #[tokio::test]
@@ -914,8 +950,18 @@ async fn make_dir_reports_already_exists_as_false() {
         .await;
     let files = sandbox.files();
 
-    assert!(files.make_dir("/new", None).await.expect("new"));
-    assert!(!files.make_dir("/old", None).await.expect("old"));
+    assert!(
+        files
+            .make_dir("/new", &FileOptions::default())
+            .await
+            .expect("new")
+    );
+    assert!(
+        !files
+            .make_dir("/old", &FileOptions::default())
+            .await
+            .expect("old")
+    );
 }
 
 #[tokio::test]
@@ -942,10 +988,13 @@ async fn rename_and_remove() {
     let files = sandbox.files();
 
     let moved = files
-        .rename("/a", "/b", Some("root"))
+        .rename("/a", "/b", &FileOptions::new().user("root"))
         .await
         .expect("rename");
-    files.remove("/b", None).await.expect("remove");
+    files
+        .remove("/b", &FileOptions::default())
+        .await
+        .expect("remove");
 
     assert_eq!(moved.path, "/b");
 }
@@ -962,7 +1011,7 @@ async fn stat_without_entry_is_protocol_error() {
 
     let err = sandbox
         .files()
-        .get_info("/x", None)
+        .get_info("/x", &FileOptions::default())
         .await
         .expect_err("error");
 
@@ -1001,9 +1050,9 @@ async fn envd_requests_for_every_route(server: &MockServer, sandbox: &Sandbox) -
     let _ = commands.run("true", &CommandOptions::default()).await;
     let _ = commands.connect(1, None).await;
     let _ = commands.list().await;
-    let _ = files.read("/a", None).await;
-    let _ = files.write("/a", "x", None).await;
-    let _ = files.list("/", 1, None).await;
+    let _ = files.read("/a", &FileOptions::default()).await;
+    let _ = files.write("/a", "x", &WriteOptions::default()).await;
+    let _ = files.list("/", &ListOptions::default()).await;
     let _ = sandbox.is_running().await;
     let requests: Vec<Request> = server
         .received_requests()

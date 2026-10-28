@@ -7,7 +7,7 @@ use std::time::Duration;
 use bytes::{Bytes, BytesMut};
 use reqwest::header::HeaderMap;
 
-use crate::config::no_limit_if_zero;
+use crate::config::{RequestTimeout, no_limit_if_zero};
 use crate::envd::connect::{ConnectStream, Empty};
 use crate::envd::process_pb::{
     self, CloseStdinRequest, ConnectRequest, EventResponse, ListRequest, ListResponse,
@@ -375,6 +375,7 @@ impl Commands {
                 "List",
                 &ListRequest {},
                 HeaderMap::new(),
+                RequestTimeout::default(),
             )
             .await?;
         Ok(response
@@ -412,7 +413,13 @@ impl Commands {
         };
         let _: Empty = self
             .envd
-            .unary(process_pb::SERVICE, "SendInput", &request, HeaderMap::new())
+            .unary(
+                process_pb::SERVICE,
+                "SendInput",
+                &request,
+                HeaderMap::new(),
+                RequestTimeout::default(),
+            )
             .await?;
         Ok(())
     }
@@ -499,6 +506,7 @@ impl Commands {
                 "CloseStdin",
                 &request,
                 HeaderMap::new(),
+                RequestTimeout::default(),
             )
             .await?;
         Ok(())
@@ -526,6 +534,7 @@ impl Commands {
                 "SendSignal",
                 &request,
                 HeaderMap::new(),
+                RequestTimeout::default(),
             )
             .await?;
         Ok(())
@@ -588,7 +597,7 @@ pub(crate) async fn open_process_stream<Req: serde::Serialize>(
 ) -> Result<(u32, ConnectStream<EventResponse>)> {
     // The async block's error type is inferred from `within_request_timeout`,
     // whose argument must yield the crate's `Result`.
-    envd.within_request_timeout(async {
+    envd.within_request_timeout(RequestTimeout::default(), async {
         let mut stream: ConnectStream<EventResponse> = envd
             .server_stream(process_pb::SERVICE, method, request, headers, timeout)
             .await?;

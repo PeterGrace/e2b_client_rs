@@ -6,8 +6,8 @@ use std::collections::{HashMap, HashSet};
 use std::time::Duration;
 
 use e2b_client::{
-    CommandOptions, EnvdVersion, FileType, FileUrlOptions, FilesystemEventType, WatchOptions,
-    WriteEntry, WriteOptions,
+    CommandOptions, EnvdVersion, FileOptions, FileType, FileUrlOptions, FilesystemEventType,
+    ListOptions, WatchOptions, WriteEntry, WriteOptions,
 };
 use live_support::LiveSandbox;
 use tokio::io::AsyncReadExt;
@@ -21,12 +21,12 @@ async fn clm_0050_write_read_round_trips_binary() {
 
     sandbox
         .files()
-        .write("/tmp/binary.bin", data.clone(), None)
+        .write("/tmp/binary.bin", data.clone(), &WriteOptions::default())
         .await
         .expect("write");
     let read = sandbox
         .files()
-        .read("/tmp/binary.bin", None)
+        .read("/tmp/binary.bin", &FileOptions::default())
         .await
         .expect("read");
 
@@ -42,13 +42,17 @@ async fn clm_0051_read_to_string_returns_text() {
     let sandbox = LiveSandbox::new().await;
     sandbox
         .files()
-        .write("/tmp/e2b-client-rs.txt", "hello from rust", None)
+        .write(
+            "/tmp/e2b-client-rs.txt",
+            "hello from rust",
+            &WriteOptions::default(),
+        )
         .await
         .expect("write");
 
     let text = sandbox
         .files()
-        .read_to_string("/tmp/e2b-client-rs.txt", None)
+        .read_to_string("/tmp/e2b-client-rs.txt", &FileOptions::default())
         .await
         .expect("read_to_string");
 
@@ -62,7 +66,7 @@ async fn clm_0052_write_returns_write_info() {
 
     let written = sandbox
         .files()
-        .write("/tmp/info.txt", "x", None)
+        .write("/tmp/info.txt", "x", &WriteOptions::default())
         .await
         .expect("write");
 
@@ -78,7 +82,7 @@ async fn clm_0053_read_missing_file_is_not_found() {
 
     let error = sandbox
         .files()
-        .read("/tmp/does-not-exist", None)
+        .read("/tmp/does-not-exist", &FileOptions::default())
         .await
         .expect_err("missing file");
 
@@ -90,11 +94,11 @@ async fn clm_0053_read_missing_file_is_not_found() {
 async fn make_tree(sandbox: &LiveSandbox) {
     let files = sandbox.files();
     files
-        .write("/tmp/tree/a.txt", "a", None)
+        .write("/tmp/tree/a.txt", "a", &WriteOptions::default())
         .await
         .expect("write a");
     files
-        .write("/tmp/tree/sub/b.txt", "b", None)
+        .write("/tmp/tree/sub/b.txt", "b", &WriteOptions::default())
         .await
         .expect("write b");
 }
@@ -107,7 +111,7 @@ async fn clm_0054_list_depth_one_lists_direct_entries() {
 
     let entries = sandbox
         .files()
-        .list("/tmp/tree", 1, None)
+        .list("/tmp/tree", &ListOptions::default())
         .await
         .expect("list");
 
@@ -133,7 +137,7 @@ async fn clm_0055_list_depth_two_recurses() {
 
     let entries = sandbox
         .files()
-        .list("/tmp/tree", 2, None)
+        .list("/tmp/tree", &ListOptions::new().depth(2))
         .await
         .expect("list");
 
@@ -151,13 +155,13 @@ async fn clm_0056_get_info_reports_metadata() {
     let sandbox = LiveSandbox::new().await;
     sandbox
         .files()
-        .write("/tmp/sized.txt", "12345", None)
+        .write("/tmp/sized.txt", "12345", &WriteOptions::default())
         .await
         .expect("write");
 
     let info = sandbox
         .files()
-        .get_info("/tmp/sized.txt", None)
+        .get_info("/tmp/sized.txt", &FileOptions::default())
         .await
         .expect("get_info");
 
@@ -177,18 +181,18 @@ async fn clm_0057_exists_true_and_false() {
     let sandbox = LiveSandbox::new().await;
     sandbox
         .files()
-        .write("/tmp/present.txt", "x", None)
+        .write("/tmp/present.txt", "x", &WriteOptions::default())
         .await
         .expect("write");
 
     let present = sandbox
         .files()
-        .exists("/tmp/present.txt", None)
+        .exists("/tmp/present.txt", &FileOptions::default())
         .await
         .expect("exists present");
     let absent = sandbox
         .files()
-        .exists("/tmp/absent.txt", None)
+        .exists("/tmp/absent.txt", &FileOptions::default())
         .await
         .expect("exists absent");
 
@@ -203,12 +207,12 @@ async fn clm_0058_make_dir_reports_creation() {
 
     let first = sandbox
         .files()
-        .make_dir("/tmp/newdir", None)
+        .make_dir("/tmp/newdir", &FileOptions::default())
         .await
         .expect("first make_dir");
     let second = sandbox
         .files()
-        .make_dir("/tmp/newdir", None)
+        .make_dir("/tmp/newdir", &FileOptions::default())
         .await
         .expect("second make_dir");
 
@@ -222,25 +226,25 @@ async fn clm_0059_rename_moves_entry() {
     let sandbox = LiveSandbox::new().await;
     let files = sandbox.files();
     files
-        .write("/tmp/old.txt", "moving", None)
+        .write("/tmp/old.txt", "moving", &WriteOptions::default())
         .await
         .expect("write");
 
     let entry = files
-        .rename("/tmp/old.txt", "/tmp/new.txt", None)
+        .rename("/tmp/old.txt", "/tmp/new.txt", &FileOptions::default())
         .await
         .expect("rename");
 
     assert_eq!(entry.path, "/tmp/new.txt");
     assert!(
         !files
-            .exists("/tmp/old.txt", None)
+            .exists("/tmp/old.txt", &FileOptions::default())
             .await
             .expect("exists old"),
         "the old path still exists"
     );
     let text = files
-        .read_to_string("/tmp/new.txt", None)
+        .read_to_string("/tmp/new.txt", &FileOptions::default())
         .await
         .expect("read new");
     assert_eq!(text, "moving");
@@ -252,28 +256,31 @@ async fn clm_0060_remove_deletes_file_and_directory() {
     let sandbox = LiveSandbox::new().await;
     let files = sandbox.files();
     files
-        .write("/tmp/gone/file.txt", "x", None)
+        .write("/tmp/gone/file.txt", "x", &WriteOptions::default())
         .await
         .expect("write file");
     // Keeps `/tmp/gone` non-empty, so removing it shows the documented recursion.
     files
-        .write("/tmp/gone/kept.txt", "y", None)
+        .write("/tmp/gone/kept.txt", "y", &WriteOptions::default())
         .await
         .expect("write kept");
 
     files
-        .remove("/tmp/gone/file.txt", None)
+        .remove("/tmp/gone/file.txt", &FileOptions::default())
         .await
         .expect("remove file");
     let file_exists = files
-        .exists("/tmp/gone/file.txt", None)
+        .exists("/tmp/gone/file.txt", &FileOptions::default())
         .await
         .expect("exists file");
     files
-        .remove("/tmp/gone", None)
+        .remove("/tmp/gone", &FileOptions::default())
         .await
         .expect("remove non-empty dir");
-    let dir_exists = files.exists("/tmp/gone", None).await.expect("exists dir");
+    let dir_exists = files
+        .exists("/tmp/gone", &FileOptions::default())
+        .await
+        .expect("exists dir");
 
     assert!(!file_exists, "the removed file still exists");
     assert!(!dir_exists, "the removed directory still exists");
@@ -286,24 +293,32 @@ async fn clm_0061_user_selects_file_owner() {
     let files = sandbox.files();
 
     files
-        .write("/tmp/as-root.txt", "r", Some("root"))
+        .write(
+            "/tmp/as-root.txt",
+            "r",
+            &WriteOptions::default().user("root"),
+        )
         .await
         .expect("write as root");
     // `user` is also the template's default user, so this half would pass even
     // if the argument were ignored. The `root` half proves the parameter takes
     // effect; keep it.
     files
-        .write("/tmp/as-user.txt", "u", Some("user"))
+        .write(
+            "/tmp/as-user.txt",
+            "u",
+            &WriteOptions::default().user("user"),
+        )
         .await
         .expect("write as user");
 
     let root_owner = files
-        .get_info("/tmp/as-root.txt", None)
+        .get_info("/tmp/as-root.txt", &FileOptions::default())
         .await
         .expect("stat root")
         .owner;
     let user_owner = files
-        .get_info("/tmp/as-user.txt", None)
+        .get_info("/tmp/as-user.txt", &FileOptions::default())
         .await
         .expect("stat user")
         .owner;
@@ -332,11 +347,11 @@ async fn clm_0062_write_files_writes_every_file() {
     paths.sort_unstable();
     assert_eq!(paths, ["/tmp/batch/a.txt", "/tmp/batch/sub/b.bin"]);
     let text = files
-        .read("/tmp/batch/a.txt", None)
+        .read("/tmp/batch/a.txt", &FileOptions::default())
         .await
         .expect("read a.txt");
     let bytes = files
-        .read("/tmp/batch/sub/b.bin", None)
+        .read("/tmp/batch/sub/b.bin", &FileOptions::default())
         .await
         .expect("read b.bin");
     assert_eq!(text.as_ref(), b"alpha");
@@ -349,7 +364,7 @@ async fn clm_0063_watch_dir_reports_a_created_file() {
     let sandbox = LiveSandbox::new().await;
     let files = sandbox.files();
     files
-        .make_dir("/tmp/watched", None)
+        .make_dir("/tmp/watched", &FileOptions::default())
         .await
         .expect("make_dir");
     let mut watch = files
@@ -358,7 +373,7 @@ async fn clm_0063_watch_dir_reports_a_created_file() {
         .expect("watch_dir");
 
     files
-        .write("/tmp/watched/new.txt", "x", None)
+        .write("/tmp/watched/new.txt", "x", &WriteOptions::default())
         .await
         .expect("write");
     // Events can arrive in a burst (create, write, chmod...), so look for
@@ -412,7 +427,10 @@ async fn clm_0066_write_stream_uploads_more_than_it_buffers() {
     assert_eq!(gzipped.path, "/tmp/gz.bin");
     let expected_size = i64::try_from(SIZE).expect("64 MiB fits i64");
     for target in ["/tmp/plain.bin", "/tmp/gz.bin"] {
-        let info = files.get_info(target, None).await.expect("get_info");
+        let info = files
+            .get_info(target, &FileOptions::default())
+            .await
+            .expect("get_info");
         assert_eq!(info.size, expected_size, "{target} size");
     }
     // Only `z` bytes, so envd stored the decompressed data, not the gzip.
@@ -443,7 +461,7 @@ async fn clm_0128_read_stream_downloads_in_chunks() {
 
     let mut stream = sandbox
         .files()
-        .read_stream("/tmp/big.txt", None)
+        .read_stream("/tmp/big.txt", &FileOptions::default())
         .await
         .expect("read_stream");
     // Check each chunk against the pattern at its offset, then drop it, so
@@ -486,10 +504,13 @@ async fn clm_0129_write_metadata_round_trips() {
         .await
         .expect("write_files with metadata");
     let info = files
-        .get_info("/tmp/meta/tagged.txt", None)
+        .get_info("/tmp/meta/tagged.txt", &FileOptions::default())
         .await
         .expect("get_info");
-    let listed = files.list("/tmp/meta", 1, None).await.expect("list");
+    let listed = files
+        .list("/tmp/meta", &ListOptions::default())
+        .await
+        .expect("list");
 
     // A nested `fn` rather than a closure, so the returned `&str` can borrow
     // from the argument (closures cannot tie their output lifetime to it).
@@ -537,7 +558,7 @@ async fn clm_0064_upload_url_accepts_a_multipart_post() {
     let status = response.status();
     let text = sandbox
         .files()
-        .read_to_string("/tmp/up.txt", None)
+        .read_to_string("/tmp/up.txt", &FileOptions::default())
         .await
         .expect("read the uploaded file");
 
@@ -551,7 +572,7 @@ async fn clm_0065_download_url_fetches_without_credentials() {
     let sandbox = LiveSandbox::new().await;
     sandbox
         .files()
-        .write("/tmp/shared.txt", "signed read", None)
+        .write("/tmp/shared.txt", "signed read", &WriteOptions::default())
         .await
         .expect("write");
     let url = sandbox
