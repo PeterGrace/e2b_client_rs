@@ -2972,6 +2972,14 @@ git commit -m "feat: snapshot mode on pause and reboot on resume"
 - Modify: `tests/live_support/mod.rs` (`resource_name`, `params_from`), `tests/live_sweep.rs` (delete the run's snapshots), `tests/live_lifecycle.rs`
 - Modify: `docs/protocol-notes.md` (new section "Snapshots and fork"), `docs/verification/s4-evidence-map.md`
 
+> **Corrected (issue #67, 2026-10-27).** What shipped differs from the steps below in these ways; the live-test and sweep code is fixed inline.
+> - **Hosted E2B refuses to delete a snapshot while a sandbox made from it runs** (400 `cannot delete template '<id>' because there are running sandboxes using it`; the first run of `clm_0030` failed so, live 2026-10-28 UTC). `clm_0030` therefore kills the copy (`copy.kill()`) before deleting the snapshot, and the delete then succeeds at once.
+> - **For the same reason the snapshot sweep kills the run's sandboxes first.** The body of `sweep_leftover_sandboxes_of_this_run` moved into `async fn kill_leftover_sandboxes(client: &Client) -> usize` in `tests/live_sweep.rs`; both sweeps call it, so they stay independent of test order. The snapshot sweep then deletes through `delete_when_unused`, which retries for up to 30 s while the delete still answers 400 (PR #82 review). Task 10's volume sweep should call it too if hosted E2B refuses to destroy a mounted volume.
+> - **Empty values are not sent, as in the SDK.** `SnapshotOptions::body` leaves out an empty name (`name if name else UNSET`, `py: sandbox_async/sandbox_api.py:354`), and `ListSnapshotsParams::query` leaves out empty strings and a zero limit (`x if x else UNSET`, `py: sandbox_async/paginator.py:136-140`). `query` returns `Vec<(&'static str, Cow<'_, str>)>`, borrowing the strings instead of cloning them. `SnapshotInfo::names` reads `null` as empty (`deserialize_null_as_default`), as the SDK's `list(names) if names else []`.
+> - **`SnapshotOptions::mode`'s doc cites the SDK's snapshot docs** (`py: sandbox_async/main.py:905`) for the 400/409 refusals, and says that hosted E2B empties `/tmp` at every boot, so files meant to survive a filesystem-only snapshot belong in `/home/user` (issue #67 comment).
+> - Wiremock's `path` matcher compares the path as sent, still encoded, so `path("/templates/team%2Fmy-snap:v1")` works as planned; Step 2's fallback was not needed. `:` stays unencoded where both SDKs send `%3A`; `docs/protocol-notes.md` records it, and hosted E2B deleted `<id>:<tag>` snapshots sent this way.
+> - Extra tests beyond the plan: `create_snapshot_refused_is_an_api_error`, `list_snapshots_reads_a_null_body_as_an_empty_page`, `list_snapshots_refused_is_an_api_error`, `delete_snapshot_refused_is_an_api_error`, `sandbox_create_snapshot_posts_to_its_own_id`, and five `src/snapshots.rs` unit tests. Read `src/snapshots.rs`, `tests/rest_snapshots.rs` and `tests/live_sweep.rs` for the shipped code.
+
 - [ ] **Step 1: Write the failing mock tests**
 
 `tests/rest_snapshots.rs`:
@@ -3528,6 +3536,8 @@ and `params()` becomes `params_from(&template())`. In `tests/live_sweep.rs`, a s
 #[ignore = "live: run with `just test-live <target>`"]
 async fn sweep_leftover_snapshots_of_this_run() {
     let client = client();
+    // A snapshot can't be deleted while a sandbox made from it runs.
+    kill_leftover_sandboxes(&client).await;
     let marker = resource_name("");
     let mut params = ListSnapshotsParams::new();
     let mut leftovers = Vec::new();
@@ -3551,7 +3561,7 @@ async fn sweep_leftover_snapshots_of_this_run() {
 }
 ```
 
-`resource_name("")` is the shared prefix, ending in `-`. The `just test-live` recipe runs `cargo test --test live_sweep`, so both sweeps run with no recipe change.
+`kill_leftover_sandboxes` is the old body of `sweep_leftover_sandboxes_of_this_run`, moved into a helper that returns the number killed; that test now calls it and prints the count. `resource_name("")` is the shared prefix, ending in `-`. The `just test-live` recipe runs `cargo test --test live_sweep`, so both sweeps run with no recipe change.
 
 - [ ] **Step 6: Live tests**
 
@@ -3580,6 +3590,9 @@ async fn clm_0030_snapshot_starts_sandboxes_with_its_files() {
     // Assert
     assert_eq!(text, "from the snapshot");
     assert_eq!(source.get_info().await.expect("source info").state, SandboxState::Running);
+    // Hosted E2B refuses to delete a snapshot while a sandbox made from it
+    // runs, so the copy goes first.
+    assert!(copy.kill().await.expect("kill the copy"));
     assert!(source.client().delete_snapshot(&snapshot.snapshot_id).await.expect("delete"));
 }
 
@@ -3594,7 +3607,7 @@ async fn clm_0147_list_and_delete_snapshots() {
         .await
         .expect("snapshot");
     let client = source.client();
-    let listed = |page: SnapshotPage| page.snapshots.iter().any(|each| each.snapshot_id == snapshot.snapshot_id);
+    let listed = |page: &SnapshotPage| page.snapshots.iter().any(|each| each.snapshot_id == snapshot.snapshot_id);
 
     // Act
     let by_sandbox = source.list_snapshots(&ListSnapshotsParams::new()).await.expect("by sandbox");
@@ -3606,8 +3619,8 @@ async fn clm_0147_list_and_delete_snapshots() {
     let deleted_again = client.delete_snapshot(&snapshot.snapshot_id).await.expect("delete again");
 
     // Assert
-    assert!(listed(by_sandbox), "not listed for its source sandbox");
-    assert!(listed(by_name), "not listed by its name");
+    assert!(listed(&by_sandbox), "not listed for its source sandbox: {by_sandbox:?}");
+    assert!(listed(&by_name), "not listed by its name: {by_name:?}");
     assert!(deleted);
     assert!(!deleted_again);
 }
@@ -4511,7 +4524,7 @@ async fn sweep_leftover_volumes_of_this_run() {
 }
 ```
 
-`resource_name` is Task 8's; if Task 8 has not merged, add it to `tests/live_support/mod.rs` as Task 8 Step 5 shows. Then in `tests/live_lifecycle.rs`:
+`resource_name` is Task 8's; if Task 8 has not merged, add it to `tests/live_support/mod.rs` as Task 8 Step 5 shows. (Corrected, issue #67: hosted E2B refuses to delete a snapshot while a sandbox made from it runs, so the snapshot sweep calls `kill_leftover_sandboxes(&client)` first. If hosted E2B refuses to destroy a volume a sandbox mounts, do the same here, and in the live tests drop or kill the sandbox before `destroy_volume`.) Then in `tests/live_lifecycle.rs`:
 
 ```rust
 #[tokio::test]

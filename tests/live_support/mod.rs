@@ -138,9 +138,23 @@ pub fn template() -> String {
 /// Create parameters every live sandbox starts from: the target's template,
 /// [`SANDBOX_TIMEOUT`] and the run-id metadata.
 pub fn params() -> CreateSandboxParams {
-    CreateSandboxParams::new(template())
+    params_from(&template())
+}
+
+/// Like [`params`], from another template (for example a snapshot ID).
+pub fn params_from(template: &str) -> CreateSandboxParams {
+    CreateSandboxParams::new(template)
         .timeout(SANDBOX_TIMEOUT)
         .metadata(RUN_METADATA_KEY, run_id())
+}
+
+/// A name for a snapshot or volume this run creates, with the run id in it
+/// so the sweep finds it. Lowercase, since the API's names are.
+/// `resource_name("")` is the prefix every such name of this run starts
+/// with, ending in `-`. The sweep finds leftovers only by this prefix, so
+/// every snapshot and volume a live test creates must be named with it.
+pub fn resource_name(slug: &str) -> String {
+    format!("e2b-client-test-{}-{slug}", run_id().to_ascii_lowercase())
 }
 
 /// A sandbox that is killed when dropped, even if the test panics.

@@ -21,6 +21,7 @@ use crate::metrics::{MetricsParams, SandboxMetrics};
 use crate::models::{SandboxCreated, SandboxInfo};
 use crate::network::NetworkUpdate;
 use crate::pty::Pty;
+use crate::snapshots::{ListSnapshotsParams, SnapshotInfo, SnapshotOptions, SnapshotPage};
 
 /// envd's health route (`e2b/envd/api.py:22`).
 const ENVD_HEALTH_ROUTE: &str = "/health";
@@ -604,6 +605,45 @@ impl Sandbox {
         self.client
             .get_sandbox_metrics(&self.sandbox_id, params)
             .await
+    }
+
+    /// Snapshots this sandbox. See [`Client::create_snapshot`].
+    ///
+    /// # Arguments
+    ///
+    /// * `options` - the name and mode.
+    ///
+    /// # Returns
+    ///
+    /// The snapshot.
+    ///
+    /// # Errors
+    ///
+    /// As [`Client::create_snapshot`].
+    pub async fn create_snapshot(&self, options: &SnapshotOptions) -> Result<SnapshotInfo> {
+        self.client.create_snapshot(&self.sandbox_id, options).await
+    }
+
+    /// Lists the snapshots taken from this sandbox. See
+    /// [`Client::list_snapshots`]; any `sandbox_id` in `params` is replaced
+    /// by this sandbox's, as the SDK's instance `list_snapshots` does.
+    ///
+    /// # Arguments
+    ///
+    /// * `params` - the other filters and the page token.
+    ///
+    /// # Returns
+    ///
+    /// One page.
+    ///
+    /// # Errors
+    ///
+    /// As [`Client::list_snapshots`].
+    pub async fn list_snapshots(&self, params: &ListSnapshotsParams) -> Result<SnapshotPage> {
+        // `.clone()` copies the caller's parameters, since the builder
+        // methods take `self` by value and `params` is only borrowed.
+        let params = params.clone().sandbox_id(self.sandbox_id.as_str());
+        self.client.list_snapshots(&params).await
     }
 }
 

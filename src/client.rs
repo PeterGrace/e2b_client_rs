@@ -19,6 +19,7 @@ use crate::models::{
 };
 use crate::network::NetworkUpdate;
 use crate::sandbox::Sandbox;
+use crate::snapshots::{ListSnapshotsParams, SnapshotInfo, SnapshotOptions, SnapshotPage};
 
 /// The header carrying the team API key (`e2b/api/__init__.py:251`; JS
 /// `dist/index.js:1528`).
@@ -562,6 +563,139 @@ impl Client {
             .send_json(Method::POST, &["sandboxes", sandbox_id, "refreshes"], &body)
             .await?;
         ensure_found_and_success(response, sandbox_id).await
+    }
+
+    /// Snapshots a sandbox (`POST /sandboxes/{id}/snapshots`). The sandbox
+    /// pauses while the snapshot is taken, then keeps running. Snapshots are
+    /// persistent: they outlive the sandbox until
+    /// [`Client::delete_snapshot`] removes them.
+    ///
+    /// # Arguments
+    ///
+    /// * `sandbox_id` - the sandbox.
+    /// * `options` - the name and mode.
+    ///
+    /// # Returns
+    ///
+    /// The snapshot; start sandboxes from it with
+    /// `CreateSandboxParams::new(snapshot.snapshot_id)`.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::SandboxNotFound`] for HTTP 404, [`Error::Api`] for other
+    /// non-2xx answers (among them 400 or 409 for a refused filesystem-only
+    /// snapshot, see [`SnapshotOptions::mode`]), [`Error::Decode`] for an
+    /// unexpected body, [`Error::Transport`] for connection failures.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use e2b_client::{Client, CreateSandboxParams, SnapshotOptions};
+    ///
+    /// # async fn demo(client: Client) -> e2b_client::Result<()> {
+    /// let options = SnapshotOptions::new().name("before-upgrade");
+    /// let snapshot = client.create_snapshot("sandbox-id", &options).await?;
+    /// let copy = client
+    ///     .create_sandbox(&CreateSandboxParams::new(&snapshot.snapshot_id))
+    ///     .await?;
+    /// # let _ = copy;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn create_snapshot(
+        &self,
+        sandbox_id: &str,
+        options: &SnapshotOptions,
+    ) -> Result<SnapshotInfo> {
+        let response = self
+            .send_json(
+                Method::POST,
+                &["sandboxes", sandbox_id, "snapshots"],
+                &options.body(),
+            )
+            .await?;
+        parse_sandbox_response(response, sandbox_id).await
+    }
+
+    /// Lists snapshots, one page at a time (`GET /snapshots`).
+    ///
+    /// # Arguments
+    ///
+    /// * `params` - filters and the page token.
+    ///
+    /// # Returns
+    ///
+    /// One page, with the token for the next page if there is one.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::Api`] for a non-2xx answer, [`Error::Decode`] for an
+    /// unexpected body, [`Error::Transport`] for connection failures.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use e2b_client::{Client, ListSnapshotsParams};
+    ///
+    /// # async fn demo(client: Client) -> e2b_client::Result<()> {
+    /// let mut params = ListSnapshotsParams::new();
+    /// loop {
+    ///     let page = client.list_snapshots(&params).await?;
+    ///     for snapshot in &page.snapshots {
+    ///         println!("{} {:?}", snapshot.snapshot_id, snapshot.names);
+    ///     }
+    ///     match page.next_token {
+    ///         Some(token) => params = params.next_token(token),
+    ///         None => break,
+    ///     }
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn list_snapshots(&self, params: &ListSnapshotsParams) -> Result<SnapshotPage> {
+        let response = self
+            .request(Method::GET, &["snapshots"])?
+            .query(&params.query())
+            .send()
+            .await?;
+        let next_token = next_token_of(&response);
+        // A `null` body reads as an empty page, as in the SDK
+        // (`if res.parsed is None: return []`).
+        let snapshots: Option<Vec<SnapshotInfo>> = parse_success(response).await?;
+        Ok(SnapshotPage {
+            snapshots: snapshots.unwrap_or_default(),
+            next_token,
+        })
+    }
+
+    /// Deletes a snapshot (`DELETE /templates/{id}`: a snapshot is a
+    /// template). The ID is sent as one path segment, so a namespaced name
+    /// such as `team/my-snapshot:v1` does not split the route.
+    ///
+    /// # Arguments
+    ///
+    /// * `snapshot_id` - the snapshot ID or name.
+    ///
+    /// # Returns
+    ///
+    /// `true` if it was deleted, `false` if it did not exist (HTTP 404).
+    ///
+    /// # Errors
+    ///
+    /// [`Error::Api`] for a non-2xx answer other than 404,
+    /// [`Error::Transport`] for connection failures. Hosted E2B refuses to
+    /// delete a snapshot while a sandbox created from it is running, with
+    /// HTTP 400 `cannot delete template '<id>' because there are running
+    /// sandboxes using it`: kill those sandboxes first.
+    pub async fn delete_snapshot(&self, snapshot_id: &str) -> Result<bool> {
+        let response = self
+            .request(Method::DELETE, &["templates", snapshot_id])?
+            .send()
+            .await?;
+        if response.status() == StatusCode::NOT_FOUND {
+            return Ok(false);
+        }
+        ensure_success(response).await.map(|_| true)
     }
 
     /// Builds a request to `api_url` plus the given path segments, each
