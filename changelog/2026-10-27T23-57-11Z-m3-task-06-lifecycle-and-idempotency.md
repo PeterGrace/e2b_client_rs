@@ -64,6 +64,11 @@ On hosted E2B, one test at a time:
   (`sandbox_detail.py:44-47`). The test now waits for both the paused state
   and a reported mode, and passed.
 
+After review (PR #79): a `lifecycle` whose `onTimeout` is missing or `null`
+reads as `TimeoutAction::Unknown` instead of failing `get_info`, and the
+`auto_pause` doc says that it drops an earlier pause mode. `clm_0153` and
+`clm_0145` passed again on hosted E2B after the change.
+
 ## Plan divergences
 
 A dated correction at Task 6 records the check order, the character-count
