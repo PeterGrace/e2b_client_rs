@@ -204,8 +204,8 @@ M4 claims with a live test:
 |---|---|
 | CLM-0168 | `clm_0015_connect_unknown_sandbox_is_not_found` pass |
 | CLM-0171 | `clm_0171_moded_pause_of_a_paused_sandbox_is_false` pass; `clm_0146_filesystem_pause_cold_boots` pass |
-| CLM-0173 | every `live_files` test pass (20/20), user option via `clm_0061_user_selects_file_owner` pass; request timeout not live-tested |
-| CLM-0174 | `clm_0040_connect_attaches_to_running_command` pass; `clm_0178_pty_connect_to_exited_pid` pass; request timeout and 60 s default not live-tested |
+| CLM-0173 | **partly live-backed:** every `live_files` test pass (20/20), user option via `clm_0061_user_selects_file_owner` pass; the per-call request timeout is not live-tested (mock tests only), so record this run as partial evidence, not full verification |
+| CLM-0174 | **partly live-backed:** `clm_0040_connect_attaches_to_running_command` pass; `clm_0178_pty_connect_to_exited_pid` pass; the per-call request timeout and the 60 s default deadline are not live-tested (mock tests only), so record this run as partial evidence, not full verification |
 | CLM-0175 | `clm_0175_pty_outlives_sixty_seconds` pass |
 | CLM-0177 | `clm_0177_symlinks_report_symlink_type` pass |
 | CLM-0178 | `clm_0178_pty_connect_to_exited_pid` pass |
