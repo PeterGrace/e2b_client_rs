@@ -1,9 +1,9 @@
 {
   "schema_version": 2,
-  "next_claim_seq": 182,
+  "next_claim_seq": 187,
   "next_claim_seq_seal": {
     "by": "server",
-    "mac": "aa5a465b8e88b71dbc1a03e1e4c4a5b3833663cd88247fba24784462b2661d2d"
+    "mac": "0abbe8eb96629fd059e5fbc9b095e8b83476fc9ad0adb3e1e8f34297e27a14a7"
   },
   "next_evidence_seq": 254,
   "next_evidence_seq_seal": {
@@ -8108,7 +8108,7 @@
       ],
       "tags": [
         "s5",
-        "gap"
+        "m5"
       ],
       "status": {
         "state": "active"
@@ -8128,10 +8128,10 @@
         }
       ],
       "created_at": "2026-10-26T22:12:45.325766859Z",
-      "updated_at": "2026-10-26T23:03:26.710010346Z",
+      "updated_at": "2026-10-28T20:32:48.700549013Z",
       "seal": {
         "by": "server",
-        "mac": "f4ba4104d3e4f2982285d1a85baca3e92eeaa82af605d72e4d21c68283450356"
+        "mac": "8a8028dc50fdf60bf88e85bd1d0757799ed3b716a12f167a6bed6f8b264f34d9"
       }
     },
     {
@@ -8149,7 +8149,7 @@
       ],
       "tags": [
         "s5",
-        "gap"
+        "m5"
       ],
       "status": {
         "state": "active"
@@ -8169,10 +8169,10 @@
         }
       ],
       "created_at": "2026-10-26T22:12:45.325766859Z",
-      "updated_at": "2026-10-26T23:03:27.756844340Z",
+      "updated_at": "2026-10-28T20:32:49.081562596Z",
       "seal": {
         "by": "server",
-        "mac": "332948b7281f8d639d366bea0948e6d33e72f2148e4755ddd205a8e8c2bcbd10"
+        "mac": "d7dd93bbb48b2f34c0ff18cd382b9ab7732d5d3093f55ed693590ee416c41d4e"
       }
     },
     {
@@ -11689,6 +11689,155 @@
       "seal": {
         "by": "server",
         "mac": "3e3f43dfeb743050b5b0da91bf1f16fdab9ea9895b70115a16399658469bab4b"
+      }
+    },
+    {
+      "id": "CLM-0182",
+      "statement": "Every Client and Sandbox call that reaches the REST API, and Sandbox::is_running, takes a per-call request timeout (RequestOptions, or a request_timeout setter on the call's options or params struct): unset uses the configured request timeout, None or zero means no limit, a duration bounds that one call.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "docs/superpowers/plans/2026-10-28-milestone-5-release.md Task 1 (#120); py: connection_config.py:70-78",
+      "derived_from": [
+        "CLM-0002"
+      ],
+      "artifacts": [
+        "src/client.rs",
+        "src/sandbox.rs",
+        "src/config.rs"
+      ],
+      "tags": [
+        "s1",
+        "m5"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-28T20:32:48.139871073Z",
+      "updated_at": "2026-10-28T20:32:48.139871073Z",
+      "seal": {
+        "by": "server",
+        "mac": "02addce692a41f7afe7cd9ca6f12c770a448a93b379a089ab96671c211073899"
+      }
+    },
+    {
+      "id": "CLM-0183",
+      "statement": "The pid-only process and PTY calls (Commands::list, send_stdin, close_stdin, send_signal, kill; Pty::send_stdin, resize, kill; and the same calls on CommandHandle and PtyHandle) take a per-call request timeout through RequestOptions, with the same unset/None/zero semantics.",
+      "kind": "interface",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "docs/superpowers/plans/2026-10-28-milestone-5-release.md Task 2 (#120); py: sandbox_async/commands/command.py:64-179, pty.py:65-260",
+      "derived_from": [
+        "CLM-0003"
+      ],
+      "artifacts": [
+        "src/commands.rs",
+        "src/pty.rs"
+      ],
+      "tags": [
+        "s2",
+        "m5"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-28T20:32:48.139871073Z",
+      "updated_at": "2026-10-28T20:32:48.139871073Z",
+      "seal": {
+        "by": "server",
+        "mac": "3c37b178b1b7b7fd4d79bbd1d0c9f4515019b64c1506b767174ea079a8bc4111"
+      }
+    },
+    {
+      "id": "CLM-0184",
+      "statement": "The README's coverage table (claims per area and verdict) matches claims.json, checked by tests/readme_coverage.rs.",
+      "kind": "documentation",
+      "level": "unit",
+      "verification_method": "test",
+      "source": "spec#milestones M5 (README coverage table from the ledger audit); plan Task 8",
+      "derived_from": [
+        "CLM-0006"
+      ],
+      "artifacts": [
+        "README.md",
+        "tests/readme_coverage.rs"
+      ],
+      "tags": [
+        "s5",
+        "m5"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-28T20:32:48.139871073Z",
+      "updated_at": "2026-10-28T20:32:48.139871073Z",
+      "seal": {
+        "by": "server",
+        "mac": "eaa31f7cb980e6729be5e148ef5d8a97c1a90e34d2551e39452a993f6e14673c"
+      }
+    },
+    {
+      "id": "CLM-0185",
+      "statement": "CHANGELOG.md documents release 0.2.0, including every breaking change since 0.1.0, old call to new call.",
+      "kind": "documentation",
+      "level": "unit",
+      "verification_method": "inspection",
+      "source": "spec#milestones M5 (CHANGELOG); plan Task 7",
+      "derived_from": [
+        "CLM-0006"
+      ],
+      "artifacts": [
+        "CHANGELOG.md"
+      ],
+      "tags": [
+        "s5",
+        "m5"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-28T20:32:48.139871073Z",
+      "updated_at": "2026-10-28T20:32:48.139871073Z",
+      "seal": {
+        "by": "server",
+        "mac": "5f47e658043fbb2e87b54e1f8ca36d3e3e1b13d53c20a6463e29adb1c47d26ef"
+      }
+    },
+    {
+      "id": "CLM-0186",
+      "statement": "e2b-client 0.2.0 is published on crates.io and its documentation builds on docs.rs.",
+      "kind": "constraint",
+      "level": "unit",
+      "verification_method": "demonstration",
+      "source": "spec#milestones M5 (0.2.0 on crates.io); plan Tasks 10 and 11",
+      "derived_from": [
+        "CLM-0006"
+      ],
+      "artifacts": [
+        "crate e2b-client"
+      ],
+      "tags": [
+        "s5",
+        "m5"
+      ],
+      "status": {
+        "state": "active"
+      },
+      "evidence": [],
+      "verdicts": [],
+      "created_at": "2026-10-28T20:32:48.139871073Z",
+      "updated_at": "2026-10-28T20:32:48.139871073Z",
+      "seal": {
+        "by": "server",
+        "mac": "10b01d27b72cb3db8633a357e59bb1fd0f0ba3364add2053db56c3fd68e0c72e"
       }
     }
   ]
