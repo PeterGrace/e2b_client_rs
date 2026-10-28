@@ -5,10 +5,10 @@
     "by": "server",
     "mac": "aa5a465b8e88b71dbc1a03e1e4c4a5b3833663cd88247fba24784462b2661d2d"
   },
-  "next_evidence_seq": 253,
+  "next_evidence_seq": 254,
   "next_evidence_seq_seal": {
     "by": "server",
-    "mac": "d4e09cf09066c05c34401870ef033a380b7670a4b8f42d6b243c9311fa01f7ea"
+    "mac": "55665ce0e8405909ecf1432586bc0d3fc3818fec8db0599fc2150cfd3fd617ab"
   },
   "claims": [
     {
@@ -541,7 +541,20 @@
       "status": {
         "state": "active"
       },
-      "evidence": [],
+      "evidence": [
+        {
+          "id": "EVD-0253",
+          "kind": "analysis",
+          "locator": "claims ledger at M4 close: the 14 active children of CLM-0006 (derived_from), PR #118",
+          "summary": "CLM-0006 has 14 children: CLM-0117 to 0126, 0170 and 0179 to 0181. Twelve are supported:\n- CLM-0117: live-verified on hosted E2B;\n- CLM-0118: v0.1 on sandbawks;\n- CLM-0119: non_exhaustive;\n- CLM-0120: docs and examples;\n- CLM-0121: MSRV and semver;\n- CLM-0122: no secrets in Debug;\n- CLM-0125: no sandbawks-specific behaviour;\n- CLM-0126: licence;\n- CLM-0170: no public reqwest;\n- CLM-0179: Send, Sync and Debug;\n- CLM-0180: the API review;\n- CLM-0181: paced live runs.\n\nTwo are not_enough_info, both M5: CLM-0123 (a live CI job) and CLM-0124 (a publish dry-run and release). This completes the list in the M4 verdict's rationale, which named only 9 of the 12 (PR #118 review).",
+          "stance": "neutral",
+          "recorded_at": "2026-10-28T18:46:29.899344307Z",
+          "seal": {
+            "by": "server",
+            "mac": "397cbc5892d56317066a31d78823cbb9451807af0a9fea7e75c65b7996334228"
+          }
+        }
+      ],
       "verdicts": [
         {
           "verdict": "not_enough_info",
@@ -564,13 +577,26 @@
             "by": "server",
             "mac": "b4989c104f7ce5557bcbb3d11ece393457e0328c6839e134f3201e9afbf7ec09"
           }
+        },
+        {
+          "verdict": "not_enough_info",
+          "rationale": "This re-records the M4 verdict with the full list of children (EVD-0253); the earlier rationale named only 9 of the 12 supported ones. 12 of the 14 children are supported: CLM-0117 to 0122, 0125, 0126, 0170 and 0179 to 0181. Publishing still waits on M5: CLM-0123 (a live CI job) and CLM-0124 (a publish dry-run and release).",
+          "auditor": "claude-code/claude-opus-5-5 (M4 coordinator)",
+          "evidence_ids": [
+            "EVD-0253"
+          ],
+          "recorded_at": "2026-10-28T18:46:36.278209217Z",
+          "seal": {
+            "by": "server",
+            "mac": "c1c72ab807579d16d6300b312ba0d110e1c5958998f95495347c108d18a9f672"
+          }
         }
       ],
       "created_at": "2026-10-26T22:09:06.855685366Z",
-      "updated_at": "2026-10-28T18:42:22.766399727Z",
+      "updated_at": "2026-10-28T18:46:36.278209217Z",
       "seal": {
         "by": "server",
-        "mac": "cd18248950b2056ed4bf6d17e397a671df1cf03dcf413fb196698f546b0363df"
+        "mac": "b2466913d631ef0185c35c124dd2beb49664fd5d1b3e97d75902a00cd0f2c7f7"
       }
     },
     {
