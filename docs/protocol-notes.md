@@ -335,7 +335,7 @@ file from a reader, read as the body is sent.
 | `write_files([])` returns `[]` without a request | `py: sandbox_async/filesystem/filesystem.py:360-361` |
 | `write` is `write_files` with one entry | `py: sandbox_async/filesystem/filesystem.py:291-329` |
 | Multipart (the default for in-memory data): one `POST /files` for all files, every part named `file` with filename = path; the `path` query is sent only for exactly one file; `username` as for reads | `py: sandbox_async/filesystem/filesystem.py:445-462`; `py: sandbox/filesystem/filesystem.py:267-280` |
-| Octet-stream: one `POST /files?path=<p>[&username=<u>]` per file, `Content-Type: application/octet-stream`, the body is the file; the requests run concurrently (`asyncio.gather`) and the results are concatenated in entry order | `py: sandbox_async/filesystem/filesystem.py:400-444` |
+| Octet-stream: one `POST /files?path=<p>[&username=<u>]` per file, `Content-Type: application/octet-stream`, the body is the file; the SDK runs all requests concurrently (`asyncio.gather`), the crate at most `WriteOptions::max_concurrency` at a time (default 8, a deliberate deviation, #53); results are in entry order and the first error fails the batch | `py: sandbox_async/filesystem/filesystem.py:400-444` |
 | Gzip: the octet-stream request with `Content-Encoding: gzip` and a gzip body; gzip implies octet-stream, since the encoding applies to the whole request body | `py: sandbox_async/filesystem/filesystem.py:380-384, 409-411`; `py: sandbox/filesystem/filesystem.py:323-339` |
 | Octet-stream and gzip need envd 0.5.7: `use_octet_stream = (use_octet_stream or gzip) and envd >= 0.5.7`, so older envd gets *uncompressed* multipart | `py: sandbox_async/filesystem/filesystem.py:369-384`; `py: envd/versions.py:8` |
 | Every answer is a JSON array of `{name, type, path, metadata?}`; an empty array (or not an array) is an error | `py: sandbox_async/filesystem/filesystem.py:431-438, 480-487`; `py: sandbox/filesystem/filesystem.py:56-90` |
@@ -455,6 +455,12 @@ the SDKs' exception classes with methods on `Error`.
   interactive session after a minute. Here `PtyOptions::default()` and
   `PtyConnectOptions::default()` set no deadline; `DEFAULT_PTY_TIMEOUT` stays
   exported as the SDK's 60 s for callers who want parity (issue #55).
+- **At most 8 octet-stream uploads in flight.** SDK 2.61's `write_files`
+  starts every octet-stream or gzip upload at once with `asyncio.gather`, so
+  a batch of N files opens N requests. Here `WriteOptions::max_concurrency`
+  caps them, `DEFAULT_UPLOAD_CONCURRENCY` (8) by default; results stay in
+  entry order and the first error still fails the batch (issue #53).
+  `max_concurrency(entries.len())` gives the SDK's behaviour.
 - **Not implemented yet.** Milestone 4: the `is_symlink` file type (#30)
   and the API review (#52 to #57).
   Deferred from milestone 3 and unscheduled: the SOCKS5 egress proxy, IAM

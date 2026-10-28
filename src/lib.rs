@@ -104,9 +104,9 @@ pub use config::{
 pub use envd::EnvdVersion;
 pub use error::{ConnectCode, Error, Result, TransportError};
 pub use filesystem::{
-    DEFAULT_WATCH_TIMEOUT, EntryInfo, FileOptions, FileStream, FileType, Filesystem,
-    FilesystemEvent, FilesystemEventType, ListOptions, WatchHandle, WatchOptions, WriteEntry,
-    WriteInfo, WriteOptions,
+    DEFAULT_UPLOAD_CONCURRENCY, DEFAULT_WATCH_TIMEOUT, EntryInfo, FileOptions, FileStream,
+    FileType, Filesystem, FilesystemEvent, FilesystemEventType, ListOptions, WatchHandle,
+    WatchOptions, WriteEntry, WriteInfo, WriteOptions,
 };
 pub use lifecycle::{
     ConnectOptions, Lifecycle, LifecycleInfo, OnResume, OnTimeout, PauseOptions, SnapshotMode,
