@@ -241,7 +241,7 @@ SDK sources are e2b 2.61.0, the same packages as `docs/protocol-notes.md` (`py:`
   Report the result in the PR. The recorded runs are Tasks 16 and 17.
 - **Breaking changes are the point of this milestone.** A signature change updates every caller in `src/`, `tests/`, `README.md` and the rustdoc examples in the same PR; `cargo test` compiles the README and doctests, so the gates catch a missed one. Each task's changelog entry has a "Breaking changes" list (old call, new call).
 - **Tests:** mock tests use `wiremock` through `tests/common`. New mock tests go in the test file each task names. Live tests are `#[tokio::test]` plus `#[ignore = "live: run with `just test-live <target>`"]`, named `clm_NNNN_<slug>`, one claim each, Arrange-Act-Assert. Use `.expect("<what>")` in tests, never `.unwrap()`. No `println!`/`dbg!`.
-- **Docs per task:** every new or changed public item keeps a rustdoc comment with Arguments/Returns/Errors, and an `# Examples` section for a new type or async method (Task 14 enforces it for all). Every wire fact a task changes is corrected in `docs/protocol-notes.md`; each S4 claim (CLM-0168, CLM-0169, CLM-0172) gets a row in `docs/verification/s4-evidence-map.md` (extend its intro line with "and CLM-0168, CLM-0169 and CLM-0172 (M4)").
+- **Docs per task:** every new or changed public item keeps a rustdoc comment with Arguments/Returns/Errors, and an `# Examples` section for a new type or async method (Task 14 enforces it for all). Every wire fact a task changes is corrected in `docs/protocol-notes.md`; each S4 claim (CLM-0168, CLM-0169, CLM-0172) gets a row in `docs/verification/s4-evidence-map.md`, and the task adds its claim to the intro line's M4 list, which names only claims that have rows (Task 1: "and, from M4, CLM-0168"; Task 2: "CLM-0168 and CLM-0169"; Task 4: "CLM-0168, CLM-0169 and CLM-0172"; corrected in issue #91, 2026-10-28).
 - **Ledger:** subagents never call `mcp__claims__*` write tools. Read tools are fine.
 - **Changelog:** one entry per task, `changelog/<UTC ts>-m4-task-<NN>-<slug>.md`, timestamp from `date -u +%Y-%m-%dT%H-%M-%SZ`.
 - **Logs:** live run logs go to `target/live-logs/` inside your own worktree. Never write them to a shared scratchpad.
@@ -331,6 +331,8 @@ Task 2 touches every file that converts a reqwest error (`.map_err(Error::transp
 - Modify: `docs/protocol-notes.md` (the "Connect v1 (fallback)" row, line 71; "Deliberate differences", lines 419-423 and 430-432; "Verification against a live server", lines 491-493)
 - Modify: `docs/verification/s4-evidence-map.md` (intro line; rows CLM-0087, CLM-0159; new row CLM-0168)
 - Create: `changelog/<ts>-m4-task-01-drop-v1-connect-fallback.md`
+
+> **Corrected (issue #91, 2026-10-28).** Row CLM-0073 also named the v1 connect fallback ("all nine REST requests"); Task 1 corrects it to eight. `src/models.rs` (`ConnectBody` rustdoc, which cited the v1 `ConnectSandbox` body) is modified too. Step 5's live check ran `clm_0015` only, at the coordinator's direction; `clm_0014` is left to Task 16's recorded run. The evidence-map intro names only the claims that have rows: Task 1 adds CLM-0168, and Tasks 2 and 4 add their own (see the Conventions).
 
 The spec's decision 5: the fallback only made up for sandbawks before 0.1.28 (Verified facts). After this task, a v2 404 is `Error::SandboxNotFound` straight away, with no second request. CLM-0087 is retired in Task 18 and superseded by CLM-0168.
 
@@ -492,7 +494,7 @@ The live tests of connect are unchanged. Run `clm_0015_connect_unknown_sandbox_i
 - In "Verification against a live server", replace the last sentence of the "sandbawks and v2 connect" bullet (lines 492-493) with: `The v1 connect fallback was therefore removed in M4 (Task 1): a v2 404 is the sandbox missing.`
 
 `docs/verification/s4-evidence-map.md`:
-- Intro (line 4): after `and CLM-0154 to CLM-0167`, insert `, and CLM-0168, CLM-0169 and CLM-0172 (M4)`.
+- Intro (line 5): replace `and CLM-0154 to CLM-0167.` with `CLM-0154 to CLM-0167, and, from M4, CLM-0168.` (Corrected in issue #91: only claims that have rows; Tasks 2 and 4 extend it.)
 - Row CLM-0087: replace its Notes with `Superseded by CLM-0168 in M4 (Task 1 removed the fallback and its test; Task 18 retires the claim).`, its Test column with `none (removed)`, and "Covers whole claim?" with `no`.
 - Row CLM-0159: in the Test column, delete `tests/rest_lifecycle.rs::the_v1_fallback_keeps_the_reboot_flag; `. In the Notes, delete the sentence that begins `With the v2 route answering 404, a reboot falls back`.
 - Append after the CLM-0167 row:

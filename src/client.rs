@@ -32,9 +32,6 @@ const HEADER_NEXT_TOKEN: &str = "x-next-token";
 /// (`e2b/api/client/api/sandboxes/post_v2_sandboxes.py:21`; JS
 /// `dist/index.js:5568`).
 const HEADER_IDEMPOTENCY_KEY: &str = "Idempotency-Key";
-/// The sandbox timeout the SDKs fall back to (`e2b/sandbox/main.py:30`); the
-/// v1 connect body requires a timeout.
-const DEFAULT_SANDBOX_TIMEOUT: Duration = Duration::from_secs(300);
 
 /// The `User-Agent` sent on every request.
 fn user_agent() -> String {
@@ -206,17 +203,11 @@ impl Client {
     /// with the API's default; [`Client::connect_sandbox_with`] can reboot it
     /// instead.
     ///
-    /// If the server has no v2 route (HTTP 404) the v1 route
-    /// `POST /sandboxes/{id}/connect`, also part of the E2B API, is tried
-    /// before reporting the sandbox as missing.
-    ///
     /// # Arguments
     ///
     /// * `sandbox_id` - the sandbox to connect to.
-    /// * `timeout` - a new sandbox lifetime from now; `None` sends none on
-    ///   the v2 route, so the server keeps its default. The v1 route requires
-    ///   a timeout, so on the fallback `None` sends 300 seconds, which resets
-    ///   the sandbox's lifetime to 5 minutes from now.
+    /// * `timeout` - a new sandbox lifetime from now; `None` sends none, so
+    ///   the server keeps the sandbox's current lifetime.
     ///
     /// # Returns
     ///
@@ -224,9 +215,8 @@ impl Client {
     ///
     /// # Errors
     ///
-    /// [`Error::SandboxNotFound`] if neither route knows the sandbox,
-    /// [`Error::Api`] for other non-2xx answers, [`Error::Transport`] for
-    /// connection failures.
+    /// [`Error::SandboxNotFound`] for HTTP 404, [`Error::Api`] for other
+    /// non-2xx answers, [`Error::Transport`] for connection failures.
     pub async fn connect_sandbox(
         &self,
         sandbox_id: &str,
@@ -243,11 +233,9 @@ impl Client {
     /// how a paused sandbox resumes (`connect(timeout, on_resume)`,
     /// `e2b/sandbox_async/sandbox_api.py:498-520`).
     ///
-    /// [`OnResume::Reboot`](crate::OnResume::Reboot) sends `memory: false`
-    /// on the v2 route and on the v1 fallback alike; a restore, the API's
-    /// default, sends no `memory` field. The timeout behaves as in
-    /// [`Client::connect_sandbox`], including the 300 seconds sent on the v1
-    /// fallback when none is set.
+    /// [`OnResume::Reboot`](crate::OnResume::Reboot) sends `memory: false`;
+    /// a restore, the API's default, sends no `memory` field. The timeout
+    /// behaves as in [`Client::connect_sandbox`].
     ///
     /// # Arguments
     ///
@@ -268,38 +256,18 @@ impl Client {
         sandbox_id: &str,
         options: &ConnectOptions,
     ) -> Result<Sandbox> {
-        let memory = options.memory();
-        let v2_body = ConnectBody {
+        let body = ConnectBody {
             timeout: options.timeout_value().map(|timeout| timeout.as_secs()),
-            memory,
+            memory: options.memory(),
         };
         let response = self
             .send_json(
                 Method::POST,
                 &["v2", "sandboxes", sandbox_id, "connect"],
-                &v2_body,
+                &body,
             )
             .await?;
-        let response = if response.status() == StatusCode::NOT_FOUND {
-            // The v1 body requires a timeout (`connect_sandbox.py:24, 48`).
-            let v1_body = ConnectBody {
-                timeout: Some(
-                    options
-                        .timeout_value()
-                        .unwrap_or(DEFAULT_SANDBOX_TIMEOUT)
-                        .as_secs(),
-                ),
-                memory,
-            };
-            self.send_json(
-                Method::POST,
-                &["sandboxes", sandbox_id, "connect"],
-                &v1_body,
-            )
-            .await?
-        } else {
-            response
-        };
+        // A 404 is the sandbox missing: there is no other route to try.
         let created: SandboxCreated = parse_sandbox_response(response, sandbox_id).await?;
         Sandbox::from_created(self.clone(), created)
     }
