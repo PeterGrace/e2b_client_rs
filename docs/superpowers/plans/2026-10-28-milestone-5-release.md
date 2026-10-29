@@ -1168,7 +1168,10 @@ package-check:
     #!/usr/bin/env bash
     set -euo pipefail
     allowed='^(src/.+\.rs|README\.md|CHANGELOG\.md|LICENSE-APACHE|LICENSE-MIT|Cargo\.toml|Cargo\.toml\.orig|Cargo\.lock|\.cargo_vcs_info\.json)$'
-    unexpected="$(cargo package --list --locked --allow-dirty | grep -Ev -- "$allowed" || true)"
+    # Listed first, so a failing `cargo package --list` stops here (set -e)
+    # rather than being hidden by the `|| true` on the grep.
+    packaged="$(cargo package --list --locked --allow-dirty)"
+    unexpected="$(grep -Ev -- "$allowed" <<< "$packaged" || true)"
     if [ -n "$unexpected" ]; then
         echo "files that should not be published:" >&2
         echo "$unexpected" >&2
@@ -1207,7 +1210,7 @@ Without `publish = false` the crate can be published (the default); only Task 10
 Run: `just package-check`
 Expected: `package ok`. Check `cargo publish --dry-run --locked --allow-dirty`: it packages, verifies, and stops with "aborting upload due to dry run". Quote its last lines in the PR.
 
-> **Corrected (issue #128, 2026-10-29).** `just package-check` prints only `package ok` (or the unexpected files); it does not list the packaged files. `cargo package --list --locked --allow-dirty` does. The dry run also prints one ``warning: ignoring test `<name>` as `tests/<name>.rs` is not included in the published package`` per test target (28 today) before packaging: that is expected with this `include` list, not a failure. With it, the package is 28 files, 579.1 KiB (137.9 KiB compressed).
+> **Corrected (issue #128, 2026-10-29).** `just package-check` prints only `package ok` (or the unexpected files); it does not list the packaged files. `cargo package --list --locked --allow-dirty` does. The dry run also prints one ``warning: ignoring test `<name>` as `tests/<name>.rs` is not included in the published package`` per test target (28 today) before packaging: that is expected with this `include` list, not a failure. With it, the package is 28 files, 579.1 KiB (137.9 KiB compressed). The recipe above takes the list into a variable before grepping it (review of PR #139), so a failing `cargo package --list` is reported as itself rather than hidden by `|| true`.
 
 - [ ] **Step 3: CI**
 

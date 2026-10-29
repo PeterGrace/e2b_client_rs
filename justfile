@@ -156,7 +156,10 @@ package-check:
     #!/usr/bin/env bash
     set -euo pipefail
     allowed='^(src/.+\.rs|README\.md|CHANGELOG\.md|LICENSE-APACHE|LICENSE-MIT|Cargo\.toml|Cargo\.toml\.orig|Cargo\.lock|\.cargo_vcs_info\.json)$'
-    unexpected="$(cargo package --list --locked --allow-dirty | grep -Ev -- "$allowed" || true)"
+    # Listed first, so a failing `cargo package --list` stops here (set -e)
+    # rather than being hidden by the `|| true` on the grep.
+    packaged="$(cargo package --list --locked --allow-dirty)"
+    unexpected="$(grep -Ev -- "$allowed" <<< "$packaged" || true)"
     if [ -n "$unexpected" ]; then
         echo "files that should not be published:" >&2
         echo "$unexpected" >&2

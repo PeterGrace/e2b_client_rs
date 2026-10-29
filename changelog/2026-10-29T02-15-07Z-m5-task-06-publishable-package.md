@@ -16,15 +16,19 @@ user needs none of it.
 - `Cargo.toml`: `publish = false` is gone (the crate can now be published;
   only Task 10 does it) and `include = ["/src", "/README.md",
   "/CHANGELOG.md", "/LICENSE-APACHE", "/LICENSE-MIT"]` names what ships. The
-  README stays because `src/lib.rs` includes it as the crate docs, so its
-  examples are doctests. `CHANGELOG.md` does not exist yet (Task 7); cargo
-  skips a missing include path silently.
+  README stays because `src/lib.rs` includes it under `cfg(doctest)`, so its
+  examples are doctests, and because `readme = "README.md"` names it.
+  `CHANGELOG.md` does not exist yet (Task 7); cargo skips a missing include
+  path silently.
 - `justfile`: `package-check` fails, listing the files, if
   `cargo package --list --locked --allow-dirty` would ship anything outside
   `src/**.rs`, the README, `CHANGELOG.md`, the licences and cargo's own
   files (`Cargo.toml`, `Cargo.toml.orig`, `Cargo.lock`,
-  `.cargo_vcs_info.json`); then it builds the packaged crate
-  (`cargo package --locked --allow-dirty`) and prints `package ok`.
+  `.cargo_vcs_info.json`). The list is taken into a variable first, so a
+  failing `cargo package --list` stops the recipe there instead of being
+  hidden by the grep's `|| true` (review of PR #139). Then it builds the
+  packaged crate (`cargo package --locked --allow-dirty`) and prints
+  `package ok`.
   `--allow-dirty` lets a contributor run it before committing.
 - `.github/workflows/ci.yml`: job `check` gains a `Package` step after
   `Docs`.
