@@ -13,8 +13,8 @@ use e2b_client::{
     TimeoutAction, WriteOptions,
 };
 use live_support::{
-    LiveSandbox, RUN_METADATA_KEY, client, http_reply, no_http_reply_twice, params, params_from,
-    poll_until, resource_name, run_id,
+    LiveSandbox, RUN_METADATA_KEY, client, create_volume_or_skip, http_reply, no_http_reply_twice,
+    params, params_from, poll_until, resource_name, run_id,
 };
 use secrecy::ExposeSecret;
 
@@ -1242,10 +1242,11 @@ async fn clm_0148_volume_create_get_list_destroy() {
     let name = resource_name("managed");
 
     // Act
-    let created = client
-        .create_volume(&name, &RequestOptions::new())
-        .await
-        .expect("create");
+    // `let ... else` runs the `else` block, which must leave the function,
+    // when the pattern doesn't match: Python's `if created is None: return`.
+    let Some(created) = create_volume_or_skip(&client, &name).await else {
+        return;
+    };
     let fetched = client
         .get_volume(created.volume_id(), &RequestOptions::new())
         .await
@@ -1311,10 +1312,9 @@ async fn clm_0148_missing_volume_is_not_found_and_not_destroyed() {
 async fn clm_0149_volume_mount_persists_across_sandboxes() {
     // Arrange: write through the mount in one sandbox, then kill it.
     let client = client();
-    let volume = client
-        .create_volume(&resource_name("mounted"), &RequestOptions::new())
-        .await
-        .expect("create volume");
+    let Some(volume) = create_volume_or_skip(&client, &resource_name("mounted")).await else {
+        return;
+    };
     let mount = params().volume_mount(volume.name(), "/mnt/data");
     {
         let writer = LiveSandbox::create(&mount).await;
@@ -1354,10 +1354,9 @@ async fn clm_0149_volume_mount_persists_across_sandboxes() {
 async fn clm_0153_get_info_reports_volume_mounts() {
     // Arrange
     let client = client();
-    let volume = client
-        .create_volume(&resource_name("info"), &RequestOptions::new())
-        .await
-        .expect("create volume");
+    let Some(volume) = create_volume_or_skip(&client, &resource_name("info")).await else {
+        return;
+    };
     let sandbox = LiveSandbox::create(&params().volume_mount(volume.name(), "/mnt/info")).await;
 
     // Act

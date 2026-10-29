@@ -1,0 +1,14 @@
+running 1 test
+test clm_0148_volume_create_get_list_destroy ... ok
+
+successes:
+
+---- clm_0148_volume_create_get_list_destroy stdout ----
+SKIPPED (environment): volumes are not enabled for this team: use of volumes is not enabled
+
+
+successes:
+    clm_0148_volume_create_get_list_destroy
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 40 filtered out; finished in 0.44s
+

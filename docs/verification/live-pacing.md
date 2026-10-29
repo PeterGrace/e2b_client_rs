@@ -24,6 +24,7 @@ Hosted E2B has no such limit and keeps `just test-live`.
    | Line | Meaning |
    |---|---|
    | `RESULT <test> PASS` | passed on the first try |
+   | `RESULT <test> SKIP` | passed only because the environment can't run it (its output has a `SKIPPED (environment):` line); says nothing about the feature |
    | `RESULT <test> FAIL` | failed for a reason other than readiness or a failed sandbox: a real result |
    | `RESULT <test> FAIL-READINESS` | failed while the server had no ready sandbox; rerun below |
    | `RESULT <test> FAIL-SANDBOX-FAILED` | failed because the sandbox failed outright; rerun below |
@@ -31,6 +32,7 @@ Hosted E2B has no such limit and keeps `just test-live`.
    | `RESULT <test> FAIL-READINESS (rerun)` | still no ready sandbox after the rerun: a capacity result, says nothing about the feature |
    | `RESULT <test> FAIL-SANDBOX-FAILED (rerun)` | the sandbox failed outright again: capacity or a server defect, for a person to classify |
    | `RESULT <test> FAIL (rerun)` | the rerun failed some other way: a real result |
+   | `RESULT <test> SKIP (rerun)` | the rerun skipped (see `SKIP`) |
 
    A failure is a readiness failure when its output contains `still starting
    up`, `Service Temporarily Unavailable` or `Unschedulable`, the messages the
@@ -49,6 +51,13 @@ Hosted E2B has no such limit and keeps `just test-live`.
    capacity or as a server defect. When the output has
    both, a readiness marker wins: M2's capacity runs saw both.
 
+   A test that exits 0 is `SKIP` when its output contains `SKIPPED
+   (environment):`, the line `tests/live_support` prints when the environment,
+   not the crate, keeps the test from running: the volume tests on a team
+   with volumes disabled (hosted E2B answers 403 `use of volumes is not
+   enabled`). A skip is an environment limit, never evidence for a claim, and
+   does not fail the run.
+
    A failure reported only as an exit code (M2 saw a synthetic 75) is left as
    `FAIL` for a person to classify. A test that was rerun has two lines: the
    first result, then the rerun's.
@@ -59,7 +68,7 @@ Hosted E2B has no such limit and keeps `just test-live`.
 5. Reruns each readiness and sandbox-failed result once, after another gap.
 6. Runs `live_sweep` for the run id, then writes a summary line that counts
    the final results (`pass`, `pass on rerun`, `fail`, `still not ready`,
-   `sandbox failed`) and a last `run log: <path>` line. Both go to the
+   `sandbox failed`, `skipped`) and a last `run log: <path>` line. Both go to the
    terminal and to the log, so a background run is finished when its log
    prints `run log:`.
 

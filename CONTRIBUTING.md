@@ -58,6 +58,10 @@ in scope.
   are the commit (`git rev-parse HEAD`) and whether the working tree had
   changes (`dirty: yes|no`). Both say `unknown` when git can't answer.
 
+  A live test the environment can't run (the volume tests on a team with
+  volumes disabled) prints `SKIPPED (environment): <why>` and passes; a run's
+  skips are environment limits, never evidence for a claim.
+
 ### Testing against a self-hosted E2B-compatible server
 
 The `sandbawks` target works for any E2B-compatible server whose API answers
