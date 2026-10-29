@@ -52,13 +52,18 @@
 //! Every call that takes a `*Options` type takes it by reference, and each
 //! `*Options` type has `new()`, `Default` and builder setters, so adding an
 //! option later is not a breaking change. Their `request_timeout` setters
-//! bound that one call. A zero stream deadline or request timeout means no limit,
-//! as in the SDKs.
+//! bound that one call. A REST call with nothing else to configure (and
+//! [`Sandbox::is_running`]) takes a [`RequestOptions`] instead, which
+//! carries only that request timeout ([`RequestOptions::new`] keeps the
+//! configured one). A zero stream deadline or request timeout means no
+//! limit, as in the SDKs.
 //!
 //! # Quick start
 //!
 //! ```no_run
-//! use e2b_client::{Client, CommandOptions, CreateSandboxParams, FileOptions, WriteOptions};
+//! use e2b_client::{
+//!     Client, CommandOptions, CreateSandboxParams, FileOptions, RequestOptions, WriteOptions,
+//! };
 //!
 //! #[tokio::main]
 //! async fn main() -> e2b_client::Result<()> {
@@ -74,7 +79,7 @@
 //!     let text = files.read_to_string("/tmp/hello.txt", &FileOptions::default()).await?;
 //!     assert_eq!(text, "hello");
 //!
-//!     sandbox.kill().await?;
+//!     sandbox.kill(&RequestOptions::new()).await?;
 //!     Ok(())
 //! }
 //! ```
@@ -125,6 +130,7 @@ pub use commands::{
 };
 pub use config::{
     ConnectionConfig, ConnectionConfigBuilder, DEFAULT_DOMAIN, DEFAULT_REQUEST_TIMEOUT, ENVD_PORT,
+    RequestOptions,
 };
 pub use envd::EnvdVersion;
 pub use error::{ConnectCode, Error, Result, TransportError};

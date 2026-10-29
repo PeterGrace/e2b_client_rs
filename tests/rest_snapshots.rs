@@ -3,7 +3,7 @@
 mod common;
 
 use common::{SANDBOX_ID, client_for, sandbox_json};
-use e2b_client::{Error, ListSnapshotsParams, SnapshotMode, SnapshotOptions};
+use e2b_client::{Error, ListSnapshotsParams, RequestOptions, SnapshotMode, SnapshotOptions};
 use serde_json::json;
 use wiremock::matchers::{body_json, method, path, query_param, query_param_is_missing};
 use wiremock::{Mock, MockServer, ResponseTemplate};
@@ -251,11 +251,11 @@ async fn delete_snapshot_encodes_the_id_as_one_segment() {
 
     // Act
     let deleted = client
-        .delete_snapshot("team/my-snap:v1")
+        .delete_snapshot("team/my-snap:v1", &RequestOptions::new())
         .await
         .expect("delete");
     let deleted_missing = client
-        .delete_snapshot("gone")
+        .delete_snapshot("gone", &RequestOptions::new())
         .await
         .expect("delete missing");
 
@@ -279,7 +279,7 @@ async fn delete_snapshot_refused_is_an_api_error() {
 
     // Act
     let error = client_for(&server)
-        .delete_snapshot("t:1")
+        .delete_snapshot("t:1", &RequestOptions::new())
         .await
         .expect_err("refused");
 

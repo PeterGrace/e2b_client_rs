@@ -11,7 +11,7 @@ use common::{
 };
 use e2b_client::{
     CommandConnectOptions, CommandEvent, CommandOptions, ConnectCode, Error, FileOptions, FileType,
-    ListOptions, Sandbox, Signal, WriteOptions,
+    ListOptions, RequestOptions, Sandbox, Signal, WriteOptions,
 };
 use serde_json::{Value, json};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -1038,8 +1038,18 @@ async fn is_running_checks_envd_health() {
         .mount(&server)
         .await;
 
-    assert!(sandbox.is_running().await.expect("running"));
-    assert!(!sandbox.is_running().await.expect("not running"));
+    assert!(
+        sandbox
+            .is_running(&RequestOptions::new())
+            .await
+            .expect("running")
+    );
+    assert!(
+        !sandbox
+            .is_running(&RequestOptions::new())
+            .await
+            .expect("not running")
+    );
 }
 
 /// Calls every kind of envd route once (process streams, unary RPCs, the
@@ -1056,7 +1066,7 @@ async fn envd_requests_for_every_route(server: &MockServer, sandbox: &Sandbox) -
     let _ = files.read("/a", &FileOptions::default()).await;
     let _ = files.write("/a", "x", &WriteOptions::default()).await;
     let _ = files.list("/", &ListOptions::default()).await;
-    let _ = sandbox.is_running().await;
+    let _ = sandbox.is_running(&RequestOptions::new()).await;
     let requests: Vec<Request> = server
         .received_requests()
         .await

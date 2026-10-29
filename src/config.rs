@@ -85,6 +85,65 @@ impl RequestTimeout {
     }
 }
 
+/// Options for a call that has nothing else to configure: only its request
+/// timeout. Calls that take another options or params struct have a
+/// `request_timeout` setter on it instead.
+///
+/// Python note: this is the SDK's `request_timeout=` keyword argument
+/// (`ApiParams`, `e2b/connection_config.py:70-78`) on calls such as
+/// `Sandbox.kill` or `Sandbox.get_info`.
+///
+/// # Examples
+///
+/// ```
+/// use std::time::Duration;
+/// use e2b_client::RequestOptions;
+///
+/// // The configured request timeout.
+/// let configured = RequestOptions::new();
+/// // Give up on this one call after five seconds.
+/// let short = RequestOptions::new().request_timeout(Some(Duration::from_secs(5)));
+/// // No limit for this one call.
+/// let unbounded = RequestOptions::new().request_timeout(None);
+/// # let _ = (configured, short, unbounded);
+/// ```
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct RequestOptions {
+    // `pub(crate)`: the calls read it directly, as they read the
+    // `request_timeout` field of every other options struct.
+    pub(crate) request_timeout: RequestTimeout,
+}
+
+impl RequestOptions {
+    /// Options that keep the configured request timeout
+    /// ([`ConnectionConfigBuilder::request_timeout`]).
+    ///
+    /// # Returns
+    ///
+    /// Empty options.
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// The request timeout for this call: `Some(d)` bounds it to `d`;
+    /// `None`, or a zero duration (as SDK `request_timeout=0`), means no
+    /// limit. Unset, the configured one applies.
+    ///
+    /// # Arguments
+    ///
+    /// * `timeout` - the per-call timeout, or `None` for no limit.
+    ///
+    /// # Returns
+    ///
+    /// The options, for chaining.
+    #[must_use]
+    pub fn request_timeout(mut self, timeout: Option<Duration>) -> Self {
+        self.request_timeout = RequestTimeout::set(timeout);
+        self
+    }
+}
+
 /// Hosted E2B domains whose envd RPC traffic goes through the shared
 /// `sandbox.<domain>` endpoint instead of the per-sandbox host
 /// (`e2b/sandbox_domains.py:1-9`).
@@ -625,6 +684,31 @@ mod tests {
             Some(short)
         );
         assert_eq!(RequestTimeout::default().resolve(None), None);
+    }
+
+    #[test]
+    fn request_options_store_unset_none_zero_and_a_value() {
+        let short = Duration::from_millis(200);
+        assert_eq!(
+            RequestOptions::new().request_timeout,
+            RequestTimeout::default()
+        );
+        assert_eq!(
+            RequestOptions::new().request_timeout(None).request_timeout,
+            RequestTimeout::set(None)
+        );
+        assert_eq!(
+            RequestOptions::new()
+                .request_timeout(Some(Duration::ZERO))
+                .request_timeout,
+            RequestTimeout::set(None)
+        );
+        assert_eq!(
+            RequestOptions::new()
+                .request_timeout(Some(short))
+                .request_timeout,
+            RequestTimeout::set(Some(short))
+        );
     }
 
     #[test]

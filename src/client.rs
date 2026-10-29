@@ -8,7 +8,7 @@ use reqwest::header::{HeaderMap, HeaderValue};
 use reqwest::{Method, RequestBuilder, StatusCode};
 use serde::{Deserialize, Serialize};
 
-use crate::config::ConnectionConfig;
+use crate::config::{ConnectionConfig, RequestOptions, RequestTimeout};
 use crate::envd::json_message_or_text;
 use crate::error::{Error, Result};
 use crate::lifecycle::{ConnectOptions, PauseOptions};
@@ -50,13 +50,13 @@ fn user_agent() -> String {
 /// # Examples
 ///
 /// ```no_run
-/// use e2b_client::{Client, CreateSandboxParams};
+/// use e2b_client::{Client, CreateSandboxParams, RequestOptions};
 ///
 /// # async fn demo() -> e2b_client::Result<()> {
 /// let client = Client::from_env()?;
 /// let sandbox = client.create_sandbox(&CreateSandboxParams::default()).await?;
 /// println!("created {}", sandbox.sandbox_id());
-/// sandbox.kill().await?;
+/// sandbox.kill(&RequestOptions::new()).await?;
 /// # Ok(())
 /// # }
 /// ```
@@ -153,8 +153,11 @@ impl Client {
     /// # Arguments
     ///
     /// * `params` - template, timeout, metadata, environment variables,
-    ///   network, lifecycle, volume mounts, an MCP configuration and an
-    ///   optional idempotency key.
+    ///   network, lifecycle, volume mounts, an MCP configuration, an
+    ///   optional idempotency key and the request timeout
+    ///   ([`CreateSandboxParams::request_timeout`]), which bounds the
+    ///   `POST` only: starting the MCP gateway is a command with its own
+    ///   timeouts, as in the SDK.
     ///
     /// # Returns
     ///
@@ -199,7 +202,7 @@ impl Client {
         let idempotency_key = params.checked_idempotency_key()?;
         let body = params.body()?;
         let mut request = self
-            .request(Method::POST, &["v2", "sandboxes"])?
+            .request(Method::POST, &["v2", "sandboxes"], params.request_timeout)?
             .json(&body);
         // `if let` runs the block only when the key is `Some`, like
         // `if key is not None:` in Python.
@@ -216,7 +219,7 @@ impl Client {
         {
             // As in the SDKs, a sandbox whose gateway failed is killed. The
             // kill's own result is ignored so the gateway error is reported.
-            let _ = sandbox.kill().await;
+            let _ = sandbox.kill(&RequestOptions::new()).await;
             return Err(error);
         }
         Ok(sandbox)
@@ -234,8 +237,9 @@ impl Client {
     /// # Arguments
     ///
     /// * `sandbox_id` - the sandbox to connect to.
-    /// * `options` - the timeout and the resume mode;
-    ///   [`ConnectOptions::new`](crate::ConnectOptions::new) for neither.
+    /// * `options` - the timeout, the resume mode and the request timeout;
+    ///   [`ConnectOptions::new`](crate::ConnectOptions::new) for none of
+    ///   them.
     ///
     /// # Returns
     ///
@@ -280,6 +284,7 @@ impl Client {
                 Method::POST,
                 &["v2", "sandboxes", sandbox_id, "connect"],
                 &body,
+                options.request_timeout,
             )
             .await?;
         // A 404 is the sandbox missing: there is no other route to try.
@@ -292,6 +297,8 @@ impl Client {
     /// # Arguments
     ///
     /// * `sandbox_id` - the sandbox to look up.
+    /// * `options` - the request timeout; [`RequestOptions::new`] for the
+    ///   configured one.
     ///
     /// # Returns
     ///
@@ -306,14 +313,24 @@ impl Client {
     ///
     /// ```no_run
     /// # async fn demo(client: e2b_client::Client, sandbox_id: &str) -> e2b_client::Result<()> {
-    /// let info = client.get_sandbox_info(sandbox_id).await?;
+    /// use e2b_client::RequestOptions;
+    ///
+    /// let info = client.get_sandbox_info(sandbox_id, &RequestOptions::new()).await?;
     /// println!("{:?} until {}", info.state, info.end_at);
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn get_sandbox_info(&self, sandbox_id: &str) -> Result<SandboxInfo> {
+    pub async fn get_sandbox_info(
+        &self,
+        sandbox_id: &str,
+        options: &RequestOptions,
+    ) -> Result<SandboxInfo> {
         let response = self
-            .request(Method::GET, &["sandboxes", sandbox_id])?
+            .request(
+                Method::GET,
+                &["sandboxes", sandbox_id],
+                options.request_timeout,
+            )?
             .send()
             .await
             .map_err(Error::transport)?;
@@ -326,7 +343,7 @@ impl Client {
     /// # Arguments
     ///
     /// * `sandbox_id` - the sandbox.
-    /// * `params` - the optional time range.
+    /// * `params` - the optional time range and the request timeout.
     ///
     /// # Returns
     ///
@@ -360,7 +377,11 @@ impl Client {
         params: &MetricsParams,
     ) -> Result<Vec<SandboxMetrics>> {
         let response = self
-            .request(Method::GET, &["sandboxes", sandbox_id, "metrics"])?
+            .request(
+                Method::GET,
+                &["sandboxes", sandbox_id, "metrics"],
+                params.request_timeout,
+            )?
             .query(&params.query())
             .send()
             .await
@@ -376,7 +397,8 @@ impl Client {
     ///
     /// # Arguments
     ///
-    /// * `params` - filters and the page token.
+    /// * `params` - filters, the page token and the request timeout, which
+    ///   bounds this page's request.
     ///
     /// # Returns
     ///
@@ -409,7 +431,7 @@ impl Client {
     /// ```
     pub async fn list_sandboxes(&self, params: &ListSandboxesParams) -> Result<SandboxPage> {
         let response = self
-            .request(Method::GET, &["v2", "sandboxes"])?
+            .request(Method::GET, &["v2", "sandboxes"], params.request_timeout)?
             .query(&params.query())
             .send()
             .await
@@ -427,6 +449,8 @@ impl Client {
     /// # Arguments
     ///
     /// * `sandbox_id` - the sandbox to kill.
+    /// * `options` - the request timeout; [`RequestOptions::new`] for the
+    ///   configured one.
     ///
     /// # Returns
     ///
@@ -441,15 +465,21 @@ impl Client {
     ///
     /// ```no_run
     /// # async fn demo(client: e2b_client::Client, sandbox_id: &str) -> e2b_client::Result<()> {
-    /// if !client.kill_sandbox(sandbox_id).await? {
+    /// use e2b_client::RequestOptions;
+    ///
+    /// if !client.kill_sandbox(sandbox_id, &RequestOptions::new()).await? {
     ///     println!("{sandbox_id} was already gone");
     /// }
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn kill_sandbox(&self, sandbox_id: &str) -> Result<bool> {
+    pub async fn kill_sandbox(&self, sandbox_id: &str, options: &RequestOptions) -> Result<bool> {
         let response = self
-            .request(Method::DELETE, &["sandboxes", sandbox_id])?
+            .request(
+                Method::DELETE,
+                &["sandboxes", sandbox_id],
+                options.request_timeout,
+            )?
             .send()
             .await
             .map_err(Error::transport)?;
@@ -470,7 +500,7 @@ impl Client {
     /// # Arguments
     ///
     /// * `sandbox_id` - the sandbox to pause.
-    /// * `options` - what the pause keeps.
+    /// * `options` - what the pause keeps, and the request timeout.
     ///
     /// # Returns
     ///
@@ -511,7 +541,12 @@ impl Client {
             memory: options.memory(),
         };
         let response = self
-            .send_json(Method::POST, &["sandboxes", sandbox_id, "pause"], &body)
+            .send_json(
+                Method::POST,
+                &["sandboxes", sandbox_id, "pause"],
+                &body,
+                options.request_timeout,
+            )
             .await?;
         match response.status() {
             StatusCode::NOT_FOUND => Err(Error::SandboxNotFound(sandbox_id.to_owned())),
@@ -534,6 +569,8 @@ impl Client {
     ///
     /// * `sandbox_id` - the sandbox.
     /// * `timeout` - the new lifetime, sent in whole seconds.
+    /// * `options` - the request timeout; [`RequestOptions::new`] for the
+    ///   configured one.
     ///
     /// # Errors
     ///
@@ -545,17 +582,31 @@ impl Client {
     /// ```no_run
     /// use std::time::Duration;
     ///
+    /// use e2b_client::RequestOptions;
+    ///
     /// # async fn demo(client: e2b_client::Client, sandbox_id: &str) -> e2b_client::Result<()> {
-    /// client.set_sandbox_timeout(sandbox_id, Duration::from_secs(900)).await?;
+    /// client
+    ///     .set_sandbox_timeout(sandbox_id, Duration::from_secs(900), &RequestOptions::new())
+    ///     .await?;
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn set_sandbox_timeout(&self, sandbox_id: &str, timeout: Duration) -> Result<()> {
+    pub async fn set_sandbox_timeout(
+        &self,
+        sandbox_id: &str,
+        timeout: Duration,
+        options: &RequestOptions,
+    ) -> Result<()> {
         let body = TimeoutBody {
             timeout: timeout.as_secs(),
         };
         let response = self
-            .send_json(Method::POST, &["sandboxes", sandbox_id, "timeout"], &body)
+            .send_json(
+                Method::POST,
+                &["sandboxes", sandbox_id, "timeout"],
+                &body,
+                options.request_timeout,
+            )
             .await?;
         ensure_found_and_success(response, sandbox_id).await
     }
@@ -568,6 +619,8 @@ impl Client {
     ///
     /// * `sandbox_id` - the sandbox.
     /// * `update` - the new settings.
+    /// * `options` - the request timeout; [`RequestOptions::new`] for the
+    ///   configured one.
     ///
     /// # Errors
     ///
@@ -577,12 +630,14 @@ impl Client {
     /// # Examples
     ///
     /// ```no_run
-    /// use e2b_client::{Client, NetworkUpdate};
+    /// use e2b_client::{Client, NetworkUpdate, RequestOptions};
     ///
     /// # async fn demo(client: Client, sandbox_id: &str) -> e2b_client::Result<()> {
     /// // Cut the sandbox off from the internet without restarting it.
     /// let update = NetworkUpdate::new().allow_internet_access(false);
-    /// client.update_sandbox_network(sandbox_id, &update).await?;
+    /// client
+    ///     .update_sandbox_network(sandbox_id, &update, &RequestOptions::new())
+    ///     .await?;
     /// # Ok(())
     /// # }
     /// ```
@@ -590,9 +645,15 @@ impl Client {
         &self,
         sandbox_id: &str,
         update: &NetworkUpdate,
+        options: &RequestOptions,
     ) -> Result<()> {
         let response = self
-            .send_json(Method::PUT, &["sandboxes", sandbox_id, "network"], update)
+            .send_json(
+                Method::PUT,
+                &["sandboxes", sandbox_id, "network"],
+                update,
+                options.request_timeout,
+            )
             .await?;
         ensure_found_and_success(response, sandbox_id).await
     }
@@ -604,6 +665,8 @@ impl Client {
     /// * `sandbox_id` - the sandbox.
     /// * `duration` - how long to extend by, in whole seconds; `None` uses the
     ///   server default.
+    /// * `options` - the request timeout; [`RequestOptions::new`] for the
+    ///   configured one.
     ///
     /// # Errors
     ///
@@ -615,8 +678,13 @@ impl Client {
     /// ```no_run
     /// use std::time::Duration;
     ///
+    /// use e2b_client::RequestOptions;
+    ///
     /// # async fn demo(client: e2b_client::Client, sandbox_id: &str) -> e2b_client::Result<()> {
-    /// client.refresh_sandbox(sandbox_id, Some(Duration::from_secs(60))).await?;
+    /// let extend_by = Some(Duration::from_secs(60));
+    /// client
+    ///     .refresh_sandbox(sandbox_id, extend_by, &RequestOptions::new())
+    ///     .await?;
     /// # Ok(())
     /// # }
     /// ```
@@ -624,12 +692,18 @@ impl Client {
         &self,
         sandbox_id: &str,
         duration: Option<Duration>,
+        options: &RequestOptions,
     ) -> Result<()> {
         let body = RefreshBody {
             duration: duration.map(|duration| duration.as_secs()),
         };
         let response = self
-            .send_json(Method::POST, &["sandboxes", sandbox_id, "refreshes"], &body)
+            .send_json(
+                Method::POST,
+                &["sandboxes", sandbox_id, "refreshes"],
+                &body,
+                options.request_timeout,
+            )
             .await?;
         ensure_found_and_success(response, sandbox_id).await
     }
@@ -642,7 +716,7 @@ impl Client {
     /// # Arguments
     ///
     /// * `sandbox_id` - the sandbox.
-    /// * `options` - the name and mode.
+    /// * `options` - the name, the mode and the request timeout.
     ///
     /// # Returns
     ///
@@ -681,6 +755,7 @@ impl Client {
                 Method::POST,
                 &["sandboxes", sandbox_id, "snapshots"],
                 &options.body(),
+                options.request_timeout,
             )
             .await?;
         parse_sandbox_response(response, sandbox_id).await
@@ -690,7 +765,8 @@ impl Client {
     ///
     /// # Arguments
     ///
-    /// * `params` - filters and the page token.
+    /// * `params` - filters, the page token and the request timeout, which
+    ///   bounds this page's request.
     ///
     /// # Returns
     ///
@@ -723,7 +799,7 @@ impl Client {
     /// ```
     pub async fn list_snapshots(&self, params: &ListSnapshotsParams) -> Result<SnapshotPage> {
         let response = self
-            .request(Method::GET, &["snapshots"])?
+            .request(Method::GET, &["snapshots"], params.request_timeout)?
             .query(&params.query())
             .send()
             .await
@@ -745,6 +821,8 @@ impl Client {
     /// # Arguments
     ///
     /// * `snapshot_id` - the snapshot ID or name.
+    /// * `options` - the request timeout; [`RequestOptions::new`] for the
+    ///   configured one.
     ///
     /// # Returns
     ///
@@ -762,14 +840,26 @@ impl Client {
     ///
     /// ```no_run
     /// # async fn demo(client: e2b_client::Client) -> e2b_client::Result<()> {
-    /// let deleted = client.delete_snapshot("team/my-snapshot:v1").await?;
+    /// use e2b_client::RequestOptions;
+    ///
+    /// let deleted = client
+    ///     .delete_snapshot("team/my-snapshot:v1", &RequestOptions::new())
+    ///     .await?;
     /// println!("deleted: {deleted}");
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn delete_snapshot(&self, snapshot_id: &str) -> Result<bool> {
+    pub async fn delete_snapshot(
+        &self,
+        snapshot_id: &str,
+        options: &RequestOptions,
+    ) -> Result<bool> {
         let response = self
-            .request(Method::DELETE, &["templates", snapshot_id])?
+            .request(
+                Method::DELETE,
+                &["templates", snapshot_id],
+                options.request_timeout,
+            )?
             .send()
             .await
             .map_err(Error::transport)?;
@@ -787,7 +877,8 @@ impl Client {
     /// # Arguments
     ///
     /// * `sandbox_id` - the sandbox to fork.
-    /// * `options` - the forks' timeout and count.
+    /// * `options` - the forks' timeout and count, and the request timeout,
+    ///   which bounds the fork request.
     ///
     /// # Returns
     ///
@@ -838,7 +929,12 @@ impl Client {
     ) -> Result<Vec<Result<Sandbox>>> {
         let body = options.body()?;
         let response = self
-            .send_json(Method::POST, &["sandboxes", sandbox_id, "fork"], &body)
+            .send_json(
+                Method::POST,
+                &["sandboxes", sandbox_id, "fork"],
+                &body,
+                options.request_timeout,
+            )
             .await?;
         // Each entry is decoded on its own, so one malformed entry does not
         // hide the forks that did start (each a running, billed sandbox).
@@ -909,6 +1005,8 @@ impl Client {
     /// * `name` - the volume name, which
     ///   [`CreateSandboxParams::volume_mount`] takes. The crate sends it as
     ///   given; the API decides which names it accepts.
+    /// * `options` - the request timeout; [`RequestOptions::new`] for the
+    ///   configured one.
     ///
     /// # Returns
     ///
@@ -924,22 +1022,29 @@ impl Client {
     /// # Examples
     ///
     /// ```no_run
-    /// use e2b_client::{Client, CreateSandboxParams, WriteOptions};
+    /// use e2b_client::{Client, CreateSandboxParams, RequestOptions, WriteOptions};
     ///
     /// # async fn demo(client: Client) -> e2b_client::Result<()> {
-    /// let volume = client.create_volume("data").await?;
+    /// let volume = client.create_volume("data", &RequestOptions::new()).await?;
     /// let params = CreateSandboxParams::new("base").volume_mount(volume.name(), "/mnt/data");
     /// let sandbox = client.create_sandbox(&params).await?;
     /// let files = sandbox.files();
     /// files.write("/mnt/data/kept.txt", "outlives the sandbox", &WriteOptions::default()).await?;
-    /// sandbox.kill().await?;
-    /// client.destroy_volume(volume.volume_id()).await?;
+    /// sandbox.kill(&RequestOptions::new()).await?;
+    /// client
+    ///     .destroy_volume(volume.volume_id(), &RequestOptions::new())
+    ///     .await?;
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn create_volume(&self, name: &str) -> Result<Volume> {
+    pub async fn create_volume(&self, name: &str, options: &RequestOptions) -> Result<Volume> {
         let response = self
-            .send_json(Method::POST, &["volumes"], &NewVolumeBody { name })
+            .send_json(
+                Method::POST,
+                &["volumes"],
+                &NewVolumeBody { name },
+                options.request_timeout,
+            )
             .await?;
         let wire: VolumeWire = parse_success(response).await?;
         Ok(wire.into())
@@ -951,6 +1056,8 @@ impl Client {
     /// # Arguments
     ///
     /// * `volume_id` - the volume ID ([`Volume::volume_id`]).
+    /// * `options` - the request timeout; [`RequestOptions::new`] for the
+    ///   configured one.
     ///
     /// # Returns
     ///
@@ -968,14 +1075,20 @@ impl Client {
     ///
     /// ```no_run
     /// # async fn demo(client: e2b_client::Client, volume_id: &str) -> e2b_client::Result<()> {
-    /// let volume = client.get_volume(volume_id).await?;
+    /// use e2b_client::RequestOptions;
+    ///
+    /// let volume = client.get_volume(volume_id, &RequestOptions::new()).await?;
     /// println!("{} is {}", volume.volume_id(), volume.name());
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn get_volume(&self, volume_id: &str) -> Result<Volume> {
+    pub async fn get_volume(&self, volume_id: &str, options: &RequestOptions) -> Result<Volume> {
         let response = self
-            .request(Method::GET, &["volumes", volume_id])?
+            .request(
+                Method::GET,
+                &["volumes", volume_id],
+                options.request_timeout,
+            )?
             .send()
             .await
             .map_err(Error::transport)?;
@@ -988,6 +1101,11 @@ impl Client {
 
     /// Lists the team's volumes (`GET /volumes`), the SDK's `Volume.list`.
     /// The API returns them in one response, without paging.
+    ///
+    /// # Arguments
+    ///
+    /// * `options` - the request timeout; [`RequestOptions::new`] for the
+    ///   configured one.
     ///
     /// # Returns
     ///
@@ -1003,15 +1121,17 @@ impl Client {
     ///
     /// ```no_run
     /// # async fn demo(client: e2b_client::Client) -> e2b_client::Result<()> {
-    /// for volume in client.list_volumes().await? {
+    /// use e2b_client::RequestOptions;
+    ///
+    /// for volume in client.list_volumes(&RequestOptions::new()).await? {
     ///     println!("{} {}", volume.volume_id, volume.name);
     /// }
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn list_volumes(&self) -> Result<Vec<VolumeInfo>> {
+    pub async fn list_volumes(&self, options: &RequestOptions) -> Result<Vec<VolumeInfo>> {
         let response = self
-            .request(Method::GET, &["volumes"])?
+            .request(Method::GET, &["volumes"], options.request_timeout)?
             .send()
             .await
             .map_err(Error::transport)?;
@@ -1027,6 +1147,8 @@ impl Client {
     /// # Arguments
     ///
     /// * `volume_id` - the volume ID ([`Volume::volume_id`]).
+    /// * `options` - the request timeout; [`RequestOptions::new`] for the
+    ///   configured one.
     ///
     /// # Returns
     ///
@@ -1042,15 +1164,21 @@ impl Client {
     ///
     /// ```no_run
     /// # async fn demo(client: e2b_client::Client, volume_id: &str) -> e2b_client::Result<()> {
-    /// if !client.destroy_volume(volume_id).await? {
+    /// use e2b_client::RequestOptions;
+    ///
+    /// if !client.destroy_volume(volume_id, &RequestOptions::new()).await? {
     ///     println!("no volume {volume_id}");
     /// }
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn destroy_volume(&self, volume_id: &str) -> Result<bool> {
+    pub async fn destroy_volume(&self, volume_id: &str, options: &RequestOptions) -> Result<bool> {
         let response = self
-            .request(Method::DELETE, &["volumes", volume_id])?
+            .request(
+                Method::DELETE,
+                &["volumes", volume_id],
+                options.request_timeout,
+            )?
             .send()
             .await
             .map_err(Error::transport)?;
@@ -1061,27 +1189,57 @@ impl Client {
     }
 
     /// Builds a request to `api_url` plus the given path segments, each
-    /// percent-encoded as a single segment.
-    fn request(&self, method: Method, segments: &[&str]) -> Result<RequestBuilder> {
+    /// percent-encoded as a single segment, bounded by the call's request
+    /// timeout.
+    ///
+    /// # Arguments
+    ///
+    /// * `method` - the HTTP method.
+    /// * `segments` - the path segments after the API URL.
+    /// * `timeout` - the call's request timeout; unset uses the configured
+    ///   one. The API's `reqwest::Client` has no client-wide timeout, so
+    ///   this is the only bound.
+    ///
+    /// # Returns
+    ///
+    /// The request, ready for a body or `send`.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::InvalidConfig`] if the API URL cannot take path segments.
+    fn request(
+        &self,
+        method: Method,
+        segments: &[&str],
+        timeout: RequestTimeout,
+    ) -> Result<RequestBuilder> {
         let mut url = self.inner.config.api_url().clone();
         url.path_segments_mut()
             .map_err(|()| Error::InvalidConfig("API URL cannot be a base URL".into()))?
             .pop_if_empty()
             .extend(segments);
         let builder = self.inner.api_http.request(method, url);
-        Ok(match self.inner.config.request_timeout() {
+        Ok(match timeout.resolve(self.inner.config.request_timeout()) {
             Some(timeout) => builder.timeout(timeout),
             None => builder,
         })
     }
 
+    /// Sends a JSON body to `api_url` plus `segments`; see
+    /// [`Client::request`] for the arguments other than `body`.
+    ///
+    /// # Errors
+    ///
+    /// As [`Client::request`], and [`Error::Transport`] if the request
+    /// fails or times out.
     async fn send_json<B: Serialize>(
         &self,
         method: Method,
         segments: &[&str],
         body: &B,
+        timeout: RequestTimeout,
     ) -> Result<reqwest::Response> {
-        self.request(method, segments)?
+        self.request(method, segments, timeout)?
             .json(body)
             .send()
             .await
@@ -1190,7 +1348,11 @@ mod tests {
             .expect("config");
         let client = Client::new(config).expect("client");
         let request = client
-            .request(Method::GET, &["sandboxes", "a/b c"])
+            .request(
+                Method::GET,
+                &["sandboxes", "a/b c"],
+                RequestTimeout::default(),
+            )
             .expect("url")
             .build()
             .expect("req");

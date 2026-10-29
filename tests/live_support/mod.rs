@@ -26,7 +26,9 @@ use std::ops::Deref;
 use std::sync::OnceLock;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use e2b_client::{Client, CommandOptions, ConnectionConfig, CreateSandboxParams, Sandbox};
+use e2b_client::{
+    Client, CommandOptions, ConnectionConfig, CreateSandboxParams, RequestOptions, Sandbox,
+};
 
 /// Metadata key carrying the run id on every sandbox a live test creates.
 pub const RUN_METADATA_KEY: &str = "e2b-client-test";
@@ -213,7 +215,10 @@ impl Drop for LiveSandbox {
             tokio::runtime::Builder::new_current_thread()
                 .enable_all()
                 .build()
-                .map(|runtime| runtime.block_on(client().kill_sandbox(&thread_sandbox_id)))
+                .map(|runtime| {
+                    runtime
+                        .block_on(client().kill_sandbox(&thread_sandbox_id, &RequestOptions::new()))
+                })
         })
         .join();
         if !matches!(outcome, Ok(Ok(Ok(_)))) {

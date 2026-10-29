@@ -11,6 +11,7 @@ use chrono::{DateTime, SecondsFormat, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 
+use crate::config::RequestTimeout;
 use crate::error::{Error, Result};
 use crate::lifecycle::{
     AutoResume, Lifecycle, LifecycleInfo, OnTimeout, SnapshotMode, deserialize_known_mode,
@@ -56,6 +57,7 @@ pub struct CreateSandboxParams {
     idempotency_key: Option<String>,
     volume_mounts: Vec<VolumeMount>,
     mcp: Option<Map<String, Value>>,
+    pub(crate) request_timeout: RequestTimeout,
 }
 
 impl CreateSandboxParams {
@@ -344,6 +346,27 @@ impl CreateSandboxParams {
         self
     }
 
+    /// The request timeout for this call: `Some(d)` bounds it to `d`;
+    /// `None`, or a zero duration (as SDK `request_timeout=0`), means no
+    /// limit. Unset, the configured one applies
+    /// ([`crate::ConnectionConfigBuilder::request_timeout`]).
+    /// It bounds the `POST` only: starting an MCP gateway
+    /// ([`CreateSandboxParams::mcp`]) is a command with its own timeouts,
+    /// as in the SDK (`e2b/sandbox_async/main.py:245-268`).
+    ///
+    /// # Arguments
+    ///
+    /// * `timeout` - the per-call timeout, or `None` for no limit.
+    ///
+    /// # Returns
+    ///
+    /// The parameters, for chaining.
+    #[must_use]
+    pub fn request_timeout(mut self, timeout: Option<Duration>) -> Self {
+        self.request_timeout = RequestTimeout::set(timeout);
+        self
+    }
+
     /// The MCP configuration, if one is set.
     pub(crate) fn mcp_config(&self) -> Option<&Map<String, Value>> {
         self.mcp.as_ref()
@@ -497,6 +520,7 @@ pub const MAX_FORK_COUNT: u32 = 20;
 pub struct ForkOptions {
     timeout: Option<Duration>,
     count: Option<u32>,
+    pub(crate) request_timeout: RequestTimeout,
 }
 
 impl ForkOptions {
@@ -542,6 +566,25 @@ impl ForkOptions {
     #[must_use]
     pub fn count(mut self, count: u32) -> Self {
         self.count = Some(count);
+        self
+    }
+
+    /// The request timeout for this call: `Some(d)` bounds it to `d`;
+    /// `None`, or a zero duration (as SDK `request_timeout=0`), means no
+    /// limit. Unset, the configured one applies
+    /// ([`crate::ConnectionConfigBuilder::request_timeout`]).
+    /// It bounds the fork request.
+    ///
+    /// # Arguments
+    ///
+    /// * `timeout` - the per-call timeout, or `None` for no limit.
+    ///
+    /// # Returns
+    ///
+    /// The options, for chaining.
+    #[must_use]
+    pub fn request_timeout(mut self, timeout: Option<Duration>) -> Self {
+        self.request_timeout = RequestTimeout::set(timeout);
         self
     }
 
@@ -667,8 +710,10 @@ impl SandboxState {
 /// # Examples
 ///
 /// ```no_run
+/// use e2b_client::RequestOptions;
+///
 /// # async fn demo(sandbox: e2b_client::Sandbox) -> e2b_client::Result<()> {
-/// let info = sandbox.get_info().await?;
+/// let info = sandbox.get_info(&RequestOptions::new()).await?;
 /// println!(
 ///     "{} ({}): {} CPUs, {} MiB, ends {}",
 ///     info.sandbox_id, info.template_id, info.cpu_count, info.memory_mb, info.end_at
@@ -796,6 +841,7 @@ pub struct ListSandboxesParams {
     template: Option<String>,
     limit: Option<u32>,
     next_token: Option<String>,
+    pub(crate) request_timeout: RequestTimeout,
 }
 
 impl ListSandboxesParams {
@@ -912,6 +958,26 @@ impl ListSandboxesParams {
     #[must_use]
     pub fn next_token(mut self, token: impl Into<String>) -> Self {
         self.next_token = Some(token.into());
+        self
+    }
+
+    /// The request timeout for this call: `Some(d)` bounds it to `d`;
+    /// `None`, or a zero duration (as SDK `request_timeout=0`), means no
+    /// limit. Unset, the configured one applies
+    /// ([`crate::ConnectionConfigBuilder::request_timeout`]).
+    /// It bounds this page's request; [`ListSandboxesParams::next_token`]
+    /// keeps it, so every page built from these parameters gets it.
+    ///
+    /// # Arguments
+    ///
+    /// * `timeout` - the per-call timeout, or `None` for no limit.
+    ///
+    /// # Returns
+    ///
+    /// The parameters, for chaining.
+    #[must_use]
+    pub fn request_timeout(mut self, timeout: Option<Duration>) -> Self {
+        self.request_timeout = RequestTimeout::set(timeout);
         self
     }
 
@@ -1436,6 +1502,40 @@ mod tests {
                 "{count}: {error:?}"
             );
         }
+    }
+
+    #[test]
+    fn the_request_timeout_never_reaches_the_wire() {
+        // Arrange
+        let short = Some(Duration::from_millis(200));
+        let create = CreateSandboxParams::new("base").metadata("k", "v");
+        let fork = ForkOptions::new().count(2);
+        let list = ListSandboxesParams::new().limit(5);
+
+        // Act
+        let create_json = |params: &CreateSandboxParams| {
+            serde_json::to_value(params.body().expect("body")).expect("serialize")
+        };
+        let fork_json = |options: &ForkOptions| {
+            serde_json::to_value(options.body().expect("body")).expect("serialize")
+        };
+
+        // Assert: the bodies and the query are the same with and without it.
+        assert_eq!(
+            create_json(&create.clone().request_timeout(short)),
+            create_json(&create)
+        );
+        assert_eq!(fork_json(&fork.request_timeout(short)), fork_json(&fork));
+        assert_eq!(list.clone().request_timeout(short).query(), list.query());
+    }
+
+    #[test]
+    fn a_next_page_keeps_the_request_timeout() {
+        let short = Some(Duration::from_millis(200));
+        let first = ListSandboxesParams::new().request_timeout(short);
+        let next = first.clone().next_token("page-2");
+        assert_eq!(next.request_timeout, first.request_timeout);
+        assert_eq!(next.request_timeout, RequestTimeout::set(short));
     }
 
     #[test]

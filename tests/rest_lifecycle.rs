@@ -8,7 +8,7 @@ use std::time::Duration;
 use common::{SANDBOX_ID, client_for, detail_json, sandbox_json};
 use e2b_client::{
     ConnectOptions, CreateSandboxParams, Error, Lifecycle, OnResume, OnTimeout, PauseOptions,
-    SnapshotMode, TimeoutAction,
+    RequestOptions, SnapshotMode, TimeoutAction,
 };
 use serde_json::{Value, json};
 use wiremock::matchers::{body_json, header, method, path};
@@ -318,9 +318,18 @@ async fn get_info_reads_lifecycle_and_pause_mode() {
     let client = client_for(&server);
 
     // Act
-    let known = client.get_sandbox_info(SANDBOX_ID).await.expect("known");
-    let unknown = client.get_sandbox_info(SANDBOX_ID).await.expect("unknown");
-    let kill = client.get_sandbox_info(SANDBOX_ID).await.expect("kill");
+    let known = client
+        .get_sandbox_info(SANDBOX_ID, &RequestOptions::new())
+        .await
+        .expect("known");
+    let unknown = client
+        .get_sandbox_info(SANDBOX_ID, &RequestOptions::new())
+        .await
+        .expect("unknown");
+    let kill = client
+        .get_sandbox_info(SANDBOX_ID, &RequestOptions::new())
+        .await
+        .expect("kill");
 
     // Assert
     let lifecycle = known.lifecycle.expect("lifecycle");
@@ -351,8 +360,14 @@ async fn get_info_without_lifecycle_fields_reads_none() {
     let client = client_for(&server);
 
     // Act
-    let null = client.get_sandbox_info(SANDBOX_ID).await.expect("null");
-    let absent = client.get_sandbox_info(SANDBOX_ID).await.expect("absent");
+    let null = client
+        .get_sandbox_info(SANDBOX_ID, &RequestOptions::new())
+        .await
+        .expect("null");
+    let absent = client
+        .get_sandbox_info(SANDBOX_ID, &RequestOptions::new())
+        .await
+        .expect("absent");
 
     // Assert
     for info in [null, absent] {

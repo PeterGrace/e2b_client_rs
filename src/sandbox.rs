@@ -15,7 +15,7 @@ use url::Url;
 
 use crate::client::Client;
 use crate::commands::{CommandOptions, Commands};
-use crate::config::RequestTimeout;
+use crate::config::RequestOptions;
 use crate::envd::{EnvdClient, EnvdTarget, EnvdVersion, envd_http_error};
 use crate::error::{Error, Result};
 use crate::filesystem::{FILES_ROUTE, FileOptions, Filesystem};
@@ -190,7 +190,7 @@ fn expiration_from_now(expires_in: Duration) -> Result<u64> {
 /// # Examples
 ///
 /// ```no_run
-/// use e2b_client::{Client, CommandOptions, CreateSandboxParams, WriteOptions};
+/// use e2b_client::{Client, CommandOptions, CreateSandboxParams, RequestOptions, WriteOptions};
 ///
 /// # async fn demo() -> e2b_client::Result<()> {
 /// let client = Client::from_env()?;
@@ -198,7 +198,7 @@ fn expiration_from_now(expires_in: Duration) -> Result<u64> {
 /// let result = sandbox.commands().run("echo hello", &CommandOptions::default()).await?;
 /// assert_eq!(result.stdout, "hello\n");
 /// sandbox.files().write("/tmp/note.txt", "hi", &WriteOptions::default()).await?;
-/// sandbox.kill().await?;
+/// sandbox.kill(&RequestOptions::new()).await?;
 /// # Ok(())
 /// # }
 /// ```
@@ -577,6 +577,11 @@ impl Sandbox {
 
     /// Checks envd's health endpoint.
     ///
+    /// # Arguments
+    ///
+    /// * `options` - the request timeout; [`RequestOptions::new`] for the
+    ///   configured one.
+    ///
     /// # Returns
     ///
     /// `true` if envd answered, `false` if the proxy reported the sandbox
@@ -591,16 +596,18 @@ impl Sandbox {
     ///
     /// ```no_run
     /// # async fn demo(sandbox: e2b_client::Sandbox) -> e2b_client::Result<()> {
-    /// if !sandbox.is_running().await? {
+    /// use e2b_client::RequestOptions;
+    ///
+    /// if !sandbox.is_running(&RequestOptions::new()).await? {
     ///     println!("{} has stopped", sandbox.sandbox_id());
     /// }
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn is_running(&self) -> Result<bool> {
+    pub async fn is_running(&self, options: &RequestOptions) -> Result<bool> {
         let response = self
             .envd
-            .http_request(Method::GET, ENVD_HEALTH_ROUTE, RequestTimeout::default())
+            .http_request(Method::GET, ENVD_HEALTH_ROUTE, options.request_timeout)
             .send()
             .await
             .map_err(Error::transport)?;
@@ -615,6 +622,11 @@ impl Sandbox {
 
     /// Kills the sandbox. See [`Client::kill_sandbox`].
     ///
+    /// # Arguments
+    ///
+    /// * `options` - the request timeout; [`RequestOptions::new`] for the
+    ///   configured one.
+    ///
     /// # Returns
     ///
     /// `true` if it was killed, `false` if it no longer existed.
@@ -627,12 +639,14 @@ impl Sandbox {
     ///
     /// ```no_run
     /// # async fn demo(sandbox: e2b_client::Sandbox) -> e2b_client::Result<()> {
-    /// sandbox.kill().await?;
+    /// use e2b_client::RequestOptions;
+    ///
+    /// sandbox.kill(&RequestOptions::new()).await?;
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn kill(&self) -> Result<bool> {
-        self.client.kill_sandbox(&self.sandbox_id).await
+    pub async fn kill(&self, options: &RequestOptions) -> Result<bool> {
+        self.client.kill_sandbox(&self.sandbox_id, options).await
     }
 
     /// Pauses the sandbox, choosing what the pause keeps. See
@@ -640,8 +654,9 @@ impl Sandbox {
     ///
     /// # Arguments
     ///
-    /// * `options` - what the pause keeps; [`PauseOptions::new`] for the
-    ///   API's default.
+    /// * `options` - what the pause keeps, and the request timeout;
+    ///   [`PauseOptions::new`] for the API's default and the configured
+    ///   timeout.
     ///
     /// # Returns
     ///
@@ -671,6 +686,8 @@ impl Sandbox {
     /// # Arguments
     ///
     /// * `timeout` - the new lifetime from now.
+    /// * `options` - the request timeout; [`RequestOptions::new`] for the
+    ///   configured one.
     ///
     /// # Errors
     ///
@@ -681,14 +698,18 @@ impl Sandbox {
     /// ```no_run
     /// use std::time::Duration;
     ///
+    /// use e2b_client::RequestOptions;
+    ///
     /// # async fn demo(sandbox: e2b_client::Sandbox) -> e2b_client::Result<()> {
-    /// sandbox.set_timeout(Duration::from_secs(30 * 60)).await?;
+    /// sandbox
+    ///     .set_timeout(Duration::from_secs(30 * 60), &RequestOptions::new())
+    ///     .await?;
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn set_timeout(&self, timeout: Duration) -> Result<()> {
+    pub async fn set_timeout(&self, timeout: Duration, options: &RequestOptions) -> Result<()> {
         self.client
-            .set_sandbox_timeout(&self.sandbox_id, timeout)
+            .set_sandbox_timeout(&self.sandbox_id, timeout, options)
             .await
     }
 
@@ -698,6 +719,8 @@ impl Sandbox {
     /// # Arguments
     ///
     /// * `update` - the new settings; fields it leaves unset are cleared.
+    /// * `options` - the request timeout; [`RequestOptions::new`] for the
+    ///   configured one.
     ///
     /// # Errors
     ///
@@ -706,16 +729,21 @@ impl Sandbox {
     /// # Examples
     ///
     /// ```no_run
-    /// use e2b_client::NetworkUpdate;
+    /// use e2b_client::{NetworkUpdate, RequestOptions};
     ///
     /// # async fn demo(sandbox: e2b_client::Sandbox) -> e2b_client::Result<()> {
-    /// sandbox.update_network(&NetworkUpdate::new().allow_internet_access(true)).await?;
+    /// let update = NetworkUpdate::new().allow_internet_access(true);
+    /// sandbox.update_network(&update, &RequestOptions::new()).await?;
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn update_network(&self, update: &NetworkUpdate) -> Result<()> {
+    pub async fn update_network(
+        &self,
+        update: &NetworkUpdate,
+        options: &RequestOptions,
+    ) -> Result<()> {
         self.client
-            .update_sandbox_network(&self.sandbox_id, update)
+            .update_sandbox_network(&self.sandbox_id, update, options)
             .await
     }
 
@@ -724,6 +752,8 @@ impl Sandbox {
     /// # Arguments
     ///
     /// * `duration` - how long to extend by, or `None` for the server default.
+    /// * `options` - the request timeout; [`RequestOptions::new`] for the
+    ///   configured one.
     ///
     /// # Errors
     ///
@@ -733,19 +763,30 @@ impl Sandbox {
     ///
     /// ```no_run
     /// # async fn demo(sandbox: e2b_client::Sandbox) -> e2b_client::Result<()> {
+    /// use e2b_client::RequestOptions;
+    ///
     /// // Keep the sandbox alive for the API's default refresh period.
-    /// sandbox.refresh(None).await?;
+    /// sandbox.refresh(None, &RequestOptions::new()).await?;
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn refresh(&self, duration: Option<Duration>) -> Result<()> {
+    pub async fn refresh(
+        &self,
+        duration: Option<Duration>,
+        options: &RequestOptions,
+    ) -> Result<()> {
         self.client
-            .refresh_sandbox(&self.sandbox_id, duration)
+            .refresh_sandbox(&self.sandbox_id, duration, options)
             .await
     }
 
     /// Fetches current information about the sandbox. See
     /// [`Client::get_sandbox_info`].
+    ///
+    /// # Arguments
+    ///
+    /// * `options` - the request timeout; [`RequestOptions::new`] for the
+    ///   configured one.
     ///
     /// # Returns
     ///
@@ -759,13 +800,17 @@ impl Sandbox {
     ///
     /// ```no_run
     /// # async fn demo(sandbox: e2b_client::Sandbox) -> e2b_client::Result<()> {
-    /// let info = sandbox.get_info().await?;
+    /// use e2b_client::RequestOptions;
+    ///
+    /// let info = sandbox.get_info(&RequestOptions::new()).await?;
     /// println!("{:?}, metadata {:?}", info.state, info.metadata);
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn get_info(&self) -> Result<SandboxInfo> {
-        self.client.get_sandbox_info(&self.sandbox_id).await
+    pub async fn get_info(&self, options: &RequestOptions) -> Result<SandboxInfo> {
+        self.client
+            .get_sandbox_info(&self.sandbox_id, options)
+            .await
     }
 
     /// Reads this sandbox's CPU, memory and disk samples. See
@@ -773,7 +818,7 @@ impl Sandbox {
     ///
     /// # Arguments
     ///
-    /// * `params` - the optional time range.
+    /// * `params` - the optional time range and the request timeout.
     ///
     /// # Returns
     ///
@@ -806,7 +851,7 @@ impl Sandbox {
     ///
     /// # Arguments
     ///
-    /// * `options` - the name and mode.
+    /// * `options` - the name, the mode and the request timeout.
     ///
     /// # Returns
     ///
@@ -839,7 +884,8 @@ impl Sandbox {
     ///
     /// # Arguments
     ///
-    /// * `params` - the other filters and the page token.
+    /// * `params` - the other filters, the page token and the request
+    ///   timeout.
     ///
     /// # Returns
     ///
@@ -873,7 +919,7 @@ impl Sandbox {
     ///
     /// # Arguments
     ///
-    /// * `options` - the forks' timeout and count.
+    /// * `options` - the forks' timeout and count, and the request timeout.
     ///
     /// # Returns
     ///
