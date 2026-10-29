@@ -794,7 +794,7 @@ Run it, and the `live_commands` tests whose calls changed (`clm_0035` to `clm_00
 - `docs/api-review.md`, "Known limits": remove the request-timeout bullet; add one for the SDK's control-plane `retries` (not implemented, unscheduled).
 - `docs/protocol-notes.md`: the pid-only calls' rows cite `py: sandbox_async/commands/command.py:64-71, 99-102, 120-124, 176-179` and `py: sandbox_async/commands/pty.py:65-68, 85-89, 256-260`; the "Not implemented yet" line about per-call timeouts goes.
 - `README.md`: the Processes and PTY rows mention `RequestOptions`.
-- (Added in issue #125, 2026-10-29.) `README.md`, the "Not implemented yet" sentence under "What it covers": Task 1 narrowed it to "per-call request timeouts on the pid-only process and PTY calls"; drop that clause. `src/lib.rs`: Task 1's options paragraph says "A REST call with nothing else to configure takes a [`RequestOptions`]"; widen it to the pid-only calls. `docs/api-review.md`: Task 1 added a `RequestOptions` row ("for the REST calls ... that have no other options") and a "Method shape" bullet; widen both to the pid-only calls.
+- (Added in issue #125, 2026-10-29.) `README.md`, the "Not implemented yet" sentence under "What it covers": Task 1 narrowed it to "per-call request timeouts on the pid-only process and PTY calls"; drop that clause. `src/lib.rs`: Task 1's options paragraph says "A REST call with nothing else to configure (and [`Sandbox::is_running`]) takes a [`RequestOptions`]"; widen it to the pid-only calls. `docs/api-review.md`: Task 1 added a `RequestOptions` row ("for the REST calls ... that have no other options") and a "Method shape" bullet; widen both to the pid-only calls.
 
 - [ ] **Step 7: Changelog and commit**
 
