@@ -220,7 +220,7 @@ Every wire detail, with citations into the official SDK sources, is in
 - **Semver.** `e2b-client` follows [Semantic Versioning](https://semver.org).
   Before 1.0, a minor release (0.2 to 0.3) may break the API and a patch
   release (0.2.0 to 0.2.1) never does. Each release's breaking changes are
-  listed in its changelog entry.
+  listed in its [changelog](CHANGELOG.md) entry.
 - **Minimum supported Rust version: 1.89.** It is `rust-version` in
   `Cargo.toml` and is checked in CI. Raising it is a minor release, never a
   patch release. CI checks this repository's `Cargo.lock`, which Cargo
@@ -275,9 +275,9 @@ As of 2026-10-28 (milestone 4):
   79 in one paced run, `20261028T154205Z-sandbawks-paced-913873`, with no
   failure on capacity; every failure there is a server defect or a route it
   does not serve yet, filed upstream.
-- **API:** the API milestone 4 settled is the one 0.2.0 will ship. Its
-  breaking changes, old call to new call, are listed in
-  `changelog/2026-10-28T18-39-36Z-m4-milestone.md`.
+- **API:** 0.2.0 ships the API milestone 4 settled plus milestone 5's
+  per-call request timeouts (`RequestOptions`). Its breaking changes since
+  0.1.0, old call to new call, are listed in [`CHANGELOG.md`](CHANGELOG.md).
 
 Live results are in `docs/verification/`. The road to a crates.io release is
 in `docs/superpowers/specs/2026-10-26-claims-audit-and-publishability-design.md`.

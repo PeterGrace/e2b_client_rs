@@ -1289,6 +1289,8 @@ Fill every `<...>` from the sources in Step 1; leave none. Each "Breaking change
 
 Every breaking-change row in the M4 milestone changelog and in Tasks 1 and 2's entries appears once (count them and say the count in the PR). `cargo package --list --locked --allow-dirty` now lists `CHANGELOG.md` among the packaged files, and `just package-check` still ends `package ok` (corrected, issue #128: the recipe does not print the list). In `README.md`'s "Versioning", "Each release's breaking changes are listed in its changelog entry" links `CHANGELOG.md`.
 
+> **Corrected (issue #129, 2026-10-29).** The count is 53 table rows (M4 milestone 24, Task 1 16, Task 2 13) plus M4's 6 behaviour bullets (two lifecycle, two files, timeouts, toolchain), each once. Each table gains a `Source` column (milestone task and issue); rows that change an API added in M2 or M3, not in 0.1.0, also say `(after 0.1.0)` (18 rows and two behaviour bullets), since 0.1.0 had no PTY, snapshots, volumes, network updates or `_with` methods. "Changed" also lists M1's two fixes (an explicit empty config value is unset, #18; `close_stdin` refused before envd 0.5.2, #19) and the `#[non_exhaustive]` / `source()` changes (#95, #92); "Removed" also lists `impl From<reqwest::Error> for Error` (#92). The intro says "covers ... except what the README lists as Not implemented yet" and notes volumes are not live-verified, rather than claiming full parity.
+
 - [ ] **Step 4: Changelog and commit**
 
 ```bash
