@@ -8,7 +8,7 @@ use std::time::{Duration, Instant};
 use common::{client_with_timeout, sandbox_from_json_with_client, sandbox_json};
 use e2b_client::{Error, PtySize, RequestOptions, Signal};
 use serde_json::json;
-use wiremock::matchers::{method, path};
+use wiremock::matchers::{header, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 const SHORT: Duration = Duration::from_millis(200);
@@ -98,4 +98,27 @@ async fn a_per_call_none_lifts_a_short_configured_timeout() {
     assert!(unbounded.is_ok(), "{unbounded:?}");
     let error = configured.expect_err("the configured 200 ms applies when unset");
     assert!(is_transport_timeout(&error), "{error:?}");
+}
+
+#[tokio::test]
+async fn the_per_call_timeout_is_sent_as_connect_timeout_ms() {
+    // Arrange: configured 5 s; `SendSignal` answers only a request that
+    // carries the per-call 200 ms, so any other header misses the mock.
+    let server = MockServer::start().await;
+    let client = client_with_timeout(&server, Some(Duration::from_secs(5)));
+    let sandbox = sandbox_from_json_with_client(&server, &client, sandbox_json("0.5.2")).await;
+    Mock::given(method("POST"))
+        .and(path("/process.Process/SendSignal"))
+        .and(header("connect-timeout-ms", "200"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({})))
+        .expect(1)
+        .mount(&server)
+        .await;
+    let short = RequestOptions::new().request_timeout(Some(SHORT));
+
+    // Act: `kill` reaches envd through `send_signal`.
+    let killed = sandbox.commands().kill(7, &short).await;
+
+    // Assert
+    assert!(killed.expect("kill with the 200 ms header"), "SIGKILL sent");
 }

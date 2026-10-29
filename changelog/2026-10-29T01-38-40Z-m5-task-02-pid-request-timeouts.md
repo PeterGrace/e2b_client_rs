@@ -16,7 +16,8 @@ Closes #120 (Task 1, #125, did the REST half). Backs CLM-0183.
   through `Commands::kill` with the caller's options.
 - Tests: `tests/envd_request_options.rs` (new: every pid-only call gives up
   on its own 200 ms against a 5 s configured timeout; a per-call `None`
-  lifts a 200 ms configured timeout, and unset keeps it); the live test
+  lifts a 200 ms configured timeout, and unset keeps it; the per-call value
+  is the `Connect-Timeout-Ms` header `kill` sends); the live test
   `clm_0183_a_one_millisecond_request_timeout_times_out_list`; every caller
   in `tests/envd_api.rs`, `tests/envd_pty.rs`, `tests/error_taxonomy.rs`
   and `tests/live_commands.rs`.
