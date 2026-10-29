@@ -10,11 +10,17 @@ Part of #124. Backs CLM-0184.
   the last verdict; no verdict counts as unverified) and fails, printing
   the table to paste, if the README's table between
   `<!-- coverage:begin -->` and `<!-- coverage:end -->` differs. A claim
-  with no area tag or an unknown verdict fails the test rather than
-  dropping out of the counts.
+  with no area tag, more than one area tag or an unknown verdict fails the
+  test rather than dropping out of the counts or being counted under one
+  area quietly; markers in the wrong order fail with a clear message.
 - `README.md`, "Verification status": the generated table between the two
   markers. The "Ledger:" bullet points at the table instead of repeating
-  its (stale, 179-claim) numbers.
+  its (stale, 179-claim) numbers. The line above the bullets says they are
+  the runs as of milestone 4, with the M5 claims still unverified; the
+  wire-protocol bullet says its 79 are CLM-0005's children, so the S4 row's
+  80 is those plus CLM-0005.
+- The plan: a dated correction under Task 8 Step 1 (the two review-added
+  assertions), and Task 10's README step names the reworded line.
 
 The table today: 184 active claims, 169 supported, 10 `not_enough_info`,
 0 refuted, 5 unverified (the M5 claims CLM-0182 to CLM-0186, which get

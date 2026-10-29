@@ -41,11 +41,20 @@ fn expected_table(ledger: &Value) -> String {
             claim["id"]
         );
         let tags = claim["tags"].as_array().expect("tags array");
-        let area = AREAS
+        // Exactly one area tag: a second one would be counted under the first
+        // area only, so fail rather than count it quietly.
+        let mut areas = AREAS
             .iter()
             .map(|(tag, _)| *tag)
-            .find(|tag| tags.iter().any(|t| t == tag))
+            .filter(|tag| tags.iter().any(|t| t == tag));
+        let area = areas
+            .next()
             .unwrap_or_else(|| panic!("{} has no area tag", claim["id"]));
+        assert!(
+            areas.next().is_none(),
+            "{} has more than one area tag",
+            claim["id"]
+        );
         *counts.entry((area, verdict)).or_default() += 1;
     }
     let mut table = String::from(
@@ -101,6 +110,10 @@ fn readme_coverage_table_matches_the_ledger() {
     let end = readme
         .find(END)
         .expect("README has the coverage:end marker");
+    assert!(
+        start <= end,
+        "coverage:end precedes coverage:begin in README.md"
+    );
     let actual = readme[start..end].trim();
 
     // Assert

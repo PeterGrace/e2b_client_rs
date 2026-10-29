@@ -1418,6 +1418,8 @@ fn readme_coverage_table_matches_the_ledger() {
 Run: `cargo test --test readme_coverage`
 Expected: FAIL, "README has the coverage:begin marker".
 
+> **Corrected (issue #130, 2026-10-29).** After review (PR #141), the shipped test also fails on a claim with more than one area tag (`find` became a `filter` plus an `assert!` that there is no second match), and asserts `start <= end` before slicing, so swapped markers give a clear message instead of a slice-index panic. rustfmt wraps the `assert!` and the `readme.find(...)` chains. Read `tests/readme_coverage.rs` for the code as merged.
+
 - [ ] **Step 2: The README**
 
 In "Verification status", after the intro sentence, add "Claims by area, from `claims.json` (`tests/readme_coverage.rs` keeps this table in step with the ledger):" and the two markers. Run the test, paste the table it prints between them, and run it again: PASS. The bullets below the table keep the per-run detail; the "Ledger:" bullet now points at the table instead of repeating its numbers.
@@ -1516,7 +1518,7 @@ Done by the coordinator session (it writes the ledger and runs the publish), on 
 - [ ] **Step 2: The release branch** (`release-0.2.0`):
   - `Cargo.toml`: `version = "0.2.0"`; `cargo update -p e2b-client` (only that line of `Cargo.lock` changes; diff it).
   - `CHANGELOG.md`: `## [0.2.0] - <date -u +%Y-%m-%d>`.
-  - `README.md`: the install snippet becomes `e2b-client = "0.2"` and "It is not on crates.io yet" goes; "Verification status" becomes "As of <date> (milestone 5)", with the Task 9 run and the coverage table updated (the test prints it).
+  - `README.md`: the install snippet becomes `e2b-client = "0.2"` and "It is not on crates.io yet" goes; "Verification status": the line above the bullets becomes "The runs behind those verdicts, as of milestone 5 (<date>):" (corrected in issue #130, 2026-10-29: Task 8 reworded the old "As of 2026-10-28 (milestone 4):" line), with the Task 9 run and the coverage table updated (the test prints it).
   - `claims.json` with Step 1's records.
   - Gates, `just package-check`, then `cargo publish --dry-run --locked` (Step 1's CLM-0124 evidence comes from this run).
   - Open the PR (`docs: release 0.2.0`), get brooke's review, answer it, merge.
