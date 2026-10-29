@@ -109,7 +109,9 @@ impl RequestTimeout {
 /// ```
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct RequestOptions {
-    request_timeout: RequestTimeout,
+    // `pub(crate)`: the calls read it directly, as they read the
+    // `request_timeout` field of every other options struct.
+    pub(crate) request_timeout: RequestTimeout,
 }
 
 impl RequestOptions {
@@ -139,17 +141,6 @@ impl RequestOptions {
     pub fn request_timeout(mut self, timeout: Option<Duration>) -> Self {
         self.request_timeout = RequestTimeout::set(timeout);
         self
-    }
-
-    /// The stored timeout, for the call to resolve against the configured
-    /// one.
-    ///
-    /// # Returns
-    ///
-    /// The per-call timeout, unset unless [`RequestOptions::request_timeout`]
-    /// was called.
-    pub(crate) fn timeout(&self) -> RequestTimeout {
-        self.request_timeout
     }
 }
 
@@ -698,19 +689,24 @@ mod tests {
     #[test]
     fn request_options_store_unset_none_zero_and_a_value() {
         let short = Duration::from_millis(200);
-        assert_eq!(RequestOptions::new().timeout(), RequestTimeout::default());
         assert_eq!(
-            RequestOptions::new().request_timeout(None).timeout(),
+            RequestOptions::new().request_timeout,
+            RequestTimeout::default()
+        );
+        assert_eq!(
+            RequestOptions::new().request_timeout(None).request_timeout,
             RequestTimeout::set(None)
         );
         assert_eq!(
             RequestOptions::new()
                 .request_timeout(Some(Duration::ZERO))
-                .timeout(),
+                .request_timeout,
             RequestTimeout::set(None)
         );
         assert_eq!(
-            RequestOptions::new().request_timeout(Some(short)).timeout(),
+            RequestOptions::new()
+                .request_timeout(Some(short))
+                .request_timeout,
             RequestTimeout::set(Some(short))
         );
     }

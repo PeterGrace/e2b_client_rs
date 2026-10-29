@@ -426,7 +426,7 @@ In `src/config.rs`, after `impl RequestTimeout`:
 /// ```
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct RequestOptions {
-    request_timeout: RequestTimeout,
+    pub(crate) request_timeout: RequestTimeout,
 }
 
 impl RequestOptions {
@@ -458,10 +458,6 @@ impl RequestOptions {
         self
     }
 
-    /// The stored timeout, for the call to resolve.
-    pub(crate) fn timeout(&self) -> RequestTimeout {
-        self.request_timeout
-    }
 }
 ```
 
@@ -508,7 +504,7 @@ In `src/client.rs`, `request` and `send_json` take the call's `RequestTimeout`:
     }
 ```
 
-Then every public method passes its timeout. For a call without options, add `options: &RequestOptions` as the last parameter and pass `options.timeout()`, for example:
+Then every public method passes its timeout. For a call without options, add `options: &RequestOptions` as the last parameter and pass `options.request_timeout`, for example:
 
 ```rust
     pub async fn get_sandbox_info(
@@ -517,7 +513,7 @@ Then every public method passes its timeout. For a call without options, add `op
         options: &RequestOptions,
     ) -> Result<SandboxInfo> {
         let response = self
-            .request(Method::GET, &["sandboxes", sandbox_id], options.timeout())?
+            .request(Method::GET, &["sandboxes", sandbox_id], options.request_timeout)?
             .send()
             .await
             .map_err(Error::transport)?;
@@ -562,7 +558,7 @@ The same field and setter go on `ConnectOptions`, `CreateSandboxParams`, `ListSa
 
 - [ ] **Step 5: `Sandbox` delegates**
 
-In `src/sandbox.rs`, the delegating methods take and pass the options: `kill(&RequestOptions)`, `set_timeout(Duration, &RequestOptions)`, `update_network(&NetworkUpdate, &RequestOptions)`, `refresh(Option<Duration>, &RequestOptions)`, `get_info(&RequestOptions)`; `pause`, `get_metrics`, `create_snapshot`, `list_snapshots` and `fork` pass their structs unchanged. `is_running` takes `&RequestOptions` and passes `options.timeout()` to `http_request` instead of `RequestTimeout::default()`. Internal callers (`create_sandbox`'s kill after a failed MCP gateway, anything else `grep -n 'kill()\|get_info()' src/` finds) pass `&RequestOptions::new()`. `mcp_token` keeps its signature (decision 7).
+In `src/sandbox.rs`, the delegating methods take and pass the options: `kill(&RequestOptions)`, `set_timeout(Duration, &RequestOptions)`, `update_network(&NetworkUpdate, &RequestOptions)`, `refresh(Option<Duration>, &RequestOptions)`, `get_info(&RequestOptions)`; `pause`, `get_metrics`, `create_snapshot`, `list_snapshots` and `fork` pass their structs unchanged. `is_running` takes `&RequestOptions` and passes `options.request_timeout` to `http_request` instead of `RequestTimeout::default()`. Internal callers (`create_sandbox`'s kill after a failed MCP gateway, anything else `grep -n 'kill()\|get_info()' src/` finds) pass `&RequestOptions::new()`. `mcp_token` keeps its signature (decision 7).
 
 - [ ] **Step 6: Callers**
 
@@ -727,7 +723,7 @@ Expected: compile errors: `list` takes no arguments, `send_stdin` takes 2.
 
 - [ ] **Step 3: Pass the options through**
 
-In `src/commands.rs`, each pid-only call takes `options: &RequestOptions` last and passes `options.timeout()` to `unary` in place of `RequestTimeout::default()`, for example:
+In `src/commands.rs`, each pid-only call takes `options: &RequestOptions` last and passes `options.request_timeout` to `unary` in place of `RequestTimeout::default()`, for example:
 
 ```rust
     pub async fn send_signal(
@@ -744,7 +740,7 @@ In `src/commands.rs`, each pid-only call takes `options: &RequestOptions` last a
                 "SendSignal",
                 &request,
                 HeaderMap::new(),
-                options.timeout(),
+                options.request_timeout,
             )
             .await?;
         Ok(())
@@ -762,7 +758,7 @@ In `src/commands.rs`, each pid-only call takes `options: &RequestOptions` last a
     }
 ```
 
-The same for `list`, `send_stdin`, `close_stdin` (keep its envd version gate first). `CommandHandle::send_stdin(data, &RequestOptions)` and `CommandHandle::kill(&RequestOptions)` pass them to `Commands`. In `src/pty.rs`: `Pty::send_stdin(pid, data, &RequestOptions)`, `Pty::resize(pid, size, &RequestOptions)`, `Pty::kill(pid, &RequestOptions)`, and the `PtyHandle` methods. `RequestOptions::timeout` is `pub(crate)`, so `src/commands.rs` and `src/pty.rs` can call it. Each rustdoc gains the `options` argument line and its example passes `&RequestOptions::new()`.
+The same for `list`, `send_stdin`, `close_stdin` (keep its envd version gate first). `CommandHandle::send_stdin(data, &RequestOptions)` and `CommandHandle::kill(&RequestOptions)` pass them to `Commands`. In `src/pty.rs`: `Pty::send_stdin(pid, data, &RequestOptions)`, `Pty::resize(pid, size, &RequestOptions)`, `Pty::kill(pid, &RequestOptions)`, and the `PtyHandle` methods. `RequestOptions::request_timeout` is a `pub(crate)` field, as on every other options struct, so `src/commands.rs` and `src/pty.rs` can read it. (Corrected in issue #125, 2026-10-29, per review: the `timeout()` accessor was dropped so every call site reads the field.) Each rustdoc gains the `options` argument line and its example passes `&RequestOptions::new()`.
 
 - [ ] **Step 4: Callers**
 

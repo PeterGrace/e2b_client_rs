@@ -326,7 +326,11 @@ impl Client {
         options: &RequestOptions,
     ) -> Result<SandboxInfo> {
         let response = self
-            .request(Method::GET, &["sandboxes", sandbox_id], options.timeout())?
+            .request(
+                Method::GET,
+                &["sandboxes", sandbox_id],
+                options.request_timeout,
+            )?
             .send()
             .await
             .map_err(Error::transport)?;
@@ -474,7 +478,7 @@ impl Client {
             .request(
                 Method::DELETE,
                 &["sandboxes", sandbox_id],
-                options.timeout(),
+                options.request_timeout,
             )?
             .send()
             .await
@@ -601,7 +605,7 @@ impl Client {
                 Method::POST,
                 &["sandboxes", sandbox_id, "timeout"],
                 &body,
-                options.timeout(),
+                options.request_timeout,
             )
             .await?;
         ensure_found_and_success(response, sandbox_id).await
@@ -648,7 +652,7 @@ impl Client {
                 Method::PUT,
                 &["sandboxes", sandbox_id, "network"],
                 update,
-                options.timeout(),
+                options.request_timeout,
             )
             .await?;
         ensure_found_and_success(response, sandbox_id).await
@@ -698,7 +702,7 @@ impl Client {
                 Method::POST,
                 &["sandboxes", sandbox_id, "refreshes"],
                 &body,
-                options.timeout(),
+                options.request_timeout,
             )
             .await?;
         ensure_found_and_success(response, sandbox_id).await
@@ -854,7 +858,7 @@ impl Client {
             .request(
                 Method::DELETE,
                 &["templates", snapshot_id],
-                options.timeout(),
+                options.request_timeout,
             )?
             .send()
             .await
@@ -1039,7 +1043,7 @@ impl Client {
                 Method::POST,
                 &["volumes"],
                 &NewVolumeBody { name },
-                options.timeout(),
+                options.request_timeout,
             )
             .await?;
         let wire: VolumeWire = parse_success(response).await?;
@@ -1080,7 +1084,11 @@ impl Client {
     /// ```
     pub async fn get_volume(&self, volume_id: &str, options: &RequestOptions) -> Result<Volume> {
         let response = self
-            .request(Method::GET, &["volumes", volume_id], options.timeout())?
+            .request(
+                Method::GET,
+                &["volumes", volume_id],
+                options.request_timeout,
+            )?
             .send()
             .await
             .map_err(Error::transport)?;
@@ -1123,7 +1131,7 @@ impl Client {
     /// ```
     pub async fn list_volumes(&self, options: &RequestOptions) -> Result<Vec<VolumeInfo>> {
         let response = self
-            .request(Method::GET, &["volumes"], options.timeout())?
+            .request(Method::GET, &["volumes"], options.request_timeout)?
             .send()
             .await
             .map_err(Error::transport)?;
@@ -1166,7 +1174,11 @@ impl Client {
     /// ```
     pub async fn destroy_volume(&self, volume_id: &str, options: &RequestOptions) -> Result<bool> {
         let response = self
-            .request(Method::DELETE, &["volumes", volume_id], options.timeout())?
+            .request(
+                Method::DELETE,
+                &["volumes", volume_id],
+                options.request_timeout,
+            )?
             .send()
             .await
             .map_err(Error::transport)?;

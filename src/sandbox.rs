@@ -607,7 +607,7 @@ impl Sandbox {
     pub async fn is_running(&self, options: &RequestOptions) -> Result<bool> {
         let response = self
             .envd
-            .http_request(Method::GET, ENVD_HEALTH_ROUTE, options.timeout())
+            .http_request(Method::GET, ENVD_HEALTH_ROUTE, options.request_timeout)
             .send()
             .await
             .map_err(Error::transport)?;
