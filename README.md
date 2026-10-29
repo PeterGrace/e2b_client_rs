@@ -72,8 +72,8 @@ async fn main() -> e2b_client::Result<()> {
 
 Out of scope by design: code interpreter, template building, and a blocking
 API. Not implemented yet: the SOCKS5 egress proxy and IAM workload
-identity in network settings, the volume content API (files in a volume without a
-sandbox), sandbox logs, secrets and git.
+identity in network settings, the volume content API (files in a volume
+without a sandbox), sandbox logs, secrets and git.
 
 ## Network, lifecycle and snapshots
 
