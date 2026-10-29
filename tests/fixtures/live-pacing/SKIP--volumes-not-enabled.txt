@@ -1,0 +1,2 @@
+SKIPPED (environment): volumes are not enabled for this team: use of volumes is not enabled
+test clm_0148_volume_create_get_list_destroy ... ok

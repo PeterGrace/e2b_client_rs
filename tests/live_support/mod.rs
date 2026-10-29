@@ -27,7 +27,8 @@ use std::sync::OnceLock;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use e2b_client::{
-    Client, CommandOptions, ConnectionConfig, CreateSandboxParams, RequestOptions, Sandbox,
+    Client, CommandOptions, ConnectionConfig, CreateSandboxParams, Error, RequestOptions, Sandbox,
+    Volume,
 };
 
 /// Metadata key carrying the run id on every sandbox a live test creates.
@@ -157,6 +158,35 @@ pub fn params_from(template: &str) -> CreateSandboxParams {
 /// every snapshot and volume a live test creates must be named with it.
 pub fn resource_name(slug: &str) -> String {
     format!("e2b-client-test-{}-{slug}", run_id().to_ascii_lowercase())
+}
+
+/// What a live test prints when the environment, not the crate, keeps it
+/// from running; `just test-live-paced` reports such a test as `SKIP`, and
+/// the results tables list it as an environment limit.
+pub const SKIPPED: &str = "SKIPPED (environment):";
+
+/// Creates a volume named `name`, or prints a [`SKIPPED`] line and returns
+/// `None` when the team has volumes disabled: hosted E2B answers
+/// `POST /volumes` with 403 `use of volumes is not enabled`.
+///
+/// # Panics
+///
+/// On any other error, so a real failure still fails the test.
+pub async fn create_volume_or_skip(client: &Client, name: &str) -> Option<Volume> {
+    match client.create_volume(name, &RequestOptions::new()).await {
+        Ok(volume) => Some(volume),
+        // `Error::Api` is `#[non_exhaustive]`, so the pattern needs `..`; the
+        // `if` after the pattern is a match guard, checked once it matches.
+        Err(Error::Api {
+            status: 403,
+            message,
+            ..
+        }) if message.contains("not enabled") => {
+            eprintln!("{SKIPPED} volumes are not enabled for this team: {message}");
+            None
+        }
+        Err(error) => panic!("create volume: {error:?}"),
+    }
 }
 
 /// A sandbox that is killed when dropped, even if the test panics.

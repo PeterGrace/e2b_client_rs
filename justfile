@@ -105,6 +105,7 @@ test-live-paced target gap="120" filter="":
             # unexpected or empty label (say `just` failed to start).
             case "$result" in
                 PASS) ;;
+                SKIP) ;;
                 FAIL-READINESS|FAIL-SANDBOX-FAILED) retry+=("$bin $test") ;;
                 *) status=1 ;;
             esac
@@ -125,6 +126,7 @@ test-live-paced target gap="120" filter="":
         result="$(classify "$?" "$out")"
         case "$result" in
             PASS) result=PASS-ON-RERUN ;;
+            SKIP) ;;
             *) status=1 ;;
         esac
         cat "$out" >>"$log"
@@ -137,7 +139,8 @@ test-live-paced target gap="120" filter="":
     count() { grep -Ec -- "^RESULT [^ ]+ ($1)\$" "$log"; }
     echo "summary: $(count PASS) pass, $(count PASS-ON-RERUN' \(rerun\)') pass on rerun," \
         "$(count 'FAIL( \(rerun\))?') fail, $(count 'FAIL-READINESS \(rerun\)') still not ready," \
-        "$(count 'FAIL-SANDBOX-FAILED \(rerun\)') sandbox failed" | tee -a "$log"
+        "$(count 'FAIL-SANDBOX-FAILED \(rerun\)') sandbox failed," \
+        "$(count 'SKIP( \(rerun\))?') skipped" | tee -a "$log"
     echo "run log: $log" | tee -a "$log"
     # A failed sweep means leaked sandboxes, so it fails the run too.
     if [ "$status" -ne 0 ]; then exit "$status"; fi
@@ -162,7 +165,8 @@ _stamp log:
     } | tee "{{log}}"
 
 # Prints the paced result label for one test run, from its exit status and
-# its output file: PASS, FAIL-READINESS (no ready sandbox: capacity),
+# its output file: PASS, SKIP (passed only because the environment can't run
+# it), FAIL-READINESS (no ready sandbox: capacity),
 # FAIL-SANDBOX-FAILED (the sandbox failed outright: capacity or, as with an
 # unknown template, a server defect; a person classifies it) or FAIL.
 # Used by `test-live-paced`; `test-recipes` tests it.
@@ -177,7 +181,10 @@ _classify status out:
     # A sandbox that failed outright (gfd/sandbawks#680 on an unknown
     # template; M2 also saw it on capacity).
     failed='the sandbox failed \(action_failure\)'
-    if [ {{quote(status)}} -eq 0 ]; then echo PASS
+    if [ {{quote(status)}} -eq 0 ]; then
+        # A test that passed only because the environment can't run it
+        # (tests/live_support: SKIPPED) says nothing about the feature.
+        if grep -Fq 'SKIPPED (environment):' {{quote(out)}}; then echo SKIP; else echo PASS; fi
     elif grep -Eq -- "$readiness" {{quote(out)}}; then echo FAIL-READINESS
     elif grep -Eq -- "$failed" {{quote(out)}}; then echo FAIL-SANDBOX-FAILED
     else echo FAIL; fi

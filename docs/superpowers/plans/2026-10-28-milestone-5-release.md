@@ -971,6 +971,8 @@ In `_classify`, the first branch becomes:
 
 The paced summary counts `RESULT .* SKIP$` as `N skipped`: add `$(count SKIP) skipped` to the summary line, through Task 3's `count` helper. In both `case`s of `test-live-paced` (the first pass and the rerun loop), add `SKIP) ;;` before `*) status=1 ;;`, so a test that skips does not fail the run (Task 3 shipped without it; both end in `*) status=1 ;;`). Run `just test-recipes`: seven `ok` lines.
 
+> **Corrected (issue #126, 2026-10-29).** The summary's figure is `$(count 'SKIP( \(rerun\))?') skipped`, not `RESULT .* SKIP$`: the rerun `case` leaves a skip's label `SKIP`, so its line is `RESULT <test> SKIP (rerun)`, and it is counted too (as `fail` counts `FAIL (rerun)`). The line reads `summary: N pass, N pass on rerun, N fail, N still not ready, N sandbox failed, N skipped`. `docs/verification/live-pacing.md`'s table gains `SKIP (rerun)` as well. Read the `justfile`.
+
 - [ ] **Step 3: The harness helper**
 
 In `tests/live_support/mod.rs`:
