@@ -64,16 +64,15 @@ async fn main() -> e2b_client::Result<()> {
 | Snapshots and fork | `Sandbox::{create_snapshot, list_snapshots, fork}`, `Client::{create_snapshot, list_snapshots, delete_snapshot, fork_sandbox}`; a snapshot ID is a template, so `CreateSandboxParams::new(snapshot_id)` starts a sandbox from it; `fork` returns one result per copy (up to `MAX_FORK_COUNT`) |
 | Volumes | `Client::{create_volume, get_volume, list_volumes, destroy_volume}` (the volume token stays a `SecretString`); `CreateSandboxParams::volume_mount(name, path)` |
 | MCP gateway | `CreateSandboxParams::mcp(config)` starts the gateway (on the `mcp-gateway` template unless one is given); `Sandbox::{mcp_url, mcp_token}` |
-| Processes (envd) | `Commands::{start, run, connect, list, send_stdin, close_stdin, stream_input, send_signal, kill}`; `Commands::connect(pid, &CommandConnectOptions)` with the SDKs' 60 s stream deadline by default; `request_timeout` on `CommandOptions` and `CommandConnectOptions`; a zero timeout means no limit; `CommandHandle::{next_event, wait}` streams stdout/stderr to an exit code; `InputStream::{send, close}` streams stdin in order over one call |
-| PTY sessions (envd) | `Pty::{create, connect, send_stdin, stream_input, resize, kill}`; `Pty::connect(pid, &PtyConnectOptions)`; `PtyOptions` and `PtyConnectOptions` set no deadline by default (`DEFAULT_PTY_TIMEOUT` is the SDKs' 60 s, to opt in) and take a `request_timeout`; `PtyHandle::{next_event, wait}` streams terminal output to an exit code |
+| Processes (envd) | `Commands::{start, run, connect, list, send_stdin, close_stdin, stream_input, send_signal, kill}`; `Commands::connect(pid, &CommandConnectOptions)` with the SDKs' 60 s stream deadline by default; `request_timeout` on `CommandOptions` and `CommandConnectOptions`, and a trailing `&RequestOptions` on `list`, `send_stdin`, `close_stdin`, `send_signal`, `kill` and `CommandHandle::{send_stdin, kill}`; a zero timeout means no limit; `CommandHandle::{next_event, wait}` streams stdout/stderr to an exit code; `InputStream::{send, close}` streams stdin in order over one call |
+| PTY sessions (envd) | `Pty::{create, connect, send_stdin, stream_input, resize, kill}`; `Pty::connect(pid, &PtyConnectOptions)`; `PtyOptions` and `PtyConnectOptions` set no deadline by default (`DEFAULT_PTY_TIMEOUT` is the SDKs' 60 s, to opt in) and take a `request_timeout`; `send_stdin`, `resize` and `kill` (on `Pty` and `PtyHandle`) take a trailing `&RequestOptions`; `PtyHandle::{next_event, wait}` streams terminal output to an exit code |
 | Files (envd) | `Filesystem::{read, read_to_string, read_stream, write, write_files, write_stream, list, get_info, exists, make_dir, rename, remove, watch_dir}`; every call takes an options value: `FileOptions::{user, request_timeout}`, `ListOptions::{depth, user, request_timeout}`, and `request_timeout` on `WriteOptions` and `WatchOptions`; `WriteOptions` selects multipart, octet-stream or gzip uploads, attaches metadata and caps uploads in flight (`max_concurrency`, `DEFAULT_UPLOAD_CONCURRENCY` 8); a symlink is `FileType::Symlink` on every envd version; `FileStream::next_chunk` and `WatchHandle::next_event` stream downloads and directory events |
 | Signed URLs | `Sandbox::{upload_url, download_url}` with `FileUrlOptions::{user, expires_in}`: plain HTTP links signed with the sandbox's envd access token |
 | Errors | `Error` (`thiserror`): REST status + E2B message, Connect error codes, envd HTTP errors, protocol, timeout, transport (`TransportError`, with `is_timeout`/`is_connect`), invalid argument; `status()` and the SDK's categories as `is_not_found`, `is_auth`, `is_rate_limited`, `is_service_busy`, `is_not_enough_space`, `is_sandbox_unreachable`, `is_timeout`, `is_retryable` |
 
 Out of scope by design: code interpreter, template building, and a blocking
-API. Not implemented yet: per-call request timeouts on the pid-only process
-and PTY calls, the SOCKS5 egress proxy and IAM workload identity in
-network settings, the volume content API (files in a volume without a
+API. Not implemented yet: the SOCKS5 egress proxy and IAM workload
+identity in network settings, the volume content API (files in a volume without a
 sandbox), sandbox logs, secrets and git.
 
 ## Network, lifecycle and snapshots
@@ -131,8 +130,8 @@ async fn snapshot_tour(client: &Client) -> e2b_client::Result<()> {
 use std::time::Duration;
 
 use e2b_client::{
-    CommandOptions, FileOptions, FileUrlOptions, PtyEvent, PtyOptions, PtySize, Sandbox,
-    StreamInputOptions, WatchOptions, WriteEntry, WriteOptions,
+    CommandOptions, FileOptions, FileUrlOptions, PtyEvent, PtyOptions, PtySize, RequestOptions,
+    Sandbox, StreamInputOptions, WatchOptions, WriteEntry, WriteOptions,
 };
 
 async fn tour(sandbox: &Sandbox) -> e2b_client::Result<()> {
@@ -147,7 +146,8 @@ async fn tour(sandbox: &Sandbox) -> e2b_client::Result<()> {
     input.send("one ").await?;
     input.send("two\n").await?;
     input.close().await?;
-    sandbox.commands().close_stdin(handle.pid()).await?;
+    let request = RequestOptions::new();
+    sandbox.commands().close_stdin(handle.pid(), &request).await?;
     assert_eq!(handle.wait().await?.stdout, "one two\n");
 
     // An interactive terminal. It has no deadline by default (the SDKs use
@@ -157,8 +157,8 @@ async fn tour(sandbox: &Sandbox) -> e2b_client::Result<()> {
         .pty()
         .create(PtySize::new(80, 24), &PtyOptions::default())
         .await?;
-    pty.resize(PtySize::new(120, 40)).await?;
-    pty.send_stdin("echo hi; exit\n").await?;
+    pty.resize(PtySize::new(120, 40), &request).await?;
+    pty.send_stdin("echo hi; exit\n", &request).await?;
     // PtyEvent is #[non_exhaustive], so match it with `if let` or a `_` arm.
     while let Some(event) = pty.next_event().await? {
         if let PtyEvent::Data(bytes) = event {

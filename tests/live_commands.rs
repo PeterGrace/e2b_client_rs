@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use e2b_client::{
     CommandConnectOptions, CommandEvent, CommandOptions, ConnectCode, Error, PtyConnectOptions,
-    PtyEvent, PtyHandle, PtyOptions, PtySize, Signal, StreamInputOptions,
+    PtyEvent, PtyHandle, PtyOptions, PtySize, RequestOptions, Signal, StreamInputOptions,
 };
 use live_support::{LiveSandbox, params};
 
@@ -225,7 +225,11 @@ async fn clm_0041_list_includes_background_command() {
         .await
         .expect("start");
 
-    let processes = sandbox.commands().list().await.expect("list");
+    let processes = sandbox
+        .commands()
+        .list(&RequestOptions::new())
+        .await
+        .expect("list");
 
     let entry = processes
         .iter()
@@ -251,7 +255,7 @@ async fn clm_0042_send_stdin_reaches_command() {
 
     sandbox
         .commands()
-        .send_stdin(handle.pid(), "typed line\n")
+        .send_stdin(handle.pid(), "typed line\n", &RequestOptions::new())
         .await
         .expect("send_stdin");
     let result = handle.wait().await.expect("wait");
@@ -270,13 +274,13 @@ async fn clm_0043_close_stdin_sends_eof() {
         .expect("start");
     sandbox
         .commands()
-        .send_stdin(handle.pid(), "abc")
+        .send_stdin(handle.pid(), "abc", &RequestOptions::new())
         .await
         .expect("send_stdin");
 
     sandbox
         .commands()
-        .close_stdin(handle.pid())
+        .close_stdin(handle.pid(), &RequestOptions::new())
         .await
         .expect("close_stdin");
     let result = handle.wait().await.expect("wait");
@@ -299,14 +303,18 @@ async fn clm_0044_sigterm_terminates_command() {
 
     sandbox
         .commands()
-        .send_signal(pid, Signal::Sigterm)
+        .send_signal(pid, Signal::Sigterm, &RequestOptions::new())
         .await
         .expect("signal");
     let result = handle.wait().await.expect("wait");
     // Measure before `list()`, so its round trip does not count against
     // the SIGTERM budget.
     let waited = started.elapsed();
-    let processes = sandbox.commands().list().await.expect("list");
+    let processes = sandbox
+        .commands()
+        .list(&RequestOptions::new())
+        .await
+        .expect("list");
 
     assert!(
         waited < Duration::from_secs(10),
@@ -334,12 +342,12 @@ async fn clm_0045_kill_reports_whether_pid_existed() {
 
     let killed = sandbox
         .commands()
-        .kill(handle.pid())
+        .kill(handle.pid(), &RequestOptions::new())
         .await
         .expect("kill running");
     let missing = sandbox
         .commands()
-        .kill(999_999)
+        .kill(999_999, &RequestOptions::new())
         .await
         .expect("kill unknown");
 
@@ -370,7 +378,7 @@ async fn clm_0046_stream_input_delivers_chunks_in_order() {
     input.close().await.expect("close input stream");
     sandbox
         .commands()
-        .close_stdin(handle.pid())
+        .close_stdin(handle.pid(), &RequestOptions::new())
         .await
         .expect("close stdin");
     let result = handle.wait().await.expect("wait");
@@ -416,7 +424,10 @@ async fn clm_0047_pty_create_streams_terminal_output() {
     // echoes the input back, so the markers are ones only the shell can
     // produce: the echo reads `pty-$((40+2))`, the output `pty-42`.
     handle
-        .send_stdin("echo pty-$((40+2))\necho term-$TERM\nexit 3\n")
+        .send_stdin(
+            "echo pty-$((40+2))\necho term-$TERM\nexit 3\n",
+            &RequestOptions::new(),
+        )
         .await
         .expect("send_stdin");
     let (transcript, exit_code) = pty_transcript(handle).await;
@@ -439,10 +450,13 @@ async fn clm_0048_pty_resize_changes_terminal_size() {
         .await
         .expect("create pty");
 
-    handle.resize(PtySize::new(132, 43)).await.expect("resize");
+    handle
+        .resize(PtySize::new(132, 43), &RequestOptions::new())
+        .await
+        .expect("resize");
     // `stty size` prints "<rows> <cols>". The echoed input has no "43 132".
     handle
-        .send_stdin("stty size; exit\n")
+        .send_stdin("stty size; exit\n", &RequestOptions::new())
         .await
         .expect("send_stdin");
     let (transcript, exit_code) = pty_transcript(handle).await;
@@ -496,7 +510,7 @@ async fn clm_0175_pty_outlives_sixty_seconds() {
     // produce: the echo reads `alive-$((40+2))`, the output `alive-42`.
     tokio::time::sleep(Duration::from_secs(65)).await;
     handle
-        .send_stdin("echo alive-$((40+2))\nexit\n")
+        .send_stdin("echo alive-$((40+2))\nexit\n", &RequestOptions::new())
         .await
         .expect("send_stdin after 65 s: the shell must still be running");
     let (transcript, exit_code) = pty_transcript(handle).await;
@@ -540,7 +554,10 @@ async fn attach_after_exit(sandbox: &LiveSandbox, delay: Duration) -> PtyAttach 
         .await
         .expect("create pty");
     let pid = handle.pid();
-    handle.send_stdin("exit 3\n").await.expect("send exit");
+    handle
+        .send_stdin("exit 3\n", &RequestOptions::new())
+        .await
+        .expect("send exit");
     let exit = handle.wait().await.expect("wait for the shell to exit");
     assert_eq!(exit.exit_code, 3);
     tokio::time::sleep(delay).await;
@@ -583,4 +600,21 @@ async fn clm_0178_pty_connect_to_exited_pid() {
         ),
         "connect to an unknown pid gave {never_used:?}"
     );
+}
+
+#[tokio::test]
+#[ignore = "live: run with `just test-live <target>`"]
+async fn clm_0183_a_one_millisecond_request_timeout_times_out_list() {
+    // Arrange
+    let sandbox = LiveSandbox::new().await;
+    let tiny = RequestOptions::new().request_timeout(Some(Duration::from_millis(1)));
+
+    // Act
+    let timed_out = sandbox.commands().list(&tiny).await;
+    let configured = sandbox.commands().list(&RequestOptions::new()).await;
+
+    // Assert
+    let error = timed_out.expect_err("1 ms passes before envd answers");
+    assert!(error.is_timeout(), "{error:?}");
+    assert!(configured.is_ok(), "{configured:?}");
 }

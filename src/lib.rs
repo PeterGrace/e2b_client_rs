@@ -52,10 +52,11 @@
 //! Every call that takes a `*Options` type takes it by reference, and each
 //! `*Options` type has `new()`, `Default` and builder setters, so adding an
 //! option later is not a breaking change. Their `request_timeout` setters
-//! bound that one call. A REST call with nothing else to configure (and
-//! [`Sandbox::is_running`]) takes a [`RequestOptions`] instead, which
-//! carries only that request timeout ([`RequestOptions::new`] keeps the
-//! configured one). A zero stream deadline or request timeout means no
+//! bound that one call. A call with nothing else to configure (a REST call,
+//! [`Sandbox::is_running`], or a pid-only process or PTY call such as
+//! [`Commands::kill`] or [`PtyHandle::resize`]) takes a [`RequestOptions`]
+//! instead, which carries only that request timeout
+//! ([`RequestOptions::new`] keeps the configured one). A zero stream deadline or request timeout means no
 //! limit, as in the SDKs.
 //!
 //! # Quick start

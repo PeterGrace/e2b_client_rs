@@ -225,7 +225,11 @@ async fn rpc_codes_classify_as_the_sdk_does() {
             .await;
 
         // Act
-        let err = sandbox.commands().list().await.expect_err("an RPC error");
+        let err = sandbox
+            .commands()
+            .list(&RequestOptions::new())
+            .await
+            .expect_err("an RPC error");
 
         // Assert
         assert!(matches!(err, Error::Rpc { .. }), "{code}: {err:?}");

@@ -9,7 +9,7 @@ use bytes::Bytes;
 use reqwest::header::HeaderMap;
 
 use crate::commands::{CommandExit, Commands, StreamTimeouts, open_process_stream};
-use crate::config::{RequestTimeout, no_limit_if_zero};
+use crate::config::{RequestOptions, RequestTimeout, no_limit_if_zero};
 use crate::envd::connect::{ConnectStream, Empty};
 use crate::envd::process_pb::{
     self, ConnectRequest, EventResponse, ProcessConfig, ProcessInput, ProcessSelector, PtyConfig,
@@ -238,11 +238,11 @@ impl PtyOptions {
 /// # Examples
 ///
 /// ```no_run
-/// use e2b_client::{PtyEvent, PtyOptions, PtySize, Sandbox};
+/// use e2b_client::{PtyEvent, PtyOptions, PtySize, RequestOptions, Sandbox};
 ///
 /// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
 /// let mut pty = sandbox.pty().create(PtySize::new(80, 24), &PtyOptions::new()).await?;
-/// pty.send_stdin("exit\n").await?;
+/// pty.send_stdin("exit\n", &RequestOptions::new()).await?;
 /// while let Some(event) = pty.next_event().await? {
 ///     match event {
 ///         PtyEvent::Data(bytes) => print!("{}", String::from_utf8_lossy(&bytes)),
@@ -344,13 +344,13 @@ impl PtyConnectOptions {
 /// # Examples
 ///
 /// ```no_run
-/// use e2b_client::{PtyOptions, PtySize, Sandbox};
+/// use e2b_client::{PtyOptions, PtySize, RequestOptions, Sandbox};
 ///
 /// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
 /// let terminals = sandbox.pty();
 /// let handle = terminals.create(PtySize::new(120, 40), &PtyOptions::new()).await?;
-/// terminals.resize(handle.pid(), PtySize::new(100, 30)).await?;
-/// terminals.kill(handle.pid()).await?;
+/// terminals.resize(handle.pid(), PtySize::new(100, 30), &RequestOptions::new()).await?;
+/// terminals.kill(handle.pid(), &RequestOptions::new()).await?;
 /// # Ok(())
 /// # }
 /// ```
@@ -388,12 +388,12 @@ impl Pty {
     /// # Examples
     ///
     /// ```no_run
-    /// use e2b_client::{PtyEvent, PtyOptions, PtySize, Sandbox};
+    /// use e2b_client::{PtyEvent, PtyOptions, PtySize, RequestOptions, Sandbox};
     ///
     /// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
     /// let pty = sandbox.pty();
     /// let mut handle = pty.create(PtySize::new(80, 24), &PtyOptions::default()).await?;
-    /// handle.send_stdin("echo hello; exit\n").await?;
+    /// handle.send_stdin("echo hello; exit\n", &RequestOptions::new()).await?;
     /// while let Some(event) = handle.next_event().await? {
     ///     match event {
     ///         PtyEvent::Data(chunk) => print!("{}", String::from_utf8_lossy(&chunk)),
@@ -452,7 +452,7 @@ impl Pty {
     /// # Examples
     ///
     /// ```no_run
-    /// use e2b_client::{PtyConnectOptions, PtyOptions, PtySize, Sandbox};
+    /// use e2b_client::{PtyConnectOptions, PtyOptions, PtySize, RequestOptions, Sandbox};
     ///
     /// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
     /// let first = sandbox
@@ -465,7 +465,7 @@ impl Pty {
     ///     .pty()
     ///     .connect(pid, &PtyConnectOptions::default())
     ///     .await?;
-    /// again.send_stdin("exit\n").await?;
+    /// again.send_stdin("exit\n", &RequestOptions::new()).await?;
     /// let exit = again.wait().await?;
     /// assert_eq!(exit.exit_code, 0);
     /// # Ok(())
@@ -507,6 +507,8 @@ impl Pty {
     ///
     /// * `pid` - the shell's process ID.
     /// * `data` - the bytes to write.
+    /// * `options` - the request timeout; [`RequestOptions::new`] for the
+    ///   configured one.
     ///
     /// # Errors
     ///
@@ -515,15 +517,20 @@ impl Pty {
     /// # Examples
     ///
     /// ```no_run
-    /// use e2b_client::{PtyOptions, PtySize, Sandbox};
+    /// use e2b_client::{PtyOptions, PtySize, RequestOptions, Sandbox};
     ///
     /// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
     /// let handle = sandbox.pty().create(PtySize::new(80, 24), &PtyOptions::new()).await?;
-    /// sandbox.pty().send_stdin(handle.pid(), "ls -la\n").await?;
+    /// sandbox.pty().send_stdin(handle.pid(), "ls -la\n", &RequestOptions::new()).await?;
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn send_stdin(&self, pid: u32, data: impl AsRef<[u8]>) -> Result<()> {
+    pub async fn send_stdin(
+        &self,
+        pid: u32,
+        data: impl AsRef<[u8]>,
+        options: &RequestOptions,
+    ) -> Result<()> {
         let request = SendInputRequest {
             process: ProcessSelector::Pid(pid),
             input: ProcessInput::Pty(data.as_ref()),
@@ -535,7 +542,7 @@ impl Pty {
                 "SendInput",
                 &request,
                 HeaderMap::new(),
-                RequestTimeout::default(),
+                options.request_timeout,
             )
             .await?;
         Ok(())
@@ -548,6 +555,8 @@ impl Pty {
     ///
     /// * `pid` - the shell's process ID.
     /// * `size` - the new size.
+    /// * `options` - the request timeout; [`RequestOptions::new`] for the
+    ///   configured one.
     ///
     /// # Errors
     ///
@@ -556,15 +565,16 @@ impl Pty {
     /// # Examples
     ///
     /// ```no_run
-    /// use e2b_client::{PtyOptions, PtySize, Sandbox};
+    /// use e2b_client::{PtyOptions, PtySize, RequestOptions, Sandbox};
     ///
     /// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
     /// let handle = sandbox.pty().create(PtySize::new(80, 24), &PtyOptions::new()).await?;
-    /// sandbox.pty().resize(handle.pid(), PtySize::new(132, 43)).await?;
+    /// let size = PtySize::new(132, 43);
+    /// sandbox.pty().resize(handle.pid(), size, &RequestOptions::new()).await?;
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn resize(&self, pid: u32, size: PtySize) -> Result<()> {
+    pub async fn resize(&self, pid: u32, size: PtySize, options: &RequestOptions) -> Result<()> {
         let request = UpdateRequest {
             process: ProcessSelector::Pid(pid),
             pty: size.wire(),
@@ -576,7 +586,7 @@ impl Pty {
                 "Update",
                 &request,
                 HeaderMap::new(),
-                RequestTimeout::default(),
+                options.request_timeout,
             )
             .await?;
         Ok(())
@@ -587,6 +597,8 @@ impl Pty {
     /// # Arguments
     ///
     /// * `pid` - the shell's process ID.
+    /// * `options` - the request timeout; [`RequestOptions::new`] for the
+    ///   configured one.
     ///
     /// # Returns
     ///
@@ -599,16 +611,18 @@ impl Pty {
     /// # Examples
     ///
     /// ```no_run
-    /// use e2b_client::{PtyOptions, PtySize, Sandbox};
+    /// use e2b_client::{PtyOptions, PtySize, RequestOptions, Sandbox};
     ///
     /// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
     /// let handle = sandbox.pty().create(PtySize::new(80, 24), &PtyOptions::new()).await?;
-    /// assert!(sandbox.pty().kill(handle.pid()).await?);
+    /// assert!(sandbox.pty().kill(handle.pid(), &RequestOptions::new()).await?);
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn kill(&self, pid: u32) -> Result<bool> {
-        Commands::new(Arc::clone(&self.envd)).kill(pid).await
+    pub async fn kill(&self, pid: u32, options: &RequestOptions) -> Result<bool> {
+        Commands::new(Arc::clone(&self.envd))
+            .kill(pid, options)
+            .await
     }
 
     /// Opens an ordered input stream to a PTY over envd's client-streaming
@@ -640,11 +654,11 @@ impl Pty {
 /// # Examples
 ///
 /// ```no_run
-/// use e2b_client::{PtyOptions, PtySize, Sandbox};
+/// use e2b_client::{PtyOptions, PtySize, RequestOptions, Sandbox};
 ///
 /// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
 /// let pty = sandbox.pty().create(PtySize::new(80, 24), &PtyOptions::new()).await?;
-/// pty.send_stdin("exit 7\n").await?;
+/// pty.send_stdin("exit 7\n", &RequestOptions::new()).await?;
 /// assert_eq!(pty.wait().await?.exit_code, 7);
 /// # Ok(())
 /// # }
@@ -682,11 +696,11 @@ impl PtyHandle {
     /// # Examples
     ///
     /// ```no_run
-    /// use e2b_client::{PtyEvent, PtyOptions, PtySize, Sandbox};
+    /// use e2b_client::{PtyEvent, PtyOptions, PtySize, RequestOptions, Sandbox};
     ///
     /// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
     /// let mut pty = sandbox.pty().create(PtySize::new(80, 24), &PtyOptions::new()).await?;
-    /// pty.send_stdin("echo hi; exit\n").await?;
+    /// pty.send_stdin("echo hi; exit\n", &RequestOptions::new()).await?;
     /// while let Some(event) = pty.next_event().await? {
     ///     if let PtyEvent::Data(bytes) = event {
     ///         print!("{}", String::from_utf8_lossy(&bytes));
@@ -727,11 +741,11 @@ impl PtyHandle {
     /// # Examples
     ///
     /// ```no_run
-    /// use e2b_client::{PtyOptions, PtySize, Sandbox};
+    /// use e2b_client::{PtyOptions, PtySize, RequestOptions, Sandbox};
     ///
     /// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
     /// let pty = sandbox.pty().create(PtySize::new(80, 24), &PtyOptions::new()).await?;
-    /// pty.send_stdin("exit\n").await?;
+    /// pty.send_stdin("exit\n", &RequestOptions::new()).await?;
     /// let exit = pty.wait().await?;
     /// println!("shell exited with {}", exit.exit_code);
     /// # Ok(())
@@ -753,6 +767,8 @@ impl PtyHandle {
     /// # Arguments
     ///
     /// * `data` - the bytes to write.
+    /// * `options` - the request timeout; [`RequestOptions::new`] for the
+    ///   configured one.
     ///
     /// # Errors
     ///
@@ -761,17 +777,17 @@ impl PtyHandle {
     /// # Examples
     ///
     /// ```no_run
-    /// use e2b_client::{PtyOptions, PtySize, Sandbox};
+    /// use e2b_client::{PtyOptions, PtySize, RequestOptions, Sandbox};
     ///
     /// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
     /// let pty = sandbox.pty().create(PtySize::new(80, 24), &PtyOptions::new()).await?;
     /// // Ctrl-C, as a terminal sends it.
-    /// pty.send_stdin([0x03]).await?;
+    /// pty.send_stdin([0x03], &RequestOptions::new()).await?;
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn send_stdin(&self, data: impl AsRef<[u8]>) -> Result<()> {
-        self.pty.send_stdin(self.pid, data).await
+    pub async fn send_stdin(&self, data: impl AsRef<[u8]>, options: &RequestOptions) -> Result<()> {
+        self.pty.send_stdin(self.pid, data, options).await
     }
 
     /// Changes the session's terminal size. See [`Pty::resize`].
@@ -779,6 +795,8 @@ impl PtyHandle {
     /// # Arguments
     ///
     /// * `size` - the new size.
+    /// * `options` - the request timeout; [`RequestOptions::new`] for the
+    ///   configured one.
     ///
     /// # Errors
     ///
@@ -787,19 +805,24 @@ impl PtyHandle {
     /// # Examples
     ///
     /// ```no_run
-    /// use e2b_client::{PtyOptions, PtySize, Sandbox};
+    /// use e2b_client::{PtyOptions, PtySize, RequestOptions, Sandbox};
     ///
     /// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
     /// let pty = sandbox.pty().create(PtySize::new(80, 24), &PtyOptions::new()).await?;
-    /// pty.resize(PtySize::new(200, 50)).await?;
+    /// pty.resize(PtySize::new(200, 50), &RequestOptions::new()).await?;
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn resize(&self, size: PtySize) -> Result<()> {
-        self.pty.resize(self.pid, size).await
+    pub async fn resize(&self, size: PtySize, options: &RequestOptions) -> Result<()> {
+        self.pty.resize(self.pid, size, options).await
     }
 
     /// Kills the session's shell with `SIGKILL`. See [`Pty::kill`].
+    ///
+    /// # Arguments
+    ///
+    /// * `options` - the request timeout; [`RequestOptions::new`] for the
+    ///   configured one.
     ///
     /// # Returns
     ///
@@ -812,16 +835,16 @@ impl PtyHandle {
     /// # Examples
     ///
     /// ```no_run
-    /// use e2b_client::{PtyOptions, PtySize, Sandbox};
+    /// use e2b_client::{PtyOptions, PtySize, RequestOptions, Sandbox};
     ///
     /// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
     /// let pty = sandbox.pty().create(PtySize::new(80, 24), &PtyOptions::new()).await?;
-    /// assert!(pty.kill().await?);
+    /// assert!(pty.kill(&RequestOptions::new()).await?);
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn kill(&self) -> Result<bool> {
-        self.pty.kill(self.pid).await
+    pub async fn kill(&self, options: &RequestOptions) -> Result<bool> {
+        self.pty.kill(self.pid, options).await
     }
 }
 

@@ -7,7 +7,7 @@ use std::time::Duration;
 use bytes::{Bytes, BytesMut};
 use reqwest::header::HeaderMap;
 
-use crate::config::{RequestTimeout, no_limit_if_zero};
+use crate::config::{RequestOptions, RequestTimeout, no_limit_if_zero};
 use crate::envd::connect::{ConnectStream, Empty};
 use crate::envd::process_pb::{
     self, CloseStdinRequest, ConnectRequest, EventResponse, ListRequest, ListResponse,
@@ -265,11 +265,12 @@ impl CommandConnectOptions {
 /// # Examples
 ///
 /// ```no_run
-/// use e2b_client::{CommandOptions, Sandbox, Signal};
+/// use e2b_client::{CommandOptions, RequestOptions, Sandbox, Signal};
 ///
 /// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
 /// let handle = sandbox.commands().start("sleep 600", &CommandOptions::new()).await?;
-/// sandbox.commands().send_signal(handle.pid(), Signal::Sigterm).await?;
+/// let request = RequestOptions::new();
+/// sandbox.commands().send_signal(handle.pid(), Signal::Sigterm, &request).await?;
 /// # Ok(())
 /// # }
 /// ```
@@ -398,7 +399,9 @@ impl CommandResult {
 ///
 /// ```no_run
 /// # async fn demo(sandbox: e2b_client::Sandbox) -> e2b_client::Result<()> {
-/// for process in sandbox.commands().list().await? {
+/// use e2b_client::RequestOptions;
+///
+/// for process in sandbox.commands().list(&RequestOptions::new()).await? {
 ///     println!("{} {} {:?}", process.pid, process.cmd, process.args);
 /// }
 /// # Ok(())
@@ -620,6 +623,11 @@ impl Commands {
 
     /// Lists the processes running in the sandbox.
     ///
+    /// # Arguments
+    ///
+    /// * `options` - the request timeout; [`RequestOptions::new`] for the
+    ///   configured one.
+    ///
     /// # Returns
     ///
     /// One [`ProcessInfo`] per process.
@@ -632,12 +640,14 @@ impl Commands {
     ///
     /// ```no_run
     /// # async fn demo(sandbox: e2b_client::Sandbox) -> e2b_client::Result<()> {
-    /// let running = sandbox.commands().list().await?;
+    /// use e2b_client::RequestOptions;
+    ///
+    /// let running = sandbox.commands().list(&RequestOptions::new()).await?;
     /// println!("{} processes", running.len());
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn list(&self) -> Result<Vec<ProcessInfo>> {
+    pub async fn list(&self, options: &RequestOptions) -> Result<Vec<ProcessInfo>> {
         let response: ListResponse = self
             .envd
             .unary(
@@ -645,7 +655,7 @@ impl Commands {
                 "List",
                 &ListRequest {},
                 HeaderMap::new(),
-                RequestTimeout::default(),
+                options.request_timeout,
             )
             .await?;
         Ok(response
@@ -672,6 +682,8 @@ impl Commands {
     ///
     /// * `pid` - the process ID.
     /// * `data` - the bytes to write.
+    /// * `options` - the request timeout; [`RequestOptions::new`] for the
+    ///   configured one.
     ///
     /// # Errors
     ///
@@ -680,17 +692,23 @@ impl Commands {
     /// # Examples
     ///
     /// ```no_run
-    /// use e2b_client::{CommandOptions, Sandbox};
+    /// use e2b_client::{CommandOptions, RequestOptions, Sandbox};
     ///
     /// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
     /// let handle = sandbox.commands().start("cat", &CommandOptions::new().stdin(true)).await?;
-    /// sandbox.commands().send_stdin(handle.pid(), "hello\n").await?;
-    /// sandbox.commands().close_stdin(handle.pid()).await?;
+    /// let request = RequestOptions::new();
+    /// sandbox.commands().send_stdin(handle.pid(), "hello\n", &request).await?;
+    /// sandbox.commands().close_stdin(handle.pid(), &request).await?;
     /// assert_eq!(handle.wait().await?.stdout, "hello\n");
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn send_stdin(&self, pid: u32, data: impl AsRef<[u8]>) -> Result<()> {
+    pub async fn send_stdin(
+        &self,
+        pid: u32,
+        data: impl AsRef<[u8]>,
+        options: &RequestOptions,
+    ) -> Result<()> {
         let request = SendInputRequest {
             process: ProcessSelector::Pid(pid),
             input: ProcessInput::Stdin(data.as_ref()),
@@ -702,7 +720,7 @@ impl Commands {
                 "SendInput",
                 &request,
                 HeaderMap::new(),
-                RequestTimeout::default(),
+                options.request_timeout,
             )
             .await?;
         Ok(())
@@ -735,7 +753,7 @@ impl Commands {
     /// # Examples
     ///
     /// ```no_run
-    /// use e2b_client::{CommandOptions, Sandbox, StreamInputOptions};
+    /// use e2b_client::{CommandOptions, RequestOptions, Sandbox, StreamInputOptions};
     ///
     /// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
     /// let commands = sandbox.commands();
@@ -744,7 +762,7 @@ impl Commands {
     /// input.send("line 1\n").await?;
     /// input.send("line 2\n").await?;
     /// input.close().await?;
-    /// commands.close_stdin(handle.pid()).await?;
+    /// commands.close_stdin(handle.pid(), &RequestOptions::new()).await?;
     /// let result = handle.wait().await?;
     /// assert_eq!(result.stdout, "line 1\nline 2\n");
     /// # Ok(())
@@ -765,6 +783,8 @@ impl Commands {
     /// # Arguments
     ///
     /// * `pid` - the process ID.
+    /// * `options` - the request timeout; [`RequestOptions::new`] for the
+    ///   configured one.
     ///
     /// # Errors
     ///
@@ -776,18 +796,19 @@ impl Commands {
     /// # Examples
     ///
     /// ```no_run
-    /// use e2b_client::{CommandOptions, Sandbox};
+    /// use e2b_client::{CommandOptions, RequestOptions, Sandbox};
     ///
     /// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
     /// let handle = sandbox.commands().start("wc -c", &CommandOptions::new().stdin(true)).await?;
-    /// sandbox.commands().send_stdin(handle.pid(), "abc").await?;
+    /// let request = RequestOptions::new();
+    /// sandbox.commands().send_stdin(handle.pid(), "abc", &request).await?;
     /// // EOF: `wc` prints its count and exits.
-    /// sandbox.commands().close_stdin(handle.pid()).await?;
+    /// sandbox.commands().close_stdin(handle.pid(), &request).await?;
     /// assert_eq!(handle.wait().await?.stdout.trim(), "3");
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn close_stdin(&self, pid: u32) -> Result<()> {
+    pub async fn close_stdin(&self, pid: u32, options: &RequestOptions) -> Result<()> {
         let version = self.envd.version();
         if version < EnvdVersion::CLOSE_STDIN {
             return Err(Error::InvalidArgument(format!(
@@ -805,7 +826,7 @@ impl Commands {
                 "CloseStdin",
                 &request,
                 HeaderMap::new(),
-                RequestTimeout::default(),
+                options.request_timeout,
             )
             .await?;
         Ok(())
@@ -817,6 +838,8 @@ impl Commands {
     ///
     /// * `pid` - the process ID.
     /// * `signal` - the signal.
+    /// * `options` - the request timeout; [`RequestOptions::new`] for the
+    ///   configured one.
     ///
     /// # Errors
     ///
@@ -825,15 +848,21 @@ impl Commands {
     /// # Examples
     ///
     /// ```no_run
-    /// use e2b_client::{CommandOptions, Sandbox, Signal};
+    /// use e2b_client::{CommandOptions, RequestOptions, Sandbox, Signal};
     ///
     /// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
     /// let handle = sandbox.commands().start("sleep 600", &CommandOptions::new()).await?;
-    /// sandbox.commands().send_signal(handle.pid(), Signal::Sigterm).await?;
+    /// let request = RequestOptions::new();
+    /// sandbox.commands().send_signal(handle.pid(), Signal::Sigterm, &request).await?;
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn send_signal(&self, pid: u32, signal: Signal) -> Result<()> {
+    pub async fn send_signal(
+        &self,
+        pid: u32,
+        signal: Signal,
+        options: &RequestOptions,
+    ) -> Result<()> {
         let request = SendSignalRequest {
             process: ProcessSelector::Pid(pid),
             signal: signal.as_wire(),
@@ -845,7 +874,7 @@ impl Commands {
                 "SendSignal",
                 &request,
                 HeaderMap::new(),
-                RequestTimeout::default(),
+                options.request_timeout,
             )
             .await?;
         Ok(())
@@ -856,6 +885,8 @@ impl Commands {
     /// # Arguments
     ///
     /// * `pid` - the process ID.
+    /// * `options` - the request timeout; [`RequestOptions::new`] for the
+    ///   configured one.
     ///
     /// # Returns
     ///
@@ -869,16 +900,16 @@ impl Commands {
     /// # Examples
     ///
     /// ```no_run
-    /// use e2b_client::{CommandOptions, Sandbox};
+    /// use e2b_client::{CommandOptions, RequestOptions, Sandbox};
     ///
     /// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
     /// let handle = sandbox.commands().start("sleep 600", &CommandOptions::new()).await?;
-    /// assert!(sandbox.commands().kill(handle.pid()).await?);
+    /// assert!(sandbox.commands().kill(handle.pid(), &RequestOptions::new()).await?);
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn kill(&self, pid: u32) -> Result<bool> {
-        match self.send_signal(pid, Signal::Sigkill).await {
+    pub async fn kill(&self, pid: u32, options: &RequestOptions) -> Result<bool> {
+        match self.send_signal(pid, Signal::Sigkill, options).await {
             Ok(()) => Ok(true),
             Err(Error::Rpc {
                 code: ConnectCode::NotFound,
@@ -1102,6 +1133,8 @@ impl CommandHandle {
     /// # Arguments
     ///
     /// * `data` - the bytes to write.
+    /// * `options` - the request timeout; [`RequestOptions::new`] for the
+    ///   configured one.
     ///
     /// # Errors
     ///
@@ -1110,21 +1143,26 @@ impl CommandHandle {
     /// # Examples
     ///
     /// ```no_run
-    /// use e2b_client::{CommandOptions, Sandbox};
+    /// use e2b_client::{CommandOptions, RequestOptions, Sandbox};
     ///
     /// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
     /// let options = CommandOptions::new().stdin(true);
     /// let handle = sandbox.commands().start("head -n1", &options).await?;
-    /// handle.send_stdin("first line\n").await?;
+    /// handle.send_stdin("first line\n", &RequestOptions::new()).await?;
     /// assert_eq!(handle.wait().await?.stdout, "first line\n");
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn send_stdin(&self, data: impl AsRef<[u8]>) -> Result<()> {
-        self.commands.send_stdin(self.pid, data).await
+    pub async fn send_stdin(&self, data: impl AsRef<[u8]>, options: &RequestOptions) -> Result<()> {
+        self.commands.send_stdin(self.pid, data, options).await
     }
 
     /// Kills the command with `SIGKILL`. See [`Commands::kill`].
+    ///
+    /// # Arguments
+    ///
+    /// * `options` - the request timeout; [`RequestOptions::new`] for the
+    ///   configured one.
     ///
     /// # Returns
     ///
@@ -1138,16 +1176,15 @@ impl CommandHandle {
     ///
     /// ```no_run
     /// # async fn demo(sandbox: e2b_client::Sandbox) -> e2b_client::Result<()> {
-    /// let handle = sandbox
-    ///     .commands()
-    ///     .start("sleep 600", &e2b_client::CommandOptions::new())
-    ///     .await?;
-    /// assert!(handle.kill().await?);
+    /// use e2b_client::{CommandOptions, RequestOptions};
+    ///
+    /// let handle = sandbox.commands().start("sleep 600", &CommandOptions::new()).await?;
+    /// assert!(handle.kill(&RequestOptions::new()).await?);
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn kill(&self) -> Result<bool> {
-        self.commands.kill(self.pid).await
+    pub async fn kill(&self, options: &RequestOptions) -> Result<bool> {
+        self.commands.kill(self.pid, options).await
     }
 }
 

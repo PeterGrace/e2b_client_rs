@@ -244,6 +244,7 @@ Behaviour:
 | `send_stdin` is `SendInput` with `input.stdin` bytes | `py: sandbox_async/commands/command.py:133-146` |
 | `close_stdin` needs envd ≥ 0.5.2 | `py: sandbox_async/commands/command.py:189-193`; `py: envd/versions.py:7` |
 | `list` maps `ProcessInfo` (`tag`, `cwd` optional) | `py: sandbox_async/commands/command.py:75-95` |
+| `list`, `kill`, `send_stdin` and `close_stdin` take a per-call `request_timeout` (seconds); here a trailing `&RequestOptions` on those, on `send_signal`, and on `CommandHandle::{send_stdin, kill}` (the SDK's `CommandHandle.kill` takes none; one rule everywhere here). Unset uses the configured one, `None` or zero means no limit; the RPC sends it as `Connect-Timeout-Ms` and enforces it client-side | `py: sandbox_async/commands/command.py:64-71, 99-102, 120-124, 176-179`; `py: sandbox_async/commands/command_handle.py:265-280` |
 
 ## Streamed input
 
@@ -286,6 +287,7 @@ through the same `open_process_stream` (`src/commands.rs`).
 | `stream_input` is the `StreamInput` handle with the `pty` member | `py: sandbox_async/commands/pty.py:113-137` |
 | `resize` is unary `/process.Process/Update {process: {pid}, pty: {size: {cols, rows}}}`, answered by an empty `UpdateResponse` | `py: sandbox_async/commands/pty.py:256-283`; `py: envd/process/process_connect.py:110-115`; `py: envd/process/process_pb.py:261-296` |
 | `kill` is the shared `SendSignal(SIGKILL)` with `not_found` → `false` | `py: sandbox_async/commands/pty.py:65-83`; `py: envd/rpc.py:208-248` |
+| `kill`, `send_stdin` and `resize` take a per-call `request_timeout`; here a trailing `&RequestOptions` on `Pty` and `PtyHandle`, with the same semantics as the process calls | `py: sandbox_async/commands/pty.py:65-68, 85-89, 256-260` |
 | `Connect` to the pid of an exited PTY: envd confirms the attach (`start` event), then sends the shell's end event, so `connect` returns `Ok` and the first `next_event` is `PtyEvent::Exit` with the shell's exit code, straight after the exit and after 5 s (in one probe run also after 8, 10, 12, 15 and 20 s, and `not_found` by 30 s, as for a pid that never existed). This retention is envd's, not a crate guarantee. `Commands::connect` to an exited `true` behaves the same. Python SDK 2.61.0: `pty.connect` succeeds and `wait()` returns the exit code, at once and after 5 s | observed on hosted E2B, 2026-10-28 (issue #56) |
 
 `PtySize` holds `u16` cells (as terminals report them), widened to the
@@ -466,9 +468,7 @@ the SDKs' exception classes with methods on `Error`.
   entry order and the first error still fails the batch (issue #53).
   `max_concurrency(entries.len())` gives the SDK's behaviour.
 - **Not implemented yet.** Milestone 5: a live CI job (hosted E2B only)
-  and the crates.io publish; a per-call request timeout on the pid-only
-  process and PTY calls (`send_stdin`, `kill`, `resize`, `list`, ...),
-  which use the configured request timeout until then (Task 2, #120).
+  and the crates.io publish.
   Deferred from milestone 3 and unscheduled: the SOCKS5 egress proxy, IAM
   workload identity (`iam.tokens` and identity placeholders in rule
   transforms), and the volume content API. Also unscheduled: sandbox health

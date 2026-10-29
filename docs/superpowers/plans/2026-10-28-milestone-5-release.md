@@ -614,6 +614,8 @@ git commit -m "feat: per-call request timeouts on REST calls (part of #120)"
 - Modify: `src/commands.rs`, `src/pty.rs`, `src/lib.rs` (crate docs)
 - Create: `tests/envd_request_options.rs`
 - Modify (callers): `tests/envd_*.rs`, `tests/zero_timeouts.rs`, `tests/live_commands.rs`, `tests/live_support/mod.rs` where they call a changed method, `README.md`
+
+> **Corrected (issue #120, 2026-10-29).** The callers that changed were `tests/envd_api.rs`, `tests/envd_pty.rs`, `tests/error_taxonomy.rs` (a `Commands::list`), `tests/live_commands.rs`, `README.md`, and the rustdoc examples in `src/commands.rs`, `src/pty.rs` and `src/stream_input.rs`; `tests/zero_timeouts.rs` and `tests/live_support/mod.rs` call none of the changed methods.
 - Modify: `docs/api-review.md`, `docs/protocol-notes.md`
 - Create: `changelog/<ts>-m5-task-02-pid-request-timeouts.md`
 
@@ -787,7 +789,9 @@ async fn clm_0183_a_one_millisecond_request_timeout_times_out_list() {
 }
 ```
 
-Run it, and the `live_commands` tests whose calls changed (`clm_0035` to `clm_0040`, the PTY tests), one at a time.
+Run it, and the `live_commands` tests whose calls changed (`clm_0041` to `clm_0048`, `clm_0175` and `clm_0178`, which covers the PTY tests), one at a time.
+
+> **Corrected (issue #120, 2026-10-29).** The plan named `clm_0035` to `clm_0040`; those call only `run`, `start` and `connect`, which did not change. The tests that call a changed method are `clm_0041` (`list`), `clm_0042` to `clm_0046` (stdin, signals, kill), `clm_0047`, `clm_0048` and `clm_0175` (PTY input and resize) and `clm_0178` (through `attach_after_exit`'s `send_stdin`).
 
 - [ ] **Step 6: Docs**
 
