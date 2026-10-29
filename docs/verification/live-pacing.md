@@ -18,36 +18,54 @@ Hosted E2B has no such limit and keeps `just test-live`.
    `gap` seconds between tests. A `filter` (an extended regex on the test
    name) runs a subset. Every test shares the run's `E2B_TEST_RUN_ID`, so the
    sweep finds everything the run created.
-4. Classifies each result and writes one line per test:
+4. Classifies each result through the private `_classify` recipe and writes
+   one line per test:
 
    | Line | Meaning |
    |---|---|
    | `RESULT <test> PASS` | passed on the first try |
-   | `RESULT <test> FAIL` | failed for a reason other than readiness: a real result |
+   | `RESULT <test> FAIL` | failed for a reason other than readiness or a failed sandbox: a real result |
    | `RESULT <test> FAIL-READINESS` | failed while the server had no ready sandbox; rerun below |
+   | `RESULT <test> FAIL-SANDBOX-FAILED` | failed because the sandbox failed outright; rerun below |
    | `RESULT <test> PASS-ON-RERUN (rerun)` | passed on its one rerun |
    | `RESULT <test> FAIL-READINESS (rerun)` | still no ready sandbox after the rerun: a capacity result, says nothing about the feature |
+   | `RESULT <test> FAIL-SANDBOX-FAILED (rerun)` | the sandbox failed outright again: capacity or a server defect, for a person to classify |
+   | `RESULT <test> FAIL (rerun)` | the rerun failed some other way: a real result |
 
    A failure is a readiness failure when its output contains `still starting
-   up`, `Service Temporarily Unavailable`, `Unschedulable` or `will not become
-   ready`, the messages the M2 and M3 sandbawks runs saw while no sandbox was
-   ready. A failure reported only as an exit code (M2 saw a synthetic 75) is
-   left as `FAIL` for a person to classify. `will not become ready` also ends
-   the gateway's message for a sandbox that failed outright (`the sandbox
-   failed (action_failure)`, an unknown template, gfd/sandbawks#680), so read
-   a `FAIL-READINESS (rerun)` line before counting it as capacity: M4 Task
-   17's `clm_0150` was one (`m4-live-results.md`, section "sandbawks"). A
-   test that failed and was rerun has two lines: `FAIL-READINESS`, then the
-   rerun's result.
-5. Reruns each readiness failure once, after another gap.
+   up`, `Service Temporarily Unavailable` or `Unschedulable`, the messages the
+   M2 and M3 sandbawks runs saw while no sandbox was ready. `will not become
+   ready` is no longer a readiness marker: it also starts the message for a
+   sandbox that failed outright, and M4 Task 17's `clm_0150` was mislabelled
+   `FAIL-READINESS (rerun)` through it (`m4-live-results.md`, section
+   "sandbawks"; #122).
+
+   A failure whose output contains `the sandbox failed (action_failure)`, and
+   none of the readiness markers, is `FAIL-SANDBOX-FAILED`. The server gave
+   up on the sandbox: M2 saw this on capacity, M3 and M4 on an unknown
+   template (`clm_0150`'s `mcp-gateway`, gfd/sandbawks#680). The label cannot
+   tell the two apart, so a person reads each `FAIL-SANDBOX-FAILED (rerun)`
+   line and counts it as capacity or as a server defect. When the output has
+   both, a readiness marker wins: M2's capacity runs saw both.
+
+   A failure reported only as an exit code (M2 saw a synthetic 75) is left as
+   `FAIL` for a person to classify. A test that was rerun has two lines: the
+   first result, then the rerun's.
+
+   `just test-recipes` checks the classifier against the fixtures in
+   `tests/fixtures/live-pacing/`: each file is one test's output, and its
+   name before `--` is the label it must get. CI runs it.
+5. Reruns each readiness and sandbox-failed result once, after another gap.
 6. Runs `live_sweep` for the run id, then writes a summary line that counts
-   the final results and a last `run log: <path>` line. Both go to the
+   the final results (`pass`, `pass on rerun`, `fail`, `still not ready`,
+   `sandbox failed`) and a last `run log: <path>` line. Both go to the
    terminal and to the log, so a background run is finished when its log
    prints `run log:`.
 
 The log is `target/live-logs/<run id>.log`, with each test's full output above
-its `RESULT` line. The run fails if any test ends `FAIL` or
-`FAIL-READINESS (rerun)`, or if the sweep fails. On a server without the
+its `RESULT` line. The run fails if any test ends `FAIL`, `FAIL (rerun)`,
+`FAIL-READINESS (rerun)` or `FAIL-SANDBOX-FAILED (rerun)`, or if the sweep
+fails. On a server without the
 snapshot or volume routes (sandbawks today) those two sweeps fail with 404 on
 their list call and the recipe exits non-zero; that is not a leak.
 

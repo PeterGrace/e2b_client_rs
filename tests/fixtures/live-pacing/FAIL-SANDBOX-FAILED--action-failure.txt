@@ -1,0 +1,2 @@
+thread 'clm_0150_mcp_gateway_starts_and_exposes_url_and_token' (1462096) panicked at tests/live_support/mod.rs:171:59:
+create sandbox: McpGateway("ERROR: sandbox will not become ready without intervention: the sandbox failed (action_failure)\n")

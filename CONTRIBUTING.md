@@ -10,14 +10,15 @@ You need a stable Rust toolchain (with `rustfmt` and `clippy`) and
 | `just fmt` | Format the code |
 | `just lint` | `cargo fmt --check` plus `cargo clippy --all-targets -- -D warnings` |
 | `just test` | Unit, mock-server and doc tests |
+| `just test-recipes` | Test the paced recipe's result classifier against `tests/fixtures/live-pacing/` |
 | `just doc` | Build the docs with warnings as errors |
 | `just test-live <target>` | Live tests against `hosted` E2B or `sandbawks` (see below) |
-| `just test-live-paced <target> [gap] [filter]` | Live tests one at a time with a gap, rerunning readiness failures once (see `docs/verification/live-pacing.md`) |
+| `just test-live-paced <target> [gap] [filter]` | Live tests one at a time with a gap, rerunning readiness and sandbox-failed results once (see `docs/verification/live-pacing.md`) |
 | `cargo +1.89 check --all-targets --locked` | Check the minimum supported Rust version (CI job `msrv`) |
 
-CI (`.github/workflows/ci.yml`) runs `just lint`, `just test` and `just doc` on
-every pull request and on `main`, and its `msrv` job checks the crate on Rust
-1.89.
+CI (`.github/workflows/ci.yml`) runs `just lint`, `just test`,
+`just test-recipes` and `just doc` on every pull request and on `main`, and
+its `msrv` job checks the crate on Rust 1.89.
 
 The crate's semver, MSRV and public-dependency policy is in the README's
 "Versioning" section. A change that adds a public dependency, changes a
