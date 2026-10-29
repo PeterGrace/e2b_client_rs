@@ -1124,7 +1124,9 @@ jobs:
 
 Replace each `<sha>` with the full commit SHA the tag points to now, keeping the tag as the comment: `gh api repos/<owner>/<repo>/commits/<tag> --jq .sha` (for example `repos/actions/checkout/commits/v4`; `dtolnay/rust-toolchain`'s `stable` is a branch, so pin its current head). A pinned action does not move under the job; updating one is a deliberate edit. `ci.yml` keeps its tags: it holds no secret.
 
-The harness refuses to run while a standard `E2B_API_KEY` is set (none is in CI) and reads `E2B_API_KEY_HOSTED` from the environment when there is no `.env` (`tests/live_support/mod.rs:55-73`). The `_stamp` header records the checked-out commit and `dirty: no`.
+The harness refuses to run while a standard `E2B_API_KEY` is set (none is in CI) and reads `E2B_API_KEY_HOSTED` from the environment when there is no `.env` (`tests/live_support/mod.rs`: `setting` reads the process environment first and `.env` only as a fallback, lines 61-76; `client` asserts the standard variables are unset, lines 111-134). The `_stamp` header records the checked-out commit and `dirty: no` (`target/` is in `.gitignore`).
+
+> **Corrected (issue #127, 2026-10-29).** The line reference was `tests/live_support/mod.rs:55-73`; the code moved in Task 4. The refusal is an assertion in `client()`, so with `E2B_API_KEY` set every live test fails at its first line rather than the run stopping up front. The workflow shipped as written above, with the five SHAs filled in (`changelog/2026-10-29T02-06-51Z-m5-task-05-live-ci-job.md` lists them).
 
 - [ ] **Step 2: Validate it**
 
