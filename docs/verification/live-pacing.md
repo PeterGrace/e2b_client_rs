@@ -42,10 +42,11 @@ Hosted E2B has no such limit and keeps `just test-live`.
 
    A failure whose output contains `the sandbox failed (action_failure)`, and
    none of the readiness markers, is `FAIL-SANDBOX-FAILED`. The server gave
-   up on the sandbox: M2 saw this on capacity, M3 and M4 on an unknown
-   template (`clm_0150`'s `mcp-gateway`, gfd/sandbawks#680). The label cannot
-   tell the two apart, so a person reads each `FAIL-SANDBOX-FAILED (rerun)`
-   line and counts it as capacity or as a server defect. When the output has
+   up on the sandbox. M2 saw this on capacity; M1, M3 and M4 saw it on an
+   unknown template (M1's `base`, `m1-live-results.md`; `clm_0150`'s
+   `mcp-gateway`, gfd/sandbawks#680). The label cannot tell the two apart, so
+   a person reads each `FAIL-SANDBOX-FAILED (rerun)` line and counts it as
+   capacity or as a server defect. When the output has
    both, a readiness marker wins: M2's capacity runs saw both.
 
    A failure reported only as an exit code (M2 saw a synthetic 75) is left as
