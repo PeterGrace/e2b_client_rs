@@ -12,13 +12,20 @@ You need a stable Rust toolchain (with `rustfmt` and `clippy`) and
 | `just test` | Unit, mock-server and doc tests |
 | `just test-recipes` | Test the paced recipe's result classifier against `tests/fixtures/live-pacing/` |
 | `just doc` | Build the docs with warnings as errors |
+| `just package-check` | Check that `cargo publish` would ship only the files in `Cargo.toml`'s `include`, and that the package builds |
 | `just test-live <target>` | Live tests against `hosted` E2B or `sandbawks` (see below) |
 | `just test-live-paced <target> [gap] [filter]` | Live tests one at a time with a gap, rerunning readiness and sandbox-failed results once (see `docs/verification/live-pacing.md`) |
 | `cargo +1.89 check --all-targets --locked` | Check the minimum supported Rust version (CI job `msrv`) |
 
 CI (`.github/workflows/ci.yml`) runs `just lint`, `just test`,
-`just test-recipes` and `just doc` on every pull request and on `main`, and
-its `msrv` job checks the crate on Rust 1.89.
+`just test-recipes`, `just doc` and `just package-check` on every pull
+request and on `main`, and its `msrv` job checks the crate on Rust 1.89.
+
+The published package holds only what `Cargo.toml`'s `include` lists: `src/`,
+the README, `CHANGELOG.md` and the licences. A new top-level file is not
+shipped unless it is added to `include` (and to `package-check`'s allowed
+pattern); the claims ledger, `docs/`, `changelog/` and `tests/` stay in the
+repository.
 
 The crate's semver, MSRV and public-dependency policy is in the README's
 "Versioning" section. A change that adds a public dependency, changes a

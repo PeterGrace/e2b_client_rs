@@ -150,6 +150,21 @@ test-live-paced target gap="120" filter="":
 doc:
     RUSTDOCFLAGS="-D warnings" cargo doc --no-deps
 
+# Checks what `cargo publish` would upload: only the files listed in
+# Cargo.toml's `include` (plus cargo's own), and that the package builds.
+package-check:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    allowed='^(src/.+\.rs|README\.md|CHANGELOG\.md|LICENSE-APACHE|LICENSE-MIT|Cargo\.toml|Cargo\.toml\.orig|Cargo\.lock|\.cargo_vcs_info\.json)$'
+    unexpected="$(cargo package --list --locked --allow-dirty | grep -Ev -- "$allowed" || true)"
+    if [ -n "$unexpected" ]; then
+        echo "files that should not be published:" >&2
+        echo "$unexpected" >&2
+        exit 1
+    fi
+    cargo package --locked --allow-dirty --quiet
+    echo "package ok"
+
 # Writes the two lines that say which code produced a live log: the commit and
 # whether the tree was dirty. Outside a git checkout, or without git, both say
 # `unknown` rather than lying. Used by `test-live` and `test-live-paced`.
