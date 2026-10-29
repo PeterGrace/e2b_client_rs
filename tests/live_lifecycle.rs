@@ -8,8 +8,8 @@ use std::time::{Duration, Instant};
 use e2b_client::{
     ALL_TRAFFIC, CommandOptions, ConnectOptions, DEFAULT_MCP_TEMPLATE, EnvdVersion, Error,
     FileOptions, ForkOptions, Lifecycle, ListSandboxesParams, ListSnapshotsParams, MetricsParams,
-    NetworkConfig, NetworkRule, NetworkUpdate, OnResume, OnTimeout, PauseOptions, Sandbox,
-    SandboxInfo, SandboxState, SnapshotMode, SnapshotOptions, SnapshotPage, SortOrder,
+    NetworkConfig, NetworkRule, NetworkUpdate, OnResume, OnTimeout, PauseOptions, RequestOptions,
+    Sandbox, SandboxInfo, SandboxState, SnapshotMode, SnapshotOptions, SnapshotPage, SortOrder,
     TimeoutAction, WriteOptions,
 };
 use live_support::{
@@ -91,7 +91,10 @@ async fn clm_0007_create_returns_running_sandbox() {
     // Assert
     assert!(!sandbox.sandbox_id().is_empty());
     assert!(!sandbox.template_id().is_empty());
-    let info = sandbox.get_info().await.expect("info");
+    let info = sandbox
+        .get_info(&RequestOptions::new())
+        .await
+        .expect("info");
     assert_eq!(info.state, SandboxState::Running);
     assert_eq!(info.sandbox_id, sandbox.sandbox_id());
     // `parse_lenient` maps an unparseable version to 99.99.99, so compare the
@@ -113,7 +116,10 @@ async fn clm_0008_create_metadata_is_visible_in_info() {
     let sandbox = LiveSandbox::create(&params().metadata("purpose", "clm-0008")).await;
 
     // Act
-    let info = sandbox.get_info().await.expect("info");
+    let info = sandbox
+        .get_info(&RequestOptions::new())
+        .await
+        .expect("info");
 
     // Assert
     assert_eq!(
@@ -150,7 +156,10 @@ async fn clm_0010_create_timeout_sets_end_at() {
     let sandbox = LiveSandbox::create(&params().timeout(Duration::from_secs(90))).await;
 
     // Act
-    let info = sandbox.get_info().await.expect("info");
+    let info = sandbox
+        .get_info(&RequestOptions::new())
+        .await
+        .expect("info");
 
     // Assert
     let lifetime = info.end_at.timestamp() - info.started_at.timestamp();
@@ -177,7 +186,7 @@ async fn clm_0011_auto_pause_pauses_at_timeout() {
         || async move {
             // Not found is the outcome this claim rules out, so fail at once.
             // Any other error may be transient and keeps polling.
-            match sandbox_ref.get_info().await {
+            match sandbox_ref.get_info(&RequestOptions::new()).await {
                 Ok(info) => (info.state == SandboxState::Paused).then_some(info.state),
                 Err(error) if error.is_not_found() => {
                     panic!("sandbox was killed, not paused, at its timeout: {error:?}")
@@ -249,7 +258,11 @@ async fn clm_0014_connect_resumes_paused_sandbox_with_files() {
     assert!(sandbox.pause(&PauseOptions::new()).await.expect("pause"));
     // Without this, a server whose pause is a no-op passes the test vacuously.
     assert_eq!(
-        sandbox.get_info().await.expect("info after pause").state,
+        sandbox
+            .get_info(&RequestOptions::new())
+            .await
+            .expect("info after pause")
+            .state,
         SandboxState::Paused
     );
 
@@ -278,7 +291,7 @@ async fn clm_0014_connect_resumes_paused_sandbox_with_files() {
     assert_eq!(result.stdout, "resumed\n");
     let info = sandbox
         .client()
-        .get_sandbox_info(sandbox.sandbox_id())
+        .get_sandbox_info(sandbox.sandbox_id(), &RequestOptions::new())
         .await
         .expect("info after resume");
     assert_eq!(info.state, SandboxState::Running);
@@ -309,7 +322,7 @@ async fn clm_0016_get_info_returns_detail() {
     // Act
     let info = sandbox
         .client()
-        .get_sandbox_info(sandbox.sandbox_id())
+        .get_sandbox_info(sandbox.sandbox_id(), &RequestOptions::new())
         .await
         .expect("info");
 
@@ -329,7 +342,7 @@ async fn clm_0016_get_info_returns_detail() {
 async fn clm_0017_get_info_unknown_sandbox_is_not_found() {
     // Act
     let error = client()
-        .get_sandbox_info(MISSING_ID)
+        .get_sandbox_info(MISSING_ID, &RequestOptions::new())
         .await
         .expect_err("unknown sandbox");
 
@@ -459,7 +472,7 @@ async fn clm_0021_kill_running_sandbox() {
     // Act
     let killed = sandbox
         .client()
-        .kill_sandbox(sandbox.sandbox_id())
+        .kill_sandbox(sandbox.sandbox_id(), &RequestOptions::new())
         .await
         .expect("kill");
 
@@ -471,7 +484,7 @@ async fn clm_0021_kill_running_sandbox() {
     let error = poll_until(
         "get_info to fail after kill",
         Duration::from_secs(30),
-        || async move { sandbox_ref.get_info().await.err() },
+        || async move { sandbox_ref.get_info(&RequestOptions::new()).await.err() },
     )
     .await;
     assert!(error.is_not_found(), "want not found, got {error:?}");
@@ -482,7 +495,7 @@ async fn clm_0021_kill_running_sandbox() {
 async fn clm_0022_kill_unknown_sandbox_is_false() {
     // Act
     let killed = client()
-        .kill_sandbox(MISSING_ID)
+        .kill_sandbox(MISSING_ID, &RequestOptions::new())
         .await
         .expect("kill unknown");
 
@@ -506,7 +519,11 @@ async fn clm_0023_pause_running_sandbox() {
     // Assert
     assert!(paused);
     assert_eq!(
-        sandbox.get_info().await.expect("info").state,
+        sandbox
+            .get_info(&RequestOptions::new())
+            .await
+            .expect("info")
+            .state,
         SandboxState::Paused
     );
 }
@@ -572,7 +589,11 @@ async fn clm_0025_set_timeout_moves_end_at() {
     // Act
     sandbox
         .client()
-        .set_sandbox_timeout(sandbox.sandbox_id(), Duration::from_secs(240))
+        .set_sandbox_timeout(
+            sandbox.sandbox_id(),
+            Duration::from_secs(240),
+            &RequestOptions::new(),
+        )
         .await
         .expect("set timeout");
     let elapsed = i64::try_from(before_create.elapsed().as_secs()).expect("elapsed fits in i64");
@@ -581,7 +602,10 @@ async fn clm_0025_set_timeout_moves_end_at() {
     // lies between started_at and started_at + elapsed. Measuring from the
     // server's started_at keeps both ends of the comparison on the server's
     // clock. The 2 s slack absorbs whole-second rounding.
-    let info = sandbox.get_info().await.expect("info");
+    let info = sandbox
+        .get_info(&RequestOptions::new())
+        .await
+        .expect("info");
     let lifetime = info.end_at.timestamp() - info.started_at.timestamp();
     let window = (240 - 2)..=(240 + elapsed + 2);
     assert!(
@@ -595,17 +619,29 @@ async fn clm_0025_set_timeout_moves_end_at() {
 async fn clm_0026_refresh_extends_end_at() {
     // Arrange
     let sandbox = LiveSandbox::new().await;
-    let before = sandbox.get_info().await.expect("info before").end_at;
+    let before = sandbox
+        .get_info(&RequestOptions::new())
+        .await
+        .expect("info before")
+        .end_at;
 
     // Act
     sandbox
         .client()
-        .refresh_sandbox(sandbox.sandbox_id(), Some(Duration::from_secs(300)))
+        .refresh_sandbox(
+            sandbox.sandbox_id(),
+            Some(Duration::from_secs(300)),
+            &RequestOptions::new(),
+        )
         .await
         .expect("refresh");
 
     // Assert
-    let after = sandbox.get_info().await.expect("info after").end_at;
+    let after = sandbox
+        .get_info(&RequestOptions::new())
+        .await
+        .expect("info after")
+        .end_at;
     assert!(
         after > before,
         "end_at did not move: before {before}, after {after}"
@@ -617,18 +653,23 @@ async fn clm_0026_refresh_extends_end_at() {
 async fn clm_0027_is_running_tracks_kill() {
     // Arrange
     let sandbox = LiveSandbox::new().await;
-    assert!(sandbox.is_running().await.expect("is_running while alive"));
+    assert!(
+        sandbox
+            .is_running(&RequestOptions::new())
+            .await
+            .expect("is_running while alive")
+    );
 
     // Act
-    assert!(sandbox.kill().await.expect("kill"));
+    assert!(sandbox.kill(&RequestOptions::new()).await.expect("kill"));
 
     // Assert: envd may take a moment to go away, so poll for `Ok(false)` and
     // report the last answer (an `Err` included) if it never comes.
     let deadline = tokio::time::Instant::now() + Duration::from_secs(30);
-    let mut last = sandbox.is_running().await;
+    let mut last = sandbox.is_running(&RequestOptions::new()).await;
     while !matches!(last, Ok(false)) && tokio::time::Instant::now() < deadline {
         tokio::time::sleep(Duration::from_secs(2)).await;
-        last = sandbox.is_running().await;
+        last = sandbox.is_running(&RequestOptions::new()).await;
     }
     assert!(
         matches!(last, Ok(false)),
@@ -686,7 +727,11 @@ async fn clm_0028_get_host_reaches_a_port_in_the_sandbox() {
 async fn clm_0029_get_metrics_reports_cpu_memory_and_disk() {
     // Arrange
     let sandbox = LiveSandbox::new().await;
-    let started_at = sandbox.get_info().await.expect("info").started_at;
+    let started_at = sandbox
+        .get_info(&RequestOptions::new())
+        .await
+        .expect("info")
+        .started_at;
 
     // Act: the API samples every few seconds, so wait for the first sample.
     // Not found means the sandbox is gone, so fail at once; any other error
@@ -729,8 +774,14 @@ async fn clm_0151_list_filters_by_template_and_start_time_and_orders() {
     let first = LiveSandbox::new().await;
     tokio::time::sleep(Duration::from_secs(2)).await;
     let second = LiveSandbox::new().await;
-    let second_info = second.get_info().await.expect("second info");
-    let first_info = first.get_info().await.expect("first info");
+    let second_info = second
+        .get_info(&RequestOptions::new())
+        .await
+        .expect("second info");
+    let first_info = first
+        .get_info(&RequestOptions::new())
+        .await
+        .expect("first info");
     let ours = ListSandboxesParams::new()
         .metadata(RUN_METADATA_KEY, run_id())
         .template(first_info.template_id.clone());
@@ -799,7 +850,10 @@ async fn clm_0153_get_info_reports_network() {
         LiveSandbox::create(&params().allow_internet_access(false).network(network)).await;
 
     // Act
-    let info = sandbox.get_info().await.expect("info");
+    let info = sandbox
+        .get_info(&RequestOptions::new())
+        .await
+        .expect("info");
 
     // Assert
     assert_eq!(info.allow_internet_access, Some(false), "{info:?}");
@@ -844,7 +898,10 @@ async fn clm_0144_update_network_replaces_egress_without_restart() {
 
     // Act 1: an update with only allow_internet_access(true) clears deny_out.
     sandbox
-        .update_network(&NetworkUpdate::new().allow_internet_access(true))
+        .update_network(
+            &NetworkUpdate::new().allow_internet_access(true),
+            &RequestOptions::new(),
+        )
         .await
         .expect("open egress");
     // Rust note: `async move` closures move what they capture, so they take
@@ -857,7 +914,10 @@ async fn clm_0144_update_network_replaces_egress_without_restart() {
 
     // Act 2: deny everything again.
     sandbox
-        .update_network(&NetworkUpdate::new().deny_out([ALL_TRAFFIC]))
+        .update_network(
+            &NetworkUpdate::new().deny_out([ALL_TRAFFIC]),
+            &RequestOptions::new(),
+        )
         .await
         .expect("close egress");
     poll_until("egress to close", Duration::from_secs(30), || async move {
@@ -901,7 +961,7 @@ async fn clm_0145_lifecycle_pause_with_full_snapshot_pauses_at_timeout() {
         "lifecycle pause at timeout, with its pause mode",
         Duration::from_secs(120),
         || async move {
-            match sandbox_ref.get_info().await {
+            match sandbox_ref.get_info(&RequestOptions::new()).await {
                 Ok(info) => (info.state == SandboxState::Paused && info.pause_mode.is_some())
                     .then_some(info),
                 Err(error) if error.is_not_found() => {
@@ -930,7 +990,10 @@ async fn clm_0153_get_info_reports_lifecycle() {
     let sandbox = LiveSandbox::create(&params().lifecycle(lifecycle)).await;
 
     // Act
-    let info = sandbox.get_info().await.expect("info");
+    let info = sandbox
+        .get_info(&RequestOptions::new())
+        .await
+        .expect("info");
 
     // Assert
     let reported = info.lifecycle.expect("lifecycle in the detail");
@@ -1047,17 +1110,25 @@ async fn clm_0030_snapshot_starts_sandboxes_with_its_files() {
     // Assert
     assert_eq!(text, "from the snapshot");
     assert_eq!(
-        source.get_info().await.expect("source info").state,
+        source
+            .get_info(&RequestOptions::new())
+            .await
+            .expect("source info")
+            .state,
         SandboxState::Running
     );
     // Hosted E2B refuses to delete a snapshot while a sandbox made from it
     // runs (400 "cannot delete template ... because there are running
     // sandboxes using it"), so the copy goes first.
-    assert!(copy.kill().await.expect("kill the copy"));
+    assert!(
+        copy.kill(&RequestOptions::new())
+            .await
+            .expect("kill the copy")
+    );
     assert!(
         source
             .client()
-            .delete_snapshot(&snapshot.snapshot_id)
+            .delete_snapshot(&snapshot.snapshot_id, &RequestOptions::new())
             .await
             .expect("delete")
     );
@@ -1090,11 +1161,11 @@ async fn clm_0147_list_and_delete_snapshots() {
         .await
         .expect("by name");
     let deleted = client
-        .delete_snapshot(&snapshot.snapshot_id)
+        .delete_snapshot(&snapshot.snapshot_id, &RequestOptions::new())
         .await
         .expect("delete");
     let deleted_again = client
-        .delete_snapshot(&snapshot.snapshot_id)
+        .delete_snapshot(&snapshot.snapshot_id, &RequestOptions::new())
         .await
         .expect("delete again");
 
@@ -1141,7 +1212,10 @@ async fn clm_0030_fork_starts_running_copies() {
             .await
             .expect("read in the fork");
         assert_eq!(text, "from the source");
-        let info = fork.get_info().await.expect("fork info");
+        let info = fork
+            .get_info(&RequestOptions::new())
+            .await
+            .expect("fork info");
         assert_eq!(info.state, SandboxState::Running);
         // A fork inherits the source's metadata (hosted E2B, 2026-10-28), so
         // the sandbox sweep finds a leaked fork by the run id too.
@@ -1151,7 +1225,11 @@ async fn clm_0030_fork_starts_running_copies() {
         );
     }
     assert_eq!(
-        source.get_info().await.expect("source info").state,
+        source
+            .get_info(&RequestOptions::new())
+            .await
+            .expect("source info")
+            .state,
         SandboxState::Running
     );
 }
@@ -1164,16 +1242,27 @@ async fn clm_0148_volume_create_get_list_destroy() {
     let name = resource_name("managed");
 
     // Act
-    let created = client.create_volume(&name).await.expect("create");
-    let fetched = client.get_volume(created.volume_id()).await.expect("get");
-    let listed = client.list_volumes().await.expect("list");
+    let created = client
+        .create_volume(&name, &RequestOptions::new())
+        .await
+        .expect("create");
+    let fetched = client
+        .get_volume(created.volume_id(), &RequestOptions::new())
+        .await
+        .expect("get");
+    let listed = client
+        .list_volumes(&RequestOptions::new())
+        .await
+        .expect("list");
     let destroyed = client
-        .destroy_volume(created.volume_id())
+        .destroy_volume(created.volume_id(), &RequestOptions::new())
         .await
         .expect("destroy");
-    let after = client.get_volume(created.volume_id()).await;
+    let after = client
+        .get_volume(created.volume_id(), &RequestOptions::new())
+        .await;
     let destroyed_again = client
-        .destroy_volume(created.volume_id())
+        .destroy_volume(created.volume_id(), &RequestOptions::new())
         .await
         .expect("destroy again");
 
@@ -1201,9 +1290,11 @@ async fn clm_0148_missing_volume_is_not_found_and_not_destroyed() {
     let client = client();
 
     // Act
-    let fetched = client.get_volume(MISSING_VOLUME_ID).await;
+    let fetched = client
+        .get_volume(MISSING_VOLUME_ID, &RequestOptions::new())
+        .await;
     let destroyed = client
-        .destroy_volume(MISSING_VOLUME_ID)
+        .destroy_volume(MISSING_VOLUME_ID, &RequestOptions::new())
         .await
         .expect("destroy missing");
 
@@ -1221,7 +1312,7 @@ async fn clm_0149_volume_mount_persists_across_sandboxes() {
     // Arrange: write through the mount in one sandbox, then kill it.
     let client = client();
     let volume = client
-        .create_volume(&resource_name("mounted"))
+        .create_volume(&resource_name("mounted"), &RequestOptions::new())
         .await
         .expect("create volume");
     let mount = params().volume_mount(volume.name(), "/mnt/data");
@@ -1252,7 +1343,7 @@ async fn clm_0149_volume_mount_persists_across_sandboxes() {
     drop(reader);
     assert!(
         client
-            .destroy_volume(volume.volume_id())
+            .destroy_volume(volume.volume_id(), &RequestOptions::new())
             .await
             .expect("destroy volume")
     );
@@ -1264,13 +1355,16 @@ async fn clm_0153_get_info_reports_volume_mounts() {
     // Arrange
     let client = client();
     let volume = client
-        .create_volume(&resource_name("info"))
+        .create_volume(&resource_name("info"), &RequestOptions::new())
         .await
         .expect("create volume");
     let sandbox = LiveSandbox::create(&params().volume_mount(volume.name(), "/mnt/info")).await;
 
     // Act
-    let info = sandbox.get_info().await.expect("info");
+    let info = sandbox
+        .get_info(&RequestOptions::new())
+        .await
+        .expect("info");
 
     // Assert
     let mounted = info
@@ -1281,7 +1375,7 @@ async fn clm_0153_get_info_reports_volume_mounts() {
     drop(sandbox);
     assert!(
         client
-            .destroy_volume(volume.volume_id())
+            .destroy_volume(volume.volume_id(), &RequestOptions::new())
             .await
             .expect("destroy volume")
     );
@@ -1372,4 +1466,22 @@ async fn clm_0150_mcp_gateway_starts_and_exposes_url_and_token() {
         (401, 401, 200),
         "gateway status (without a token, with another UUID, with the token)"
     );
+}
+
+#[tokio::test]
+#[ignore = "live: run with `just test-live <target>`"]
+async fn clm_0182_a_one_millisecond_request_timeout_times_out_get_info() {
+    // Arrange
+    let sandbox = LiveSandbox::new().await;
+    let tiny = RequestOptions::new().request_timeout(Some(Duration::from_millis(1)));
+
+    // Act
+    let timed_out = sandbox.get_info(&tiny).await;
+    let configured = sandbox.get_info(&RequestOptions::new()).await;
+
+    // Assert: 1 ms is too short for any real round trip; the configured
+    // timeout is not.
+    let error = timed_out.expect_err("1 ms passes before the API answers");
+    assert!(error.is_timeout(), "{error:?}");
+    assert!(configured.is_ok(), "{configured:?}");
 }

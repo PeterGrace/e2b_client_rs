@@ -6,7 +6,8 @@ use std::time::Duration;
 
 use common::{API_KEY, SANDBOX_ID, client_for, sandbox_json};
 use e2b_client::{
-    ConnectOptions, CreateSandboxParams, Error, ListSandboxesParams, PauseOptions, SandboxState,
+    ConnectOptions, CreateSandboxParams, Error, ListSandboxesParams, PauseOptions, RequestOptions,
+    SandboxState,
 };
 use serde_json::json;
 use wiremock::matchers::{body_json, header, method, path, query_param, query_param_is_missing};
@@ -234,7 +235,7 @@ async fn get_sandbox_info_parses_detail() {
         .await;
 
     let info = client_for(&server)
-        .get_sandbox_info(SANDBOX_ID)
+        .get_sandbox_info(SANDBOX_ID, &RequestOptions::new())
         .await
         .expect("info");
 
@@ -254,7 +255,7 @@ async fn get_sandbox_info_404_is_not_found() {
         .await;
 
     let err = client_for(&server)
-        .get_sandbox_info(SANDBOX_ID)
+        .get_sandbox_info(SANDBOX_ID, &RequestOptions::new())
         .await
         .expect_err("error");
 
@@ -323,8 +324,18 @@ async fn kill_sandbox_reports_whether_it_existed() {
         .await;
     let client = client_for(&server);
 
-    assert!(client.kill_sandbox("alive").await.expect("kill alive"));
-    assert!(!client.kill_sandbox("gone").await.expect("kill gone"));
+    assert!(
+        client
+            .kill_sandbox("alive", &RequestOptions::new())
+            .await
+            .expect("kill alive")
+    );
+    assert!(
+        !client
+            .kill_sandbox("gone", &RequestOptions::new())
+            .await
+            .expect("kill gone")
+    );
 }
 
 #[tokio::test]
@@ -336,7 +347,7 @@ async fn kill_sandbox_server_error_is_api_error() {
         .await;
 
     let err = client_for(&server)
-        .kill_sandbox("x")
+        .kill_sandbox("x", &RequestOptions::new())
         .await
         .expect_err("error");
 
@@ -405,15 +416,19 @@ async fn set_timeout_and_refresh_send_seconds() {
     let client = client_for(&server);
 
     client
-        .set_sandbox_timeout(SANDBOX_ID, Duration::from_secs(30))
+        .set_sandbox_timeout(SANDBOX_ID, Duration::from_secs(30), &RequestOptions::new())
         .await
         .expect("timeout");
     client
-        .refresh_sandbox(SANDBOX_ID, Some(Duration::from_secs(60)))
+        .refresh_sandbox(
+            SANDBOX_ID,
+            Some(Duration::from_secs(60)),
+            &RequestOptions::new(),
+        )
         .await
         .expect("refresh");
     client
-        .refresh_sandbox(SANDBOX_ID, None)
+        .refresh_sandbox(SANDBOX_ID, None, &RequestOptions::new())
         .await
         .expect("refresh default");
 }
@@ -427,7 +442,7 @@ async fn set_timeout_on_missing_sandbox_is_not_found() {
         .await;
 
     let err = client_for(&server)
-        .set_sandbox_timeout("missing", Duration::from_secs(1))
+        .set_sandbox_timeout("missing", Duration::from_secs(1), &RequestOptions::new())
         .await
         .expect_err("error");
 
@@ -470,16 +485,23 @@ async fn sandbox_handle_delegates_lifecycle_calls() {
         .await;
 
     assert_eq!(
-        sandbox.get_info().await.expect("info").sandbox_id,
+        sandbox
+            .get_info(&RequestOptions::new())
+            .await
+            .expect("info")
+            .sandbox_id,
         SANDBOX_ID
     );
     assert!(sandbox.pause(&PauseOptions::new()).await.expect("pause"));
     sandbox
-        .set_timeout(Duration::from_secs(10))
+        .set_timeout(Duration::from_secs(10), &RequestOptions::new())
         .await
         .expect("timeout");
-    sandbox.refresh(None).await.expect("refresh");
-    assert!(sandbox.kill().await.expect("kill"));
+    sandbox
+        .refresh(None, &RequestOptions::new())
+        .await
+        .expect("refresh");
+    assert!(sandbox.kill(&RequestOptions::new()).await.expect("kill"));
 }
 
 #[tokio::test]
@@ -496,12 +518,20 @@ async fn every_rest_request_carries_the_api_key() {
     let _ = client
         .connect_sandbox(SANDBOX_ID, &ConnectOptions::new())
         .await;
-    let _ = client.get_sandbox_info(SANDBOX_ID).await;
+    let _ = client
+        .get_sandbox_info(SANDBOX_ID, &RequestOptions::new())
+        .await;
     let _ = client.list_sandboxes(&ListSandboxesParams::new()).await;
-    let _ = client.kill_sandbox(SANDBOX_ID).await;
+    let _ = client
+        .kill_sandbox(SANDBOX_ID, &RequestOptions::new())
+        .await;
     let _ = client.pause_sandbox(SANDBOX_ID, &PauseOptions::new()).await;
-    let _ = client.set_sandbox_timeout(SANDBOX_ID, timeout).await;
-    let _ = client.refresh_sandbox(SANDBOX_ID, None).await;
+    let _ = client
+        .set_sandbox_timeout(SANDBOX_ID, timeout, &RequestOptions::new())
+        .await;
+    let _ = client
+        .refresh_sandbox(SANDBOX_ID, None, &RequestOptions::new())
+        .await;
 
     // Assert
     let requests = server.received_requests().await.expect("recording");
@@ -530,7 +560,7 @@ async fn request_timeout_applies_to_rest_calls() {
     let client = common::client_with_timeout(&server, Some(Duration::from_millis(100)));
 
     let err = client
-        .get_sandbox_info(SANDBOX_ID)
+        .get_sandbox_info(SANDBOX_ID, &RequestOptions::new())
         .await
         .expect_err("timeout");
 

@@ -7,7 +7,7 @@ use std::error::Error as _;
 use std::time::Duration;
 
 use common::{SANDBOX_ID, client_for, client_with_timeout, sandbox};
-use e2b_client::{Client, ConnectionConfig, Error, TransportError};
+use e2b_client::{Client, ConnectionConfig, Error, RequestOptions, TransportError};
 use serde_json::json;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
@@ -95,7 +95,7 @@ async fn rest_statuses_classify_as_the_sdk_does() {
     for (status, expected) in cases {
         // Act
         let err = client
-            .get_sandbox_info(&format!("s{status}"))
+            .get_sandbox_info(&format!("s{status}"), &RequestOptions::new())
             .await
             .expect_err("an error status");
 
@@ -151,7 +151,10 @@ async fn envd_http_statuses_classify_as_the_sdk_does() {
             .await;
 
         // Act
-        let err = sandbox.is_running().await.expect_err("an error status");
+        let err = sandbox
+            .is_running(&RequestOptions::new())
+            .await
+            .expect_err("an error status");
 
         // Assert
         assert!(matches!(err, Error::Envd { .. }), "{status}: {err:?}");
@@ -244,7 +247,7 @@ async fn a_request_timeout_is_a_timeout_and_not_retryable() {
 
     // Act
     let err = client
-        .get_sandbox_info(SANDBOX_ID)
+        .get_sandbox_info(SANDBOX_ID, &RequestOptions::new())
         .await
         .expect_err("timeout");
 
@@ -290,7 +293,7 @@ async fn a_refused_connection_is_retryable_and_keeps_its_cause() {
 
     // Act
     let err = client
-        .get_sandbox_info(SANDBOX_ID)
+        .get_sandbox_info(SANDBOX_ID, &RequestOptions::new())
         .await
         .expect_err("connection refused");
 
@@ -322,7 +325,7 @@ async fn a_decode_error_shows_its_detail_once() {
 
     // Act
     let err = client
-        .get_sandbox_info(SANDBOX_ID)
+        .get_sandbox_info(SANDBOX_ID, &RequestOptions::new())
         .await
         .expect_err("undecodable body");
 

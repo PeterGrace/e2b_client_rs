@@ -78,6 +78,7 @@ CLM-0180 (this record). The item list is the re-exports in `src/lib.rs` as of
 | `SortOrder` | enum | Debug, Clone, Copy, PartialEq, Eq, Hash | both | variants | yes | |
 | `ConnectOptions` | struct | Debug, Clone, Copy, Default, PartialEq, Eq | both | private | no | The only form of `connect_sandbox` since Task 6 |
 | `PauseOptions` | struct | Debug, Clone, Copy, Default, PartialEq, Eq | both | private | no | The only form of `pause_sandbox`/`Sandbox::pause` since Task 6 |
+| `RequestOptions` | struct | Debug, Clone, Copy, Default, PartialEq, Eq | both | private | no | New in M5 (#125): only a per-call request timeout, for the REST calls (and `Sandbox::is_running`) that have no other options |
 | `Lifecycle` | struct | Debug, Clone, Copy, Default, PartialEq, Eq | both | private | no | |
 | `LifecycleInfo` | struct | Debug, Clone, Copy, PartialEq, Eq, Deserialize | both | public | yes | Result type |
 | `OnTimeout` | enum | Debug, Clone, Copy, PartialEq, Eq, Hash | both | variants | yes | `Pause { mode }` is built with `OnTimeout::pause`/`pause_with` |
@@ -147,6 +148,10 @@ carries the message and `source()` is `None`.
   removed in Task 6.
 - `Client` and `Sandbox` both offer the sandbox operations (`Client` by id,
   `Sandbox` on itself), as the SDK's class and instance methods do.
+- A call with nothing else to configure takes a trailing `&RequestOptions`
+  (M5, #125), which carries only the per-call request timeout; a call that
+  already takes an options or params struct has a `request_timeout` setter
+  on it instead. `RequestOptions::new()` keeps the configured timeout.
 - Booleans that report "did it exist" or "did it change" (`kill_sandbox`,
   `Sandbox::kill`, `Commands::kill`, `Pty::kill`, `pause_sandbox`,
   `delete_snapshot`, `destroy_volume`, `make_dir`) return `Result<bool>` as
@@ -156,12 +161,12 @@ carries the message and `source()` is `None`.
 
 From the plan's Scope ("Deferred") table and this review:
 
-- **Per-call request timeouts** exist only on calls that take an options
-  struct reaching envd. The REST calls (`Client::*`, the `Sandbox` lifecycle
-  calls) and the pid-only envd calls (`send_stdin`, `close_stdin`,
-  `send_signal`, `kill`, `resize`, `Commands::list`) use the configured
-  request timeout. Adding options to them later is a breaking change, so it
-  waits for a semver-breaking release (a 0.x minor bump). Unscheduled.
+- **Per-call request timeouts** are missing only on the pid-only envd calls
+  (`send_stdin`, `close_stdin`, `send_signal`, `kill`, `resize`,
+  `Commands::list`, and the same on `CommandHandle` and `PtyHandle`), which
+  use the configured request timeout; M5 Task 2 (#120) adds them before
+  0.2.0. Every REST call and `Sandbox::is_running` take one since M5
+  Task 1 (#125).
 - **The REST models are hand-written**, cited row by row in
   `docs/protocol-notes.md` and live-verified; regenerating them from the
   OpenAPI spec is not planned.

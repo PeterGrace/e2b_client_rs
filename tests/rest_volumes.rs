@@ -3,7 +3,7 @@
 mod common;
 
 use common::{API_KEY, SANDBOX_ID, client_for, detail_json, sandbox_json};
-use e2b_client::{CreateSandboxParams, Error, ListSandboxesParams};
+use e2b_client::{CreateSandboxParams, Error, ListSandboxesParams, RequestOptions};
 use secrecy::ExposeSecret;
 use serde_json::json;
 use wiremock::matchers::{body_json, header, method, path};
@@ -34,7 +34,7 @@ async fn create_volume_posts_its_name_and_keeps_the_token_secret() {
 
     // Act
     let volume = client_for(&server)
-        .create_volume("data")
+        .create_volume("data", &RequestOptions::new())
         .await
         .expect("create");
 
@@ -61,7 +61,7 @@ async fn create_volume_refused_is_an_api_error() {
 
         // Act
         let error = client_for(&server)
-            .create_volume("data")
+            .create_volume("data", &RequestOptions::new())
             .await
             .expect_err("refused");
 
@@ -96,8 +96,14 @@ async fn get_volume_reads_the_domain_and_maps_404() {
     let client = client_for(&server);
 
     // Act
-    let volume = client.get_volume("vol-1").await.expect("get");
-    let error = client.get_volume("gone").await.expect_err("missing");
+    let volume = client
+        .get_volume("vol-1", &RequestOptions::new())
+        .await
+        .expect("get");
+    let error = client
+        .get_volume("gone", &RequestOptions::new())
+        .await
+        .expect_err("missing");
 
     // Assert
     assert_eq!(volume.volume_id(), "vol-1");
@@ -122,7 +128,7 @@ async fn get_volume_refused_is_an_api_error_not_not_found() {
 
     // Act
     let error = client_for(&server)
-        .get_volume("vol-1")
+        .get_volume("vol-1", &RequestOptions::new())
         .await
         .expect_err("refused");
 
@@ -148,7 +154,10 @@ async fn list_volumes_reads_ids_and_names() {
         .await;
 
     // Act
-    let volumes = client_for(&server).list_volumes().await.expect("list");
+    let volumes = client_for(&server)
+        .list_volumes(&RequestOptions::new())
+        .await
+        .expect("list");
 
     // Assert
     let entries: Vec<(&str, &str)> = volumes
@@ -176,8 +185,14 @@ async fn list_volumes_reads_a_null_body_as_none_and_maps_errors() {
     let client = client_for(&server);
 
     // Act
-    let empty = client.list_volumes().await.expect("null body");
-    let error = client.list_volumes().await.expect_err("refused");
+    let empty = client
+        .list_volumes(&RequestOptions::new())
+        .await
+        .expect("null body");
+    let error = client
+        .list_volumes(&RequestOptions::new())
+        .await
+        .expect_err("refused");
 
     // Assert
     assert!(empty.is_empty(), "{empty:?}");
@@ -211,12 +226,18 @@ async fn destroy_volume_reports_whether_it_existed() {
     let client = client_for(&server);
 
     // Act
-    let destroyed = client.destroy_volume("vol-1").await.expect("destroy");
+    let destroyed = client
+        .destroy_volume("vol-1", &RequestOptions::new())
+        .await
+        .expect("destroy");
     let missing = client
-        .destroy_volume("gone")
+        .destroy_volume("gone", &RequestOptions::new())
         .await
         .expect("destroy missing");
-    let error = client.destroy_volume("busy").await.expect_err("refused");
+    let error = client
+        .destroy_volume("busy", &RequestOptions::new())
+        .await
+        .expect_err("refused");
 
     // Assert
     assert!(destroyed);
@@ -258,7 +279,10 @@ async fn create_sends_volume_mounts_and_info_reads_them() {
 
     // Act
     let sandbox = client.create_sandbox(&params).await.expect("create");
-    let info = sandbox.get_info().await.expect("info");
+    let info = sandbox
+        .get_info(&RequestOptions::new())
+        .await
+        .expect("info");
 
     // Assert
     assert_eq!(info.volume_mounts.len(), 1);
@@ -286,8 +310,14 @@ async fn get_info_without_volume_mounts_reads_none() {
     let client = client_for(&server);
 
     // Act
-    let null = client.get_sandbox_info(SANDBOX_ID).await.expect("null");
-    let absent = client.get_sandbox_info(SANDBOX_ID).await.expect("absent");
+    let null = client
+        .get_sandbox_info(SANDBOX_ID, &RequestOptions::new())
+        .await
+        .expect("null");
+    let absent = client
+        .get_sandbox_info(SANDBOX_ID, &RequestOptions::new())
+        .await
+        .expect("absent");
 
     // Assert
     assert!(null.volume_mounts.is_empty(), "{:?}", null.volume_mounts);

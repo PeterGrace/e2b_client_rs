@@ -20,10 +20,10 @@ use e2b_client::{
     ForkOptions, InputStream, Lifecycle, LifecycleInfo, ListOptions, ListSandboxesParams,
     ListSnapshotsParams, MetricsParams, NetworkConfig, NetworkInfo, NetworkRule, NetworkUpdate,
     OnResume, OnTimeout, PauseOptions, ProcessInfo, Pty, PtyConnectOptions, PtyEvent, PtyHandle,
-    PtyOptions, PtySize, Sandbox, SandboxInfo, SandboxMetrics, SandboxPage, SandboxState, Signal,
-    SnapshotInfo, SnapshotMode, SnapshotOptions, SnapshotPage, SortOrder, StreamInputOptions,
-    TimeoutAction, TransportError, Volume, VolumeInfo, VolumeMount, WatchHandle, WatchOptions,
-    WriteEntry, WriteInfo, WriteOptions,
+    PtyOptions, PtySize, RequestOptions, Sandbox, SandboxInfo, SandboxMetrics, SandboxPage,
+    SandboxState, Signal, SnapshotInfo, SnapshotMode, SnapshotOptions, SnapshotPage, SortOrder,
+    StreamInputOptions, TimeoutAction, TransportError, Volume, VolumeInfo, VolumeMount,
+    WatchHandle, WatchOptions, WriteEntry, WriteInfo, WriteOptions,
 };
 
 /// Compiles only if `T` is `Send` and `Sync`.
@@ -67,6 +67,7 @@ fn clients_handles_options_and_results_are_send_and_sync() {
     assert_send_sync::<ListSandboxesParams>();
     assert_send_sync::<ConnectOptions>();
     assert_send_sync::<PauseOptions>();
+    assert_send_sync::<RequestOptions>();
     assert_send_sync::<Lifecycle>();
     assert_send_sync::<OnTimeout>();
     assert_send_sync::<OnResume>();
@@ -173,6 +174,7 @@ fn every_public_type_is_debug() {
     assert_debug::<SortOrder>();
     assert_debug::<ConnectOptions>();
     assert_debug::<PauseOptions>();
+    assert_debug::<RequestOptions>();
     assert_debug::<Lifecycle>();
     assert_debug::<LifecycleInfo>();
     assert_debug::<OnTimeout>();
@@ -215,6 +217,7 @@ fn every_options_type_has_new_equal_to_default() {
     assert_eq!(ListSandboxesParams::new(), ListSandboxesParams::default());
     assert_eq!(ConnectOptions::new(), ConnectOptions::default());
     assert_eq!(PauseOptions::new(), PauseOptions::default());
+    assert_eq!(RequestOptions::new(), RequestOptions::default());
     assert_eq!(Lifecycle::new(), Lifecycle::default());
     assert_eq!(MetricsParams::new(), MetricsParams::default());
     assert_eq!(ForkOptions::new(), ForkOptions::default());

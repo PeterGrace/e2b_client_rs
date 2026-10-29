@@ -6,6 +6,7 @@ use std::time::Duration;
 
 use serde::{Deserialize, Deserializer, Serialize};
 
+use crate::config::RequestTimeout;
 use crate::error::{Error, Result};
 
 /// What a pause or snapshot persists (`SnapshotMode`,
@@ -236,10 +237,10 @@ pub(crate) struct AutoResume {
 /// # Examples
 ///
 /// ```no_run
-/// use e2b_client::{Sandbox, TimeoutAction};
+/// use e2b_client::{RequestOptions, Sandbox, TimeoutAction};
 ///
 /// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
-/// let info = sandbox.get_info().await?;
+/// let info = sandbox.get_info(&RequestOptions::new()).await?;
 /// if let Some(lifecycle) = info.lifecycle {
 ///     if lifecycle.on_timeout == TimeoutAction::Pause {
 ///         println!("pauses at its timeout; auto-resume: {}", lifecycle.auto_resume);
@@ -272,8 +273,10 @@ pub enum TimeoutAction {
 /// # Examples
 ///
 /// ```no_run
+/// use e2b_client::RequestOptions;
+///
 /// # async fn demo(sandbox: e2b_client::Sandbox) -> e2b_client::Result<()> {
-/// let lifecycle = sandbox.get_info().await?.lifecycle;
+/// let lifecycle = sandbox.get_info(&RequestOptions::new()).await?.lifecycle;
 /// println!("{lifecycle:?}");
 /// # Ok(())
 /// # }
@@ -355,6 +358,7 @@ pub(crate) fn deserialize_known_mode<'de, D: Deserializer<'de>>(
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct PauseOptions {
     mode: Option<SnapshotMode>,
+    pub(crate) request_timeout: RequestTimeout,
 }
 
 impl PauseOptions {
@@ -384,6 +388,24 @@ impl PauseOptions {
     #[must_use]
     pub fn mode(mut self, mode: SnapshotMode) -> Self {
         self.mode = Some(mode);
+        self
+    }
+
+    /// The request timeout for this call: `Some(d)` bounds it to `d`;
+    /// `None`, or a zero duration (as SDK `request_timeout=0`), means no
+    /// limit. Unset, the configured one applies
+    /// ([`crate::ConnectionConfigBuilder::request_timeout`]).
+    ///
+    /// # Arguments
+    ///
+    /// * `timeout` - the per-call timeout, or `None` for no limit.
+    ///
+    /// # Returns
+    ///
+    /// The options, for chaining.
+    #[must_use]
+    pub fn request_timeout(mut self, timeout: Option<Duration>) -> Self {
+        self.request_timeout = RequestTimeout::set(timeout);
         self
     }
 
@@ -448,6 +470,7 @@ pub enum OnResume {
 pub struct ConnectOptions {
     timeout: Option<Duration>,
     on_resume: Option<OnResume>,
+    pub(crate) request_timeout: RequestTimeout,
 }
 
 impl ConnectOptions {
@@ -489,6 +512,24 @@ impl ConnectOptions {
     #[must_use]
     pub fn on_resume(mut self, on_resume: OnResume) -> Self {
         self.on_resume = Some(on_resume);
+        self
+    }
+
+    /// The request timeout for this call: `Some(d)` bounds it to `d`;
+    /// `None`, or a zero duration (as SDK `request_timeout=0`), means no
+    /// limit. Unset, the configured one applies
+    /// ([`crate::ConnectionConfigBuilder::request_timeout`]).
+    ///
+    /// # Arguments
+    ///
+    /// * `timeout` - the per-call timeout, or `None` for no limit.
+    ///
+    /// # Returns
+    ///
+    /// The options, for chaining.
+    #[must_use]
+    pub fn request_timeout(mut self, timeout: Option<Duration>) -> Self {
+        self.request_timeout = RequestTimeout::set(timeout);
         self
     }
 
@@ -694,5 +735,30 @@ mod tests {
         assert_eq!(ConnectOptions::new().timeout_value(), None);
         let options = ConnectOptions::new().timeout(Duration::from_secs(90));
         assert_eq!(options.timeout_value(), Some(Duration::from_secs(90)));
+    }
+
+    #[test]
+    fn options_keep_the_request_timeout_apart_from_the_body() {
+        // Arrange
+        let short = Some(Duration::from_millis(200));
+
+        // Act
+        let pause = PauseOptions::new()
+            .mode(SnapshotMode::Full)
+            .request_timeout(short);
+        let connect = ConnectOptions::new()
+            .on_resume(OnResume::Reboot)
+            .request_timeout(short);
+
+        // Assert: the body flags are unchanged, and the timeout is stored.
+        assert_eq!(pause.memory(), Some(true));
+        assert_eq!(pause.request_timeout, RequestTimeout::set(short));
+        assert_eq!(connect.memory(), Some(false));
+        assert_eq!(connect.timeout_value(), None);
+        assert_eq!(connect.request_timeout, RequestTimeout::set(short));
+        assert_eq!(
+            PauseOptions::new().request_timeout,
+            RequestTimeout::default()
+        );
     }
 }

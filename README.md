@@ -19,7 +19,7 @@ tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 ```rust,no_run
 use e2b_client::{
     Client, CommandOptions, ConnectOptions, CreateSandboxParams, FileOptions, PauseOptions,
-    WriteOptions,
+    RequestOptions, WriteOptions,
 };
 
 #[tokio::main]
@@ -45,7 +45,9 @@ async fn main() -> e2b_client::Result<()> {
         .connect_sandbox(sandbox.sandbox_id(), &ConnectOptions::new())
         .await?;
 
-    sandbox.kill().await?;
+    // Calls with nothing else to configure take `RequestOptions`, which can
+    // bound that one request; `new()` keeps the configured timeout.
+    sandbox.kill(&RequestOptions::new()).await?;
     Ok(())
 }
 ```
@@ -55,9 +57,9 @@ async fn main() -> e2b_client::Result<()> {
 | Area | API |
 |---|---|
 | Configuration | `ConnectionConfig::builder()` / `from_env()`: API key, API URL, domain, sandbox URL, request timeout (`E2B_API_KEY`, `E2B_API_URL`, `E2B_DOMAIN`, `E2B_SANDBOX_URL`) |
-| Lifecycle (REST) | `Client::{create_sandbox, connect_sandbox, get_sandbox_info, list_sandboxes, pause_sandbox, kill_sandbox, set_sandbox_timeout, refresh_sandbox}` and the same on `Sandbox`; one method per operation: `connect_sandbox(id, &ConnectOptions)` (v2 connect only: a 404 is `Error::SandboxNotFound`) and `pause_sandbox(id, &PauseOptions)` / `Sandbox::pause(&PauseOptions)`; `ListSandboxesParams::{metadata, state, template, started_after, order}` |
+| Lifecycle (REST) | `Client::{create_sandbox, connect_sandbox, get_sandbox_info, list_sandboxes, pause_sandbox, kill_sandbox, set_sandbox_timeout, refresh_sandbox}` and the same on `Sandbox`; one method per operation: `connect_sandbox(id, &ConnectOptions)` (v2 connect only: a 404 is `Error::SandboxNotFound`) and `pause_sandbox(id, &PauseOptions)` / `Sandbox::pause(&PauseOptions)`; `ListSandboxesParams::{metadata, state, template, started_after, order}`; every REST call, and `Sandbox::is_running`, takes a per-call request timeout: a `request_timeout` setter on its options or params struct, or a trailing `&RequestOptions` for calls with nothing else to configure (`RequestOptions::new()` keeps the configured one) |
 | Hosts and metrics | `Sandbox::get_host(port)` gives the host name that reaches a port inside the sandbox; `Sandbox::get_metrics` / `Client::get_sandbox_metrics` read CPU, memory and disk samples (`MetricsParams::{start, end}`) |
-| Network | `CreateSandboxParams::network(NetworkConfig)`: `allow_out`, `deny_out` (`ALL_TRAFFIC`), `dns_servers`, per-host header `rule`s, `allow_public_traffic`, `mask_request_host`, `https_ports`; `Sandbox::update_network(&NetworkUpdate)` and `Client::update_sandbox_network(id, &NetworkUpdate)` replace a running sandbox's egress without a restart |
+| Network | `CreateSandboxParams::network(NetworkConfig)`: `allow_out`, `deny_out` (`ALL_TRAFFIC`), `dns_servers`, per-host header `rule`s, `allow_public_traffic`, `mask_request_host`, `https_ports`; `Sandbox::update_network(&NetworkUpdate, &RequestOptions)` and `Client::update_sandbox_network(id, &NetworkUpdate, &RequestOptions)` replace a running sandbox's egress without a restart |
 | Lifecycle settings | `CreateSandboxParams::lifecycle(Lifecycle)`: `on_timeout` (`OnTimeout::Kill`, or a pause with a `SnapshotMode`) and `auto_resume`; `idempotency_key`; `Client::pause_sandbox(id, &PauseOptions)` / `Sandbox::pause(&PauseOptions)` and `Client::connect_sandbox(id, &ConnectOptions)` choose a full or filesystem-only snapshot and a restore or a reboot (`OnResume`) |
 | Snapshots and fork | `Sandbox::{create_snapshot, list_snapshots, fork}`, `Client::{create_snapshot, list_snapshots, delete_snapshot, fork_sandbox}`; a snapshot ID is a template, so `CreateSandboxParams::new(snapshot_id)` starts a sandbox from it; `fork` returns one result per copy (up to `MAX_FORK_COUNT`) |
 | Volumes | `Client::{create_volume, get_volume, list_volumes, destroy_volume}` (the volume token stays a `SecretString`); `CreateSandboxParams::volume_mount(name, path)` |
@@ -69,8 +71,8 @@ async fn main() -> e2b_client::Result<()> {
 | Errors | `Error` (`thiserror`): REST status + E2B message, Connect error codes, envd HTTP errors, protocol, timeout, transport (`TransportError`, with `is_timeout`/`is_connect`), invalid argument; `status()` and the SDK's categories as `is_not_found`, `is_auth`, `is_rate_limited`, `is_service_busy`, `is_not_enough_space`, `is_sandbox_unreachable`, `is_timeout`, `is_retryable` |
 
 Out of scope by design: code interpreter, template building, and a blocking
-API. Not implemented yet: per-call request timeouts on REST calls and on
-pid-only process calls, the SOCKS5 egress proxy and IAM workload identity in
+API. Not implemented yet: per-call request timeouts on the pid-only process
+and PTY calls, the SOCKS5 egress proxy and IAM workload identity in
 network settings, the volume content API (files in a volume without a
 sandbox), sandbox logs, secrets and git.
 
@@ -81,7 +83,7 @@ use std::time::Duration;
 
 use e2b_client::{
     ALL_TRAFFIC, Client, CreateSandboxParams, FileOptions, Lifecycle, NetworkConfig, OnTimeout,
-    SnapshotMode, SnapshotOptions, WriteOptions,
+    RequestOptions, SnapshotMode, SnapshotOptions, WriteOptions,
 };
 
 async fn snapshot_tour(client: &Client) -> e2b_client::Result<()> {
@@ -115,9 +117,10 @@ async fn snapshot_tour(client: &Client) -> e2b_client::Result<()> {
     assert_eq!(state, "warm");
 
     // A snapshot cannot be deleted while a sandbox started from it runs.
-    copy.kill().await?;
-    client.delete_snapshot(&snapshot.snapshot_id).await?;
-    source.kill().await?;
+    let options = RequestOptions::new();
+    copy.kill(&options).await?;
+    client.delete_snapshot(&snapshot.snapshot_id, &options).await?;
+    source.kill(&options).await?;
     Ok(())
 }
 ```

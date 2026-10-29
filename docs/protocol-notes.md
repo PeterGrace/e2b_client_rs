@@ -28,6 +28,7 @@ NOTICE for.
 | Explicit value, then env var, then default (`value or env or default`, so empty counts as unset) | `py: connection_config.py:289-291, 310-318` |
 | Default request timeout 60 s | `py: connection_config.py:32` |
 | A zero request timeout disables it, as `request_timeout=0` | `py: api/__init__.py:280` |
+| Every REST call takes a per-call request timeout (`ApiParams.request_timeout`, "Timeout for the request in seconds"), which wins over the connection's; a per-call `None` falls back to it. Here: a `request_timeout` setter on the call's options or params struct, else a trailing `&RequestOptions`; unset uses the configured one, `None` or zero means no limit. `create_sandbox`'s bounds its `POST` only (the MCP gateway start is a command with its own timeouts); `Sandbox::is_running` (envd `GET /health`) takes one too | `py: connection_config.py:70-78, 146-160`; `py: sandbox_async/main.py:134-168, 245-268, 271-276, 523-552` |
 | API key header `X-API-KEY` | `py: api/__init__.py:250-251`; `js: 1528` |
 | envd port 49983 | `py: connection_config.py:201`; `js: 1143, 5784` |
 
@@ -465,9 +466,9 @@ the SDKs' exception classes with methods on `Error`.
   entry order and the first error still fails the batch (issue #53).
   `max_concurrency(entries.len())` gives the SDK's behaviour.
 - **Not implemented yet.** Milestone 5: a live CI job (hosted E2B only)
-  and the crates.io publish. Not scheduled yet: a per-call request timeout
-  on REST calls and on the pid-only process calls (`send_stdin`, `kill`,
-  `resize`, `list`, ...), which use the configured request timeout.
+  and the crates.io publish; a per-call request timeout on the pid-only
+  process and PTY calls (`send_stdin`, `kill`, `resize`, `list`, ...),
+  which use the configured request timeout until then (Task 2, #120).
   Deferred from milestone 3 and unscheduled: the SOCKS5 egress proxy, IAM
   workload identity (`iam.tokens` and identity placeholders in rule
   transforms), and the volume content API. Also unscheduled: sandbox health

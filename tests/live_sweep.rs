@@ -6,7 +6,9 @@ mod live_support;
 
 use std::time::Duration;
 
-use e2b_client::{Client, Error, ListSandboxesParams, ListSnapshotsParams, SandboxState};
+use e2b_client::{
+    Client, Error, ListSandboxesParams, ListSnapshotsParams, RequestOptions, SandboxState,
+};
 use live_support::{RUN_METADATA_KEY, client, poll_until, resource_name, run_id};
 
 #[tokio::test]
@@ -54,7 +56,7 @@ async fn kill_leftover_sandboxes(client: &Client) -> usize {
     }
     for sandbox_id in &leftovers {
         client
-            .kill_sandbox(sandbox_id)
+            .kill_sandbox(sandbox_id, &RequestOptions::new())
             .await
             .expect("kill leftover sandbox");
     }
@@ -114,7 +116,10 @@ async fn delete_when_unused(client: &Client, snapshot_id: &str) {
         &format!("snapshot {snapshot_id} to be deletable"),
         Duration::from_secs(30),
         || async {
-            match client.delete_snapshot(snapshot_id).await {
+            match client
+                .delete_snapshot(snapshot_id, &RequestOptions::new())
+                .await
+            {
                 // `Ok(false)` (already gone) counts as done, like `Ok(true)`.
                 Ok(_) => Some(()),
                 Err(Error::Api { status: 400, .. }) => None,
@@ -140,7 +145,7 @@ async fn sweep_leftover_volumes_of_this_run() {
     kill_leftover_sandboxes(&client).await;
     let marker = resource_name("");
     let leftovers: Vec<String> = client
-        .list_volumes()
+        .list_volumes(&RequestOptions::new())
         .await
         .expect("list volumes")
         .into_iter()
@@ -149,7 +154,7 @@ async fn sweep_leftover_volumes_of_this_run() {
         .collect();
     for volume_id in &leftovers {
         client
-            .destroy_volume(volume_id)
+            .destroy_volume(volume_id, &RequestOptions::new())
             .await
             .expect("destroy leftover volume");
     }

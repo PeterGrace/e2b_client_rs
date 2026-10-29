@@ -1,7 +1,11 @@
 //! Sandbox resource metrics (`GET /sandboxes/{id}/metrics`).
 
+use std::time::Duration;
+
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
+
+use crate::config::RequestTimeout;
 
 /// One sample of a sandbox's CPU, memory and disk use
 /// (`SandboxMetric`, `e2b/api/client/models/sandbox_metric.py:28-36`).
@@ -65,6 +69,7 @@ pub struct SandboxMetrics {
 pub struct MetricsParams {
     start: Option<DateTime<Utc>>,
     end: Option<DateTime<Utc>>,
+    pub(crate) request_timeout: RequestTimeout,
 }
 
 impl MetricsParams {
@@ -108,6 +113,24 @@ impl MetricsParams {
         self
     }
 
+    /// The request timeout for this call: `Some(d)` bounds it to `d`;
+    /// `None`, or a zero duration (as SDK `request_timeout=0`), means no
+    /// limit. Unset, the configured one applies
+    /// ([`crate::ConnectionConfigBuilder::request_timeout`]).
+    ///
+    /// # Arguments
+    ///
+    /// * `timeout` - the per-call timeout, or `None` for no limit.
+    ///
+    /// # Returns
+    ///
+    /// The parameters, for chaining.
+    #[must_use]
+    pub fn request_timeout(mut self, timeout: Option<Duration>) -> Self {
+        self.request_timeout = RequestTimeout::set(timeout);
+        self
+    }
+
     /// The query pairs (`get_sandboxes_sandbox_id_metrics.py:21-23`).
     pub(crate) fn query(&self) -> Vec<(&'static str, i64)> {
         // `filter_map` drops the unset bounds, like the SDK's `UNSET`.
@@ -140,5 +163,15 @@ mod tests {
         // Assert
         assert_eq!(only_end, vec![("end", 1_793_102_460)]);
         assert_eq!(both, vec![("start", 1_793_102_400), ("end", 1_793_102_460)]);
+    }
+
+    #[test]
+    fn the_request_timeout_never_reaches_the_query() {
+        let params = MetricsParams::new().request_timeout(Some(Duration::from_millis(200)));
+        assert!(params.query().is_empty());
+        assert_eq!(
+            params.request_timeout,
+            RequestTimeout::set(Some(Duration::from_millis(200)))
+        );
     }
 }

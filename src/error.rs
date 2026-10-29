@@ -37,10 +37,10 @@ pub type Result<T> = std::result::Result<T, Error>;
 /// # Examples
 ///
 /// ```no_run
-/// use e2b_client::{Client, Error};
+/// use e2b_client::{Client, Error, RequestOptions};
 ///
 /// # async fn demo(client: Client) -> e2b_client::Result<()> {
-/// match client.get_sandbox_info("sbx-maybe-gone").await {
+/// match client.get_sandbox_info("sbx-maybe-gone", &RequestOptions::new()).await {
 ///     Ok(info) => println!("{:?}", info.state),
 ///     Err(error) if error.is_not_found() => println!("gone"),
 ///     Err(error) if error.is_retryable() => println!("try again later: {error}"),
@@ -174,8 +174,10 @@ impl Error {
     /// # Examples
     ///
     /// ```no_run
+    /// use e2b_client::RequestOptions;
+    ///
     /// # async fn demo(client: &e2b_client::Client) {
-    /// if let Err(err) = client.get_sandbox_info("sbx-1").await {
+    /// if let Err(err) = client.get_sandbox_info("sbx-1", &RequestOptions::new()).await {
     ///     if err.status() == Some(403) {
     ///         eprintln!("this key may not read that sandbox");
     ///     }
@@ -336,11 +338,14 @@ impl Error {
     /// ```no_run
     /// use std::time::Duration;
     ///
+    /// use e2b_client::RequestOptions;
+    ///
     /// # async fn demo(client: &e2b_client::Client) -> e2b_client::Result<()> {
-    /// let info = match client.get_sandbox_info("sbx-1").await {
+    /// let options = RequestOptions::new();
+    /// let info = match client.get_sandbox_info("sbx-1", &options).await {
     ///     Err(err) if err.is_retryable() => {
     ///         tokio::time::sleep(Duration::from_secs(1)).await;
-    ///         client.get_sandbox_info("sbx-1").await?
+    ///         client.get_sandbox_info("sbx-1", &options).await?
     ///     }
     ///     other => other?,
     /// };
@@ -367,10 +372,11 @@ impl Error {
 /// # Examples
 ///
 /// ```no_run
-/// use e2b_client::Error;
+/// use e2b_client::{Error, RequestOptions};
 ///
 /// # async fn demo(client: &e2b_client::Client) {
-/// if let Err(Error::Transport(transport)) = client.get_sandbox_info("sbx-1").await {
+/// let info = client.get_sandbox_info("sbx-1", &RequestOptions::new()).await;
+/// if let Err(Error::Transport(transport)) = info {
 ///     if transport.is_connect() {
 ///         eprintln!("could not reach the API: {transport}");
 ///     }

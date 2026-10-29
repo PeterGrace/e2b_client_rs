@@ -2,9 +2,11 @@
 //! from (`e2b/sandbox_async/main.py:886-1060`).
 
 use std::borrow::Cow;
+use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 
+use crate::config::RequestTimeout;
 use crate::lifecycle::SnapshotMode;
 use crate::wire::deserialize_null_as_default;
 
@@ -22,6 +24,7 @@ use crate::wire::deserialize_null_as_default;
 pub struct SnapshotOptions {
     name: Option<String>,
     mode: Option<SnapshotMode>,
+    pub(crate) request_timeout: RequestTimeout,
 }
 
 impl SnapshotOptions {
@@ -76,6 +79,24 @@ impl SnapshotOptions {
     #[must_use]
     pub fn mode(mut self, mode: SnapshotMode) -> Self {
         self.mode = Some(mode);
+        self
+    }
+
+    /// The request timeout for this call: `Some(d)` bounds it to `d`;
+    /// `None`, or a zero duration (as SDK `request_timeout=0`), means no
+    /// limit. Unset, the configured one applies
+    /// ([`crate::ConnectionConfigBuilder::request_timeout`]).
+    ///
+    /// # Arguments
+    ///
+    /// * `timeout` - the per-call timeout, or `None` for no limit.
+    ///
+    /// # Returns
+    ///
+    /// The options, for chaining.
+    #[must_use]
+    pub fn request_timeout(mut self, timeout: Option<Duration>) -> Self {
+        self.request_timeout = RequestTimeout::set(timeout);
         self
     }
 
@@ -155,6 +176,7 @@ pub struct ListSnapshotsParams {
     name: Option<String>,
     limit: Option<u32>,
     next_token: Option<String>,
+    pub(crate) request_timeout: RequestTimeout,
 }
 
 impl ListSnapshotsParams {
@@ -227,6 +249,26 @@ impl ListSnapshotsParams {
     #[must_use]
     pub fn next_token(mut self, token: impl Into<String>) -> Self {
         self.next_token = Some(token.into());
+        self
+    }
+
+    /// The request timeout for this call: `Some(d)` bounds it to `d`;
+    /// `None`, or a zero duration (as SDK `request_timeout=0`), means no
+    /// limit. Unset, the configured one applies
+    /// ([`crate::ConnectionConfigBuilder::request_timeout`]).
+    /// It bounds this page's request; [`ListSnapshotsParams::next_token`]
+    /// keeps it, so every page built from these parameters gets it.
+    ///
+    /// # Arguments
+    ///
+    /// * `timeout` - the per-call timeout, or `None` for no limit.
+    ///
+    /// # Returns
+    ///
+    /// The parameters, for chaining.
+    #[must_use]
+    pub fn request_timeout(mut self, timeout: Option<Duration>) -> Self {
+        self.request_timeout = RequestTimeout::set(timeout);
         self
     }
 
@@ -371,5 +413,29 @@ mod tests {
             assert_eq!(info.snapshot_id, "t:1");
             assert!(info.names.is_empty());
         }
+    }
+
+    #[test]
+    fn the_request_timeout_never_reaches_the_wire() {
+        let short = Some(Duration::from_millis(200));
+        let options = SnapshotOptions::new().name("snap");
+        let params = ListSnapshotsParams::new().limit(5);
+        assert_eq!(
+            body_json(&options.clone().request_timeout(short)),
+            body_json(&options)
+        );
+        assert_eq!(
+            params.clone().request_timeout(short).query(),
+            params.query()
+        );
+    }
+
+    #[test]
+    fn a_next_page_keeps_the_request_timeout() {
+        let short = Some(Duration::from_millis(200));
+        let next = ListSnapshotsParams::new()
+            .request_timeout(short)
+            .next_token("page-2");
+        assert_eq!(next.request_timeout, RequestTimeout::set(short));
     }
 }

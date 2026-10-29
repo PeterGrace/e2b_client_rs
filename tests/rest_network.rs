@@ -5,6 +5,7 @@ mod common;
 use common::{SANDBOX_ID, client_for, detail_json, sandbox, sandbox_json};
 use e2b_client::{
     ALL_TRAFFIC, CreateSandboxParams, Error, NetworkConfig, NetworkRule, NetworkUpdate,
+    RequestOptions,
 };
 use serde_json::{Value, json};
 use wiremock::matchers::{body_json, method, path};
@@ -132,7 +133,7 @@ async fn get_info_reads_network_and_internet_access() {
 
     // Act
     let info = client_for(&server)
-        .get_sandbox_info(SANDBOX_ID)
+        .get_sandbox_info(SANDBOX_ID, &RequestOptions::new())
         .await
         .expect("info");
 
@@ -170,7 +171,7 @@ async fn get_info_reads_null_network_fields_as_none() {
 
     // Act
     let info = client_for(&server)
-        .get_sandbox_info(SANDBOX_ID)
+        .get_sandbox_info(SANDBOX_ID, &RequestOptions::new())
         .await
         .expect("info");
 
@@ -191,7 +192,7 @@ async fn get_info_without_network_fields_reads_none() {
 
     // Act
     let info = client_for(&server)
-        .get_sandbox_info(SANDBOX_ID)
+        .get_sandbox_info(SANDBOX_ID, &RequestOptions::new())
         .await
         .expect("info");
 
@@ -226,7 +227,7 @@ async fn update_network_puts_the_egress_fields() {
 
     // Act and assert: the mock only matches the exact body.
     client_for(&server)
-        .update_sandbox_network(SANDBOX_ID, &update)
+        .update_sandbox_network(SANDBOX_ID, &update, &RequestOptions::new())
         .await
         .expect("update");
 }
@@ -245,7 +246,7 @@ async fn an_empty_update_sends_an_empty_object() {
 
     // Act and assert: unlike create, an update with nothing set is still sent.
     client_for(&server)
-        .update_sandbox_network(SANDBOX_ID, &NetworkUpdate::new())
+        .update_sandbox_network(SANDBOX_ID, &NetworkUpdate::new(), &RequestOptions::new())
         .await
         .expect("update");
 }
@@ -264,7 +265,7 @@ async fn update_network_of_a_missing_sandbox_is_not_found() {
 
     // Act
     let error = client_for(&server)
-        .update_sandbox_network(SANDBOX_ID, &NetworkUpdate::new())
+        .update_sandbox_network(SANDBOX_ID, &NetworkUpdate::new(), &RequestOptions::new())
         .await
         .expect_err("not found");
 
@@ -293,7 +294,7 @@ async fn update_network_refused_by_the_api_is_an_api_error() {
 
     // Act
     let error = client_for(&server)
-        .update_sandbox_network(SANDBOX_ID, &update)
+        .update_sandbox_network(SANDBOX_ID, &update, &RequestOptions::new())
         .await
         .expect_err("refused");
 
@@ -322,7 +323,10 @@ async fn sandbox_update_network_puts_to_its_own_id() {
 
     // Act and assert: the mock only matches this sandbox's route and body.
     sandbox
-        .update_network(&NetworkUpdate::new().allow_internet_access(false))
+        .update_network(
+            &NetworkUpdate::new().allow_internet_access(false),
+            &RequestOptions::new(),
+        )
         .await
         .expect("update");
 }

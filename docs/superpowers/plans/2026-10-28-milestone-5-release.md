@@ -394,6 +394,8 @@ async fn sandbox_calls_pass_the_options_through() {
 
 Check the route and body shapes against the existing tests before relying on them (`tests/rest_api.rs` and `tests/rest_lifecycle.rs` mount the same routes): if `list_sandboxes`, `pause_sandbox` or `common::sandbox_json` differ from the above, use what those tests use and note it.
 
+> **Corrected (issue #125, 2026-10-29).** The routes and shapes above were right. What shipped (`tests/rest_request_options.rs`) keeps the first four tests and replaces the last two with wider ones: `every_client_call_takes_a_per_call_request_timeout` mounts one catch-all slow route (`wiremock::matchers::any()`) and checks all 18 `Client` REST calls; `every_sandbox_call_passes_its_request_timeout_through` checks the 11 `Sandbox` calls, `is_running` among them, on a sandbox made with `common::sandbox_from_json_with_client(&server, &client, created)` (the client is the second argument, by reference); `a_next_page_keeps_the_request_timeout` checks both list params after `next_token`. Unit tests in `src/{config,lifecycle,metrics,models,snapshots}.rs` check that the field never reaches a body or query. The call sites also included rustdoc examples in `src/error.rs` and `src/network.rs`, and `tests/error_taxonomy.rs`, which the file list above does not name.
+
 - [ ] **Step 2: Run them to see them fail**
 
 Run: `cargo test --test rest_request_options`
@@ -666,7 +668,7 @@ async fn every_pid_only_call_takes_a_per_call_request_timeout() {
     // Arrange: configured 5 s; every RPC answers after 2 s.
     let server = MockServer::start().await;
     let client = client_with_timeout(&server, Some(Duration::from_secs(5)));
-    let sandbox = sandbox_from_json_with_client(&server, sandbox_json("0.5.2"), client).await;
+    let sandbox = sandbox_from_json_with_client(&server, &client, sandbox_json("0.5.2")).await;
     slow_process_rpcs(&server, Duration::from_secs(2)).await;
     let short = RequestOptions::new().request_timeout(Some(SHORT));
     let commands = sandbox.commands();
@@ -699,7 +701,7 @@ async fn a_per_call_none_lifts_a_short_configured_timeout() {
     // Arrange: configured 200 ms; the RPCs answer after 500 ms.
     let server = MockServer::start().await;
     let client = client_with_timeout(&server, Some(SHORT));
-    let sandbox = sandbox_from_json_with_client(&server, sandbox_json("0.5.2"), client).await;
+    let sandbox = sandbox_from_json_with_client(&server, &client, sandbox_json("0.5.2")).await;
     slow_process_rpcs(&server, Duration::from_millis(500)).await;
 
     // Act
@@ -716,7 +718,7 @@ async fn a_per_call_none_lifts_a_short_configured_timeout() {
 }
 ```
 
-Check against `tests/envd_api.rs` and `tests/envd_pty.rs`: the RPC paths (`/process.Process/<Rpc>`), whether `kill` maps a timeout through `send_signal` unchanged, whether the base URL needs the `E2b-Sandbox-Id` routing those tests use, and `sandbox_from_json_with_client`'s argument order. Use what they use.
+Check against `tests/envd_api.rs` and `tests/envd_pty.rs`: the RPC paths (`/process.Process/<Rpc>`), whether `kill` maps a timeout through `send_signal` unchanged, and whether the base URL needs the `E2b-Sandbox-Id` routing those tests use. Use what they use. (Corrected in issue #125, 2026-10-29: `sandbox_from_json_with_client` is `(server, &client, created)`; the calls above now use that order.)
 
 - [ ] **Step 2: Run them to see them fail**
 
@@ -796,6 +798,7 @@ Run it, and the `live_commands` tests whose calls changed (`clm_0035` to `clm_00
 - `docs/api-review.md`, "Known limits": remove the request-timeout bullet; add one for the SDK's control-plane `retries` (not implemented, unscheduled).
 - `docs/protocol-notes.md`: the pid-only calls' rows cite `py: sandbox_async/commands/command.py:64-71, 99-102, 120-124, 176-179` and `py: sandbox_async/commands/pty.py:65-68, 85-89, 256-260`; the "Not implemented yet" line about per-call timeouts goes.
 - `README.md`: the Processes and PTY rows mention `RequestOptions`.
+- (Added in issue #125, 2026-10-29.) `README.md`, the "Not implemented yet" sentence under "What it covers": Task 1 narrowed it to "per-call request timeouts on the pid-only process and PTY calls"; drop that clause. `src/lib.rs`: Task 1's options paragraph says "A REST call with nothing else to configure takes a [`RequestOptions`]"; widen it to the pid-only calls. `docs/api-review.md`: Task 1 added a `RequestOptions` row ("for the REST calls ... that have no other options") and a "Method shape" bullet; widen both to the pid-only calls.
 
 - [ ] **Step 7: Changelog and commit**
 

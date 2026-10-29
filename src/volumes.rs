@@ -24,10 +24,10 @@ use serde::{Deserialize, Serialize};
 /// # Examples
 ///
 /// ```no_run
-/// use e2b_client::CreateSandboxParams;
+/// use e2b_client::{CreateSandboxParams, RequestOptions};
 ///
 /// # async fn demo(client: e2b_client::Client) -> e2b_client::Result<()> {
-/// let volume = client.create_volume("datasets").await?;
+/// let volume = client.create_volume("datasets", &RequestOptions::new()).await?;
 /// let params = CreateSandboxParams::new("base").volume_mount(volume.name(), "/mnt/data");
 /// let sandbox = client.create_sandbox(&params).await?;
 /// # let _ = sandbox;
@@ -145,8 +145,11 @@ pub(crate) struct NewVolumeBody<'a> {
 /// # Examples
 ///
 /// ```no_run
+/// use e2b_client::RequestOptions;
+///
 /// # async fn demo(client: e2b_client::Client) -> e2b_client::Result<()> {
-/// let names: Vec<String> = client.list_volumes().await?.into_iter().map(|v| v.name).collect();
+/// let volumes = client.list_volumes(&RequestOptions::new()).await?;
+/// let names: Vec<String> = volumes.into_iter().map(|v| v.name).collect();
 /// println!("{names:?}");
 /// # Ok(())
 /// # }
@@ -171,8 +174,10 @@ pub struct VolumeInfo {
 /// # Examples
 ///
 /// ```no_run
+/// use e2b_client::RequestOptions;
+///
 /// # async fn demo(sandbox: e2b_client::Sandbox) -> e2b_client::Result<()> {
-/// for mount in sandbox.get_info().await?.volume_mounts {
+/// for mount in sandbox.get_info(&RequestOptions::new()).await?.volume_mounts {
 ///     println!("{} at {}", mount.name, mount.path);
 /// }
 /// # Ok(())

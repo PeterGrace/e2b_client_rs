@@ -422,8 +422,10 @@ impl fmt::Debug for NetworkTransform {
 /// # Examples
 ///
 /// ```no_run
+/// use e2b_client::RequestOptions;
+///
 /// # async fn demo(sandbox: e2b_client::Sandbox) -> e2b_client::Result<()> {
-/// if let Some(network) = sandbox.get_info().await?.network {
+/// if let Some(network) = sandbox.get_info(&RequestOptions::new()).await?.network {
 ///     println!("allow {:?}, deny {:?}", network.allow_out, network.deny_out);
 /// }
 /// # Ok(())
