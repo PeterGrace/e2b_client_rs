@@ -897,8 +897,9 @@ In `test-live-paced`, remove the `readiness=` line and classify through `_classi
             run_one "$bin" "$test" "$out"
             result="$(classify "$?" "$out")"
             case "$result" in
+                PASS) ;;
                 FAIL-READINESS|FAIL-SANDBOX-FAILED) retry+=("$bin $test") ;;
-                FAIL) status=1 ;;
+                *) status=1 ;;
             esac
 ```
 
@@ -913,7 +914,7 @@ and in the rerun loop:
         esac
 ```
 
-> **Corrected (issue #122, 2026-10-29).** The rerun `case` shipped without the `SKIP) ;;` branch: `_classify` has no `SKIP` label until Task 4, which adds the branch back. The summary line was rewritten around a `count` helper (`count() { grep -Ec -- "^RESULT [^ ]+ ($1)\$" "$log"; }`), and its `fail` figure now counts `FAIL (rerun)` as well as `FAIL`, since a rerun can now end `FAIL`; the line reads `summary: N pass, N pass on rerun, N fail, N still not ready, N sandbox failed`. Read the `justfile`.
+> **Corrected (issue #122, 2026-10-29).** The rerun `case` shipped without the `SKIP) ;;` branch: `_classify` has no `SKIP` label until Task 4, which adds the branch back. The summary line was rewritten around a `count` helper (`count() { grep -Ec -- "^RESULT [^ ]+ ($1)\$" "$log"; }`), and its `fail` figure now counts `FAIL (rerun)` as well as `FAIL`, since a rerun can now end `FAIL`; the line reads `summary: N pass, N pass on rerun, N fail, N still not ready, N sandbox failed`. The first-pass `case` (above) ends in `*) status=1 ;;` rather than `FAIL) status=1 ;;`, so an unexpected or empty label fails the run instead of passing silently (review of PR #136). Read the `justfile`.
 
 (the rerun's line stays `RESULT <test> <result> (rerun)`, so a rerun that fails the same way is `FAIL-SANDBOX-FAILED (rerun)` or `FAIL-READINESS (rerun)`, and a rerun that fails differently is `FAIL (rerun)`). The summary line counts `FAIL-SANDBOX-FAILED (rerun)` as its own figure: `..., N still not ready, M sandbox failed`. Keep `set -uo pipefail` semantics: `run_one` returning non-zero must not stop the loop (it does not under `-u` alone).
 
@@ -968,7 +969,7 @@ In `_classify`, the first branch becomes:
         if grep -Fq 'SKIPPED (environment):' {{quote(out)}}; then echo SKIP; else echo PASS; fi
 ```
 
-The paced summary counts `RESULT .* SKIP$` as `N skipped`: add `$(count SKIP) skipped` to the summary line, through Task 3's `count` helper. In the rerun loop's `case`, add `SKIP) ;;` before `*) status=1 ;;`, so a rerun that skips does not fail the run (Task 3 shipped without it). Run `just test-recipes`: seven `ok` lines.
+The paced summary counts `RESULT .* SKIP$` as `N skipped`: add `$(count SKIP) skipped` to the summary line, through Task 3's `count` helper. In both `case`s of `test-live-paced` (the first pass and the rerun loop), add `SKIP) ;;` before `*) status=1 ;;`, so a test that skips does not fail the run (Task 3 shipped without it; both end in `*) status=1 ;;`). Run `just test-recipes`: seven `ok` lines.
 
 - [ ] **Step 3: The harness helper**
 

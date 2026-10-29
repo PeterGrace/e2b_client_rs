@@ -57,7 +57,7 @@ test-live target:
 
 # For a server whose warm pool refills slowly (sandbawks). `gap` is in seconds; `filter`, an
 # extended regex on test names, runs a subset: `just test-live-paced sandbawks 30 'clm_0007|clm_0033'`.
-# A test that fails on server readiness is rerun once, after the gap. Writes target/live-logs/<run id>.log.
+# A readiness or sandbox-failed result is rerun once, after the gap. Writes target/live-logs/<run id>.log.
 # Live tests one at a time with a gap between them: `just test-live-paced sandbawks`.
 test-live-paced target gap="120" filter="":
     #!/usr/bin/env bash
@@ -101,9 +101,12 @@ test-live-paced target gap="120" filter="":
             out="$(mktemp -p target/live-logs paced.XXXXXX)"
             run_one "$bin" "$test" "$out"
             result="$(classify "$?" "$out")"
+            # Anything but a pass or a rerun class fails the run, including an
+            # unexpected or empty label (say `just` failed to start).
             case "$result" in
+                PASS) ;;
                 FAIL-READINESS|FAIL-SANDBOX-FAILED) retry+=("$bin $test") ;;
-                FAIL) status=1 ;;
+                *) status=1 ;;
             esac
             cat "$out" >>"$log"
             rm -f "$out"

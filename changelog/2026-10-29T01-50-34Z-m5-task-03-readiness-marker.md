@@ -26,7 +26,8 @@ counted as capacity and rerun instead of being reported.
     `tests/fixtures/live-pacing/` (exit 0 for `PASS`/`SKIP` fixtures, 101
     otherwise) and checks the label against the file name before `--`.
   - `test-live-paced` classifies through `_classify`; readiness and
-    sandbox-failed results get the one rerun. A rerun keeps its new
+    sandbox-failed results get the one rerun; any other label, including
+    an unexpected or empty one, fails the run. A rerun keeps its new
     label, so it ends `PASS-ON-RERUN`, `FAIL-READINESS (rerun)`,
     `FAIL-SANDBOX-FAILED (rerun)` or `FAIL (rerun)`; anything but a pass
     fails the run. The summary line is built with a `count` helper and
@@ -51,9 +52,10 @@ counted as capacity and rerun instead of being reported.
 - `docs/verification/runs/20261029T014807Z-sandbawks-paced-2828998.log`:
   the validation run's log.
 - The plan: a dated correction under Task 3 Step 4 (no `SKIP) ;;` branch
-  in the rerun yet; the `count` helper and the wider `fail` figure), and
-  Task 4 Step 2 now says to add the `SKIP) ;;` branch and
-  `$(count SKIP) skipped`.
+  yet; the first-pass `case` ends in `*) status=1 ;;`; the `count` helper
+  and the wider `fail` figure), and Task 4 Step 2 now says to add
+  `SKIP) ;;` to both `case`s and `$(count SKIP) skipped`; decision 8 now
+  says M1, M3 and M4 saw the unknown-template failure.
 
 ## Verification
 
