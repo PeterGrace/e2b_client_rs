@@ -102,3 +102,24 @@ reran `clm_0007_create_returns_running_sandbox` with the anchored filter
 `'^clm_0007_create_returns_running_sandbox$'` and a 5 s gap on commit `0591c6a`:
 `PASS`, 0 leftover sandboxes, the same two 404 sweeps, and the log ends with
 `run log:`. Neither API key appears in it.
+
+## Validation (M5 Task 3, #122)
+
+[`runs/20261029T014807Z-sandbawks-paced-2828998.log`](runs/20261029T014807Z-sandbawks-paced-2828998.log):
+`just test-live-paced sandbawks 30 'clm_0150|clm_0007'` on commit `ad2a28a`
+with a clean tree:
+
+```text
+RESULT clm_0007_create_returns_running_sandbox PASS
+RESULT clm_0150_mcp_gateway_starts_and_exposes_url_and_token FAIL-SANDBOX-FAILED
+RESULT clm_0150_mcp_gateway_starts_and_exposes_url_and_token FAIL-SANDBOX-FAILED (rerun)
+summary: 1 pass, 0 pass on rerun, 0 fail, 0 still not ready, 1 sandbox failed
+```
+
+Both `clm_0150` runs failed on `create sandbox: McpGateway("ERROR: sandbox
+will not become ready without intervention: the sandbox failed
+(action_failure)\n")`, the unknown `mcp-gateway` template
+(gfd/sandbawks#680): a server defect, not capacity, and no longer labelled
+`FAIL-READINESS`. The sandbox sweep killed 0 leftovers; the snapshot and
+volume sweeps failed with 404 as before (#121), and the recipe exited 1.
+Neither API key appears in the log.

@@ -1,0 +1,263 @@
+commit: ad2a28aa17610eaba58c64e15ed08b5c2c399add
+dirty: no
+paced: one test at a time, 30s apart; readiness and sandbox-failed results rerun once
+   Compiling proc-macro2 v1.0.107
+   Compiling unicode-ident v1.0.27
+   Compiling quote v1.0.47
+   Compiling libc v0.2.191
+   Compiling pin-project-lite v0.2.17
+   Compiling bytes v1.12.1
+   Compiling memchr v2.8.3
+   Compiling stable_deref_trait v1.2.1
+   Compiling futures-core v0.3.34
+   Compiling find-msvc-tools v0.1.15
+   Compiling shlex v2.0.1
+   Compiling futures-sink v0.3.34
+   Compiling itoa v1.0.18
+   Compiling dunce v1.0.5
+   Compiling fs_extra v1.3.0
+   Compiling pkg-config v0.3.34
+   Compiling once_cell v1.21.4
+   Compiling slab v0.4.12
+   Compiling writeable v0.6.4
+   Compiling litemap v0.8.3
+   Compiling smallvec v1.16.4
+   Compiling zeroize v1.9.1
+   Compiling aws-lc-rs v1.18.2
+   Compiling icu_normalizer_data v2.4.0
+   Compiling futures-task v0.3.34
+   Compiling utf8_iter v1.0.4
+   Compiling icu_properties_data v2.4.0
+   Compiling serde_core v1.0.229
+   Compiling futures-io v0.3.34
+   Compiling percent-encoding v2.3.2
+   Compiling serde v1.0.229
+   Compiling equivalent v1.0.3
+   Compiling hashbrown v0.17.1
+   Compiling cfg-if v1.0.5
+   Compiling httparse v1.10.1
+   Compiling untrusted v0.9.0
+   Compiling tower-service v0.3.3
+   Compiling zmij v1.0.23
+   Compiling try-lock v0.2.5
+   Compiling fnv v1.0.7
+   Compiling rustls v0.23.46
+   Compiling futures-channel v0.3.34
+   Compiling atomic-waker v1.1.2
+   Compiling serde_json v1.0.154
+   Compiling typenum v1.20.1
+   Compiling crc32fast v1.5.3
+   Compiling httpdate v1.0.3
+   Compiling subtle v2.6.1
+   Compiling autocfg v1.5.1
+   Compiling unicase v2.10.0
+   Compiling form_urlencoded v1.2.2
+   Compiling adler2 v2.0.1
+   Compiling base64 v0.23.1
+   Compiling simd-adler32 v0.3.10
+   Compiling rustls-pki-types v1.15.1
+   Compiling tracing-core v0.1.36
+   Compiling ipnet v2.12.2
+   Compiling sync_wrapper v1.0.2
+   Compiling openssl-probe v0.2.1
+   Compiling getrandom v0.4.3
+   Compiling tower-layer v0.3.3
+   Compiling log v0.4.34
+   Compiling http v1.5.0
+   Compiling indexmap v2.14.2
+   Compiling ryu v1.0.23
+   Compiling mime v0.3.17
+   Compiling compression-core v0.4.32
+   Compiling aho-corasick v1.1.5
+   Compiling bitflags v2.13.2
+   Compiling thiserror v2.0.21
+   Compiling const-oid v0.10.2
+   Compiling want v0.3.2
+   Compiling regex-syntax v0.8.11
+   Compiling lazy_static v1.5.1
+   Compiling num-traits v0.2.19
+   Compiling jobserver v0.1.35
+   Compiling socket2 v0.6.5
+   Compiling mio v1.2.4
+   Compiling num_cpus v1.17.0
+   Compiling mime_guess v2.0.5
+   Compiling miniz_oxide v0.9.1
+   Compiling deadpool-runtime v0.1.4
+   Compiling cpufeatures v0.3.1
+   Compiling secrecy v0.10.3
+   Compiling base64 v0.22.1
+   Compiling rustls-native-certs v0.8.5
+   Compiling dotenvy v0.15.7
+   Compiling tracing v0.1.44
+   Compiling http-body v1.1.0
+   Compiling cc v1.10.0
+   Compiling uuid v1.29.0
+   Compiling flate2 v1.1.10
+   Compiling hybrid-array v0.4.15
+   Compiling http-body-util v0.1.5
+   Compiling cmake v0.1.58
+   Compiling regex-automata v0.4.18
+   Compiling compression-codecs v0.4.38
+   Compiling crypto-common v0.2.2
+   Compiling block-buffer v0.12.1
+   Compiling syn v3.0.9
+   Compiling aws-lc-sys v0.46.0
+   Compiling digest v0.11.3
+   Compiling sha2 v0.11.1
+   Compiling regex v1.13.1
+   Compiling synstructure v0.14.0
+   Compiling zerovec-derive v0.11.7
+   Compiling tokio-macros v2.7.2
+   Compiling displaydoc v0.2.7
+   Compiling futures-macro v0.3.34
+   Compiling serde_derive v1.0.229
+   Compiling thiserror-impl v2.0.21
+   Compiling zerofrom-derive v0.1.8
+   Compiling yoke-derive v0.8.4
+   Compiling tokio v1.54.1
+   Compiling futures-util v0.3.34
+   Compiling zerofrom v0.1.8
+   Compiling yoke v0.8.4
+   Compiling zerovec v0.11.9
+   Compiling zerotrie v0.2.5
+   Compiling futures-executor v0.3.34
+   Compiling tinystr v0.8.5
+   Compiling potential_utf v0.1.6
+   Compiling futures v0.3.34
+   Compiling icu_collections v2.4.0
+   Compiling icu_locale_core v2.4.0
+   Compiling tokio-util v0.7.20
+   Compiling tower v0.5.3
+   Compiling deadpool v0.12.3
+   Compiling async-compression v0.4.42
+   Compiling icu_provider v2.4.0
+   Compiling serde_urlencoded v0.7.1
+   Compiling assert-json-diff v2.0.2
+   Compiling chrono v0.4.45
+   Compiling h2 v0.4.20
+   Compiling icu_normalizer v2.4.0
+   Compiling icu_properties v2.4.0
+   Compiling hyper v1.12.0
+   Compiling idna_adapter v1.2.2
+   Compiling idna v1.1.0
+   Compiling hyper-util v0.1.21
+   Compiling url v2.5.8
+   Compiling tower-http v0.6.11
+   Compiling wiremock v0.6.5
+   Compiling rustls-webpki v0.103.16
+   Compiling tokio-rustls v0.26.6
+   Compiling rustls-platform-verifier v0.7.1
+   Compiling hyper-rustls v0.27.10
+   Compiling reqwest v0.13.5
+   Compiling e2b-client v0.1.0 (/home/pgrace/repos/e2b_client_rs/.worktrees/e2b_client_rs-122)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 11.14s
+  Executable tests/live_commands.rs (target/debug/deps/live_commands-448ab9974afbfe68)
+  Executable tests/live_files.rs (target/debug/deps/live_files-01e82e64d83f1fd1)
+  Executable tests/live_lifecycle.rs (target/debug/deps/live_lifecycle-12c65a2fad6ec4d9)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.03s
+     Running tests/live_lifecycle.rs (target/debug/deps/live_lifecycle-12c65a2fad6ec4d9)
+
+running 1 test
+test clm_0007_create_returns_running_sandbox ... ok
+
+successes:
+
+successes:
+    clm_0007_create_returns_running_sandbox
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 40 filtered out; finished in 2.02s
+
+RESULT clm_0007_create_returns_running_sandbox PASS
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.04s
+     Running tests/live_lifecycle.rs (target/debug/deps/live_lifecycle-12c65a2fad6ec4d9)
+
+running 1 test
+test clm_0150_mcp_gateway_starts_and_exposes_url_and_token ... FAILED
+
+successes:
+
+successes:
+
+failures:
+
+---- clm_0150_mcp_gateway_starts_and_exposes_url_and_token stdout ----
+
+thread 'clm_0150_mcp_gateway_starts_and_exposes_url_and_token' (2854332) panicked at tests/live_support/mod.rs:173:59:
+create sandbox: McpGateway("ERROR: sandbox will not become ready without intervention: the sandbox failed (action_failure)\n")
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    clm_0150_mcp_gateway_starts_and_exposes_url_and_token
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 40 filtered out; finished in 0.20s
+
+error: test failed, to rerun pass `--test live_lifecycle`
+RESULT clm_0150_mcp_gateway_starts_and_exposes_url_and_token FAIL-SANDBOX-FAILED
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.04s
+     Running tests/live_lifecycle.rs (target/debug/deps/live_lifecycle-12c65a2fad6ec4d9)
+
+running 1 test
+test clm_0150_mcp_gateway_starts_and_exposes_url_and_token ... FAILED
+
+successes:
+
+successes:
+
+failures:
+
+---- clm_0150_mcp_gateway_starts_and_exposes_url_and_token stdout ----
+
+thread 'clm_0150_mcp_gateway_starts_and_exposes_url_and_token' (2855898) panicked at tests/live_support/mod.rs:173:59:
+create sandbox: McpGateway("ERROR: sandbox will not become ready without intervention: the sandbox failed (action_failure)\n")
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    clm_0150_mcp_gateway_starts_and_exposes_url_and_token
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 40 filtered out; finished in 0.21s
+
+error: test failed, to rerun pass `--test live_lifecycle`
+RESULT clm_0150_mcp_gateway_starts_and_exposes_url_and_token FAIL-SANDBOX-FAILED (rerun)
+   Compiling e2b-client v0.1.0 (/home/pgrace/repos/e2b_client_rs/.worktrees/e2b_client_rs-122)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.52s
+     Running tests/live_sweep.rs (target/debug/deps/live_sweep-94cd1f5d7c8feb42)
+
+running 3 tests
+test sweep_leftover_sandboxes_of_this_run ... ok
+test sweep_leftover_snapshots_of_this_run ... FAILED
+test sweep_leftover_volumes_of_this_run ... FAILED
+
+successes:
+
+---- sweep_leftover_sandboxes_of_this_run stdout ----
+sweep: killed 0 leftover sandbox(es) of run 20261029T014807Z-sandbawks-paced-2828998
+
+
+successes:
+    sweep_leftover_sandboxes_of_this_run
+
+failures:
+
+---- sweep_leftover_snapshots_of_this_run stdout ----
+
+thread 'sweep_leftover_snapshots_of_this_run' (2856142) panicked at tests/live_sweep.rs:88:14:
+list snapshots: Api { status: 404, message: "HTTP 404" }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- sweep_leftover_volumes_of_this_run stdout ----
+
+thread 'sweep_leftover_volumes_of_this_run' (2856143) panicked at tests/live_sweep.rs:150:10:
+list volumes: Api { status: 404, message: "HTTP 404" }
+
+
+failures:
+    sweep_leftover_snapshots_of_this_run
+    sweep_leftover_volumes_of_this_run
+
+test result: FAILED. 1 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+
+error: test failed, to rerun pass `--test live_sweep`
+summary: 1 pass, 0 pass on rerun, 0 fail, 0 still not ready, 1 sandbox failed
+run log: target/live-logs/20261029T014807Z-sandbawks-paced-2828998.log
