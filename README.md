@@ -269,16 +269,18 @@ table in step with the ledger):
 | **All** | **184** | **169** | **10** | **0** | **5** |
 <!-- coverage:end -->
 
-As of 2026-10-28 (milestone 4):
+The runs behind those verdicts, as of milestone 4 (2026-10-28; the
+milestone 5 claims are still unverified):
 
 - **Hosted E2B:** 76 of the 79 live tests passed (46 from milestone 1, 11
   from milestone 2, 18 from milestone 3, 4 from milestone 4) in run
   `20261028T153214Z-hosted-761165`. The 3 that did not are the volume
   tests: volumes are not enabled for the test team (403), so those claims
   stay `not_enough_info` rather than refuted.
-- **Wire-protocol claims:** all 79 are backed by passing mock and unit tests,
-  as are CLM-0122 (`Debug` output never shows secrets) and CLM-0152 (the
-  idempotency key).
+- **Wire-protocol claims:** all 79 wire claims under CLM-0005 (the S4 row
+  counts those 79 plus CLM-0005 itself) are backed by passing mock and unit
+  tests, as are CLM-0122 (`Debug` output never shows secrets) and CLM-0152
+  (the idempotency key).
 - **Ledger:** the per-area counts are in the table above, computed from
   `claims.json`.
 - **Refuted claims:** 0. Two were refuted during M1 and fixed: empty config
