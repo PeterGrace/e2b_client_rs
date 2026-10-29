@@ -1,0 +1,2 @@
+signal: Rpc { code: Unavailable, message: "sandbox is still starting up" }
+kill running: Rpc { code: FailedPrecondition, message: "sandbox will not become ready without intervention: the sandbox failed (action_failure)" }

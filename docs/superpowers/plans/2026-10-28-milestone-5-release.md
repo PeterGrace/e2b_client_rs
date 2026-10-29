@@ -48,7 +48,7 @@ Deferred:
 5. **#120's API shape.** Calls that already take an options or params struct get a `request_timeout` setter on it: `CreateSandboxParams`, `ConnectOptions`, `ListSandboxesParams`, `MetricsParams`, `PauseOptions`, `SnapshotOptions`, `ListSnapshotsParams`, `ForkOptions`. Every other call gains a trailing `&RequestOptions`, a new type with only a request timeout. `NetworkUpdate` is a serialized request body, so `update_network` takes `&RequestOptions` as well rather than a skipped field on the body. This follows M4's decision 3 (one method per call, options by reference, no `_with` twins), and the handle methods (`CommandHandle::kill`, `PtyHandle::resize`, ...) follow it too, for one rule everywhere. The semantics are M4's: unset uses the configured timeout, `None` or zero means no limit. (Coordinator's decision, from M4's decision 3.)
 6. **`create_sandbox`'s request timeout bounds the `POST` only.** Starting the MCP gateway is a command (`Commands::run`) with its own timeouts, as in the SDK (`e2b/sandbox_async/main.py:245-268`). `fork_sandbox`'s bounds each fork request.
 7. **`Sandbox::mcp_token` keeps no options.** It reads the token file once and caches it; the read uses the configured timeout.
-8. **#122: a sandbox that failed outright is its own class.** `will not become ready` leaves the readiness markers. Output with `the sandbox failed (action_failure)` (and none of the readiness markers) is `FAIL-SANDBOX-FAILED`: rerun once, like a readiness failure, and if the rerun fails the same way it ends `FAIL-SANDBOX-FAILED (rerun)`, counted apart in the summary. A person classifies it: M2 saw it on capacity, M3 and M4 on an unknown template (gfd/sandbawks#680).
+8. **#122: a sandbox that failed outright is its own class.** `will not become ready` leaves the readiness markers. Output with `the sandbox failed (action_failure)` (and none of the readiness markers) is `FAIL-SANDBOX-FAILED`: rerun once, like a readiness failure, and if the rerun fails the same way it ends `FAIL-SANDBOX-FAILED (rerun)`, counted apart in the summary. A person classifies it: M2 saw it on capacity, M1, M3 and M4 on an unknown template (gfd/sandbawks#680).
 9. **Package contents.** `include = ["/src", "/README.md", "/CHANGELOG.md", "/LICENSE-APACHE", "/LICENSE-MIT"]`: the ledger, the run logs, the plans, the changelog directory, the tests and `.claude/` are not shipped. The README stays (its examples are doctests through `src/lib.rs`).
 10. **The coverage table is generated, not hand-kept.** `tests/readme_coverage.rs` recomputes the per-area table from `claims.json` and fails, printing the expected table, if the README's differs. Every PR that changes the ledger (only the coordinator's) updates it.
 11. **Version 0.2.0.** 0.1.0 was never published; the spec names 0.2.0. `CHANGELOG.md` follows Keep a Changelog, with one 0.2.0 entry and a short 0.1.0 entry (git only).
@@ -897,8 +897,9 @@ In `test-live-paced`, remove the `readiness=` line and classify through `_classi
             run_one "$bin" "$test" "$out"
             result="$(classify "$?" "$out")"
             case "$result" in
+                PASS) ;;
                 FAIL-READINESS|FAIL-SANDBOX-FAILED) retry+=("$bin $test") ;;
-                FAIL) status=1 ;;
+                *) status=1 ;;
             esac
 ```
 
@@ -909,10 +910,11 @@ and in the rerun loop:
         result="$(classify "$?" "$out")"
         case "$result" in
             PASS) result=PASS-ON-RERUN ;;
-            SKIP) ;;
             *) status=1 ;;
         esac
 ```
+
+> **Corrected (issue #122, 2026-10-29).** The rerun `case` shipped without the `SKIP) ;;` branch: `_classify` has no `SKIP` label until Task 4, which adds the branch back. The summary line was rewritten around a `count` helper (`count() { grep -Ec -- "^RESULT [^ ]+ ($1)\$" "$log"; }`), and its `fail` figure now counts `FAIL (rerun)` as well as `FAIL`, since a rerun can now end `FAIL`; the line reads `summary: N pass, N pass on rerun, N fail, N still not ready, N sandbox failed`. The first-pass `case` (above) ends in `*) status=1 ;;` rather than `FAIL) status=1 ;;`, so an unexpected or empty label fails the run instead of passing silently (review of PR #136). Read the `justfile`.
 
 (the rerun's line stays `RESULT <test> <result> (rerun)`, so a rerun that fails the same way is `FAIL-SANDBOX-FAILED (rerun)` or `FAIL-READINESS (rerun)`, and a rerun that fails differently is `FAIL (rerun)`). The summary line counts `FAIL-SANDBOX-FAILED (rerun)` as its own figure: `..., N still not ready, M sandbox failed`. Keep `set -uo pipefail` semantics: `run_one` returning non-zero must not stop the loop (it does not under `-u` alone).
 
@@ -967,7 +969,7 @@ In `_classify`, the first branch becomes:
         if grep -Fq 'SKIPPED (environment):' {{quote(out)}}; then echo SKIP; else echo PASS; fi
 ```
 
-The paced summary counts `RESULT .* SKIP$` as `N skipped`. Run `just test-recipes`: seven `ok` lines.
+The paced summary counts `RESULT .* SKIP$` as `N skipped`: add `$(count SKIP) skipped` to the summary line, through Task 3's `count` helper. In both `case`s of `test-live-paced` (the first pass and the rerun loop), add `SKIP) ;;` before `*) status=1 ;;`, so a test that skips does not fail the run (Task 3 shipped without it; both end in `*) status=1 ;;`). Run `just test-recipes`: seven `ok` lines.
 
 - [ ] **Step 3: The harness helper**
 

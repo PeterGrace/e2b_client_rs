@@ -25,6 +25,8 @@ jobs:
         run: just lint
       - name: Test
         run: just test
+      - name: Recipe tests
+        run: just test-recipes
       - name: Docs
         run: just doc
 
