@@ -254,18 +254,35 @@ Every wire detail, with citations into the official SDK sources, is in
 Every behaviour listed above is backed by a claim in `claims.json`, the claims
 ledger. Each claim has a recorded verdict and the evidence behind it.
 
-As of 2026-10-28 (milestone 4):
+Claims by area, from `claims.json` (`tests/readme_coverage.rs` keeps this
+table in step with the ledger):
+
+<!-- coverage:begin -->
+| Area | Claims | Supported | Not enough info | Refuted | Unverified |
+|---|---|---|---|---|---|
+| S1 Lifecycle | 40 | 33 | 6 | 0 | 1 |
+| S2 Commands and PTY | 22 | 21 | 0 | 0 | 1 |
+| S3 Filesystem | 23 | 23 | 0 | 0 | 0 |
+| S4 Wire protocol | 80 | 80 | 0 | 0 | 0 |
+| S5 Publishability | 18 | 12 | 3 | 0 | 3 |
+| System (root) | 1 | 0 | 1 | 0 | 0 |
+| **All** | **184** | **169** | **10** | **0** | **5** |
+<!-- coverage:end -->
+
+The runs behind those verdicts, as of milestone 4 (2026-10-28; the
+milestone 5 claims are still unverified):
 
 - **Hosted E2B:** 76 of the 79 live tests passed (46 from milestone 1, 11
   from milestone 2, 18 from milestone 3, 4 from milestone 4) in run
   `20261028T153214Z-hosted-761165`. The 3 that did not are the volume
   tests: volumes are not enabled for the test team (403), so those claims
   stay `not_enough_info` rather than refuted.
-- **Wire-protocol claims:** all 79 are backed by passing mock and unit tests,
-  as are CLM-0122 (`Debug` output never shows secrets) and CLM-0152 (the
-  idempotency key).
-- **Ledger:** 179 active claims: 169 supported, 10 `not_enough_info`, 0
-  refuted, 0 unverified.
+- **Wire-protocol claims:** all 79 wire claims under CLM-0005 (the S4 row
+  counts those 79 plus CLM-0005 itself) are backed by passing mock and unit
+  tests, as are CLM-0122 (`Debug` output never shows secrets) and CLM-0152
+  (the idempotency key).
+- **Ledger:** the per-area counts are in the table above, computed from
+  `claims.json`.
 - **Refuted claims:** 0. Two were refuted during M1 and fixed: empty config
   values, and the envd version gate on `close_stdin`.
 - **Not yet shown:** the egress proxy and IAM (unscheduled), volumes on a
