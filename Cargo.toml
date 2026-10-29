@@ -11,8 +11,11 @@ repository = "https://github.com/PeterGrace/e2b_client_rs"
 readme = "README.md"
 keywords = ["e2b", "sandbox", "connect-rpc", "async"]
 categories = ["api-bindings", "asynchronous"]
-# Not published to crates.io yet.
-publish = false
+# What `cargo publish` uploads (M5 decision 9): the code, the README (its
+# examples are doctests), the changelog and the licences. The claims
+# ledger, run logs, plans and tests stay in the repository.
+# `just package-check` (CI) fails if anything else would be shipped.
+include = ["/src", "/README.md", "/CHANGELOG.md", "/LICENSE-APACHE", "/LICENSE-MIT"]
 
 [lib]
 name = "e2b_client"

@@ -29,6 +29,8 @@ jobs:
         run: just test-recipes
       - name: Docs
         run: just doc
+      - name: Package
+        run: just package-check
 
   msrv:
     # The minimum supported Rust version in Cargo.toml (`rust-version`).

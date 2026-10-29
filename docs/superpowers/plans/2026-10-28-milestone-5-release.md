@@ -1168,7 +1168,10 @@ package-check:
     #!/usr/bin/env bash
     set -euo pipefail
     allowed='^(src/.+\.rs|README\.md|CHANGELOG\.md|LICENSE-APACHE|LICENSE-MIT|Cargo\.toml|Cargo\.toml\.orig|Cargo\.lock|\.cargo_vcs_info\.json)$'
-    unexpected="$(cargo package --list --locked --allow-dirty | grep -Ev -- "$allowed" || true)"
+    # Listed first, so a failing `cargo package --list` stops here (set -e)
+    # rather than being hidden by the `|| true` on the grep.
+    packaged="$(cargo package --list --locked --allow-dirty)"
+    unexpected="$(grep -Ev -- "$allowed" <<< "$packaged" || true)"
     if [ -n "$unexpected" ]; then
         echo "files that should not be published:" >&2
         echo "$unexpected" >&2
@@ -1206,6 +1209,8 @@ Without `publish = false` the crate can be published (the default); only Task 10
 
 Run: `just package-check`
 Expected: `package ok`. Check `cargo publish --dry-run --locked --allow-dirty`: it packages, verifies, and stops with "aborting upload due to dry run". Quote its last lines in the PR.
+
+> **Corrected (issue #128, 2026-10-29).** `just package-check` prints only `package ok` (or the unexpected files); it does not list the packaged files. `cargo package --list --locked --allow-dirty` does. The dry run also prints one ``warning: ignoring test `<name>` as `tests/<name>.rs` is not included in the published package`` per test target (28 today) before packaging: that is expected with this `include` list, not a failure. With it, the package is 28 files, 579.1 KiB (137.9 KiB compressed). The recipe above takes the list into a variable before grepping it (review of PR #139), so a failing `cargo package --list` is reported as itself rather than hidden by `|| true`.
 
 - [ ] **Step 3: CI**
 
@@ -1282,7 +1287,7 @@ Fill every `<...>` from the sources in Step 1; leave none. Each "Breaking change
 
 - [ ] **Step 3: Check**
 
-Every breaking-change row in the M4 milestone changelog and in Tasks 1 and 2's entries appears once (count them and say the count in the PR). `just package-check` now lists `CHANGELOG.md` among the packaged files. In `README.md`'s "Versioning", "Each release's breaking changes are listed in its changelog entry" links `CHANGELOG.md`.
+Every breaking-change row in the M4 milestone changelog and in Tasks 1 and 2's entries appears once (count them and say the count in the PR). `cargo package --list --locked --allow-dirty` now lists `CHANGELOG.md` among the packaged files, and `just package-check` still ends `package ok` (corrected, issue #128: the recipe does not print the list). In `README.md`'s "Versioning", "Each release's breaking changes are listed in its changelog entry" links `CHANGELOG.md`.
 
 - [ ] **Step 4: Changelog and commit**
 
@@ -1501,7 +1506,7 @@ Done by the coordinator session (it writes the ledger and runs the publish), on 
   | CLM-0182 | test | `tests/rest_request_options.rs` @ Task 1's merge; plus demonstration `clm_0182_* @ hosted, <log>` |
   | CLM-0183 | test | `tests/envd_request_options.rs` @ Task 2's merge; plus demonstration `clm_0183_* @ hosted, <log>` |
   | CLM-0123 | demonstration | Actions run `<url>` of `live.yml` on `main` at `<sha>`: green, the log artifact, 0 leftovers, the secret check |
-  | CLM-0124 | demonstration | `cargo publish --dry-run --locked` on the release branch: output ends "aborting upload due to dry run"; `just package-check` lists only the allowed files |
+  | CLM-0124 | demonstration | `cargo publish --dry-run --locked` on the release branch: output ends "aborting upload due to dry run"; `just package-check` ends `package ok` and `cargo package --list --locked` shows only the allowed files (corrected, issue #128: the recipe does not print the list) |
   | CLM-0184 | test | `tests/readme_coverage.rs` passing in CI @ Task 8's merge |
   | CLM-0185 | inspection | `CHANGELOG.md` @ Task 7's merge: the breaking-changes count against the M4 milestone changelog and Tasks 1 and 2 |
 
