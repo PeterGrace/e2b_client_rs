@@ -1,6 +1,6 @@
 [package]
 name = "e2b-client"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 # Minimum supported Rust version (CLM-0121): uuid 1.29 needs 1.89. CI checks
 # it (`msrv` job); raising it is a minor release (README, "Versioning").

@@ -5,10 +5,10 @@
     "by": "server",
     "mac": "0abbe8eb96629fd059e5fbc9b095e8b83476fc9ad0adb3e1e8f34297e27a14a7"
   },
-  "next_evidence_seq": 254,
+  "next_evidence_seq": 262,
   "next_evidence_seq_seal": {
     "by": "server",
-    "mac": "55665ce0e8405909ecf1432586bc0d3fc3818fec8db0599fc2150cfd3fd617ab"
+    "mac": "43ad55809bfdb40f201cfe3f9ae16ba437153680b6903b5ff4fa0336096407fc"
   },
   "claims": [
     {
@@ -8113,7 +8113,20 @@
       "status": {
         "state": "active"
       },
-      "evidence": [],
+      "evidence": [
+        {
+          "id": "EVD-0258",
+          "kind": "demonstration",
+          "locator": "https://github.com/PeterGrace/e2b_client_rs/actions/runs/40808242984 (.github/workflows/live.yml @ 58791f3, PR #138; run on main at d9c6401); docs/verification/m5-live-results.md @ 1cbd1bb (PR #142)",
+          "summary": "The workflow_dispatch-only job \"Live (hosted E2B)\" reads the repository secret E2B_API_KEY_HOSTED on the three steps that need it and runs `just test-live hosted`. Its first run, on main at d9c6401, concluded success:\n- 81 live tests: 78 passed, 3 volume tests skipped (volumes not enabled for the team), 0 failed;\n- all three sweeps reported 0 leftovers;\n- the log-key check passed and the log was uploaded as the live-hosted-log artifact.",
+          "stance": "supports",
+          "recorded_at": "2026-10-29T02:58:33.802504413Z",
+          "seal": {
+            "by": "server",
+            "mac": "7332f977879f1e0f9995651452938e2270639528031cd1de366186a4749a727a"
+          }
+        }
+      ],
       "verdicts": [
         {
           "verdict": "not_enough_info",
@@ -8125,13 +8138,26 @@
             "by": "server",
             "mac": "1d491663792f06d2b0d680c819dfdb382c2601cacd9bd19f2c71db2880546fb8"
           }
+        },
+        {
+          "verdict": "supported",
+          "rationale": "A manual-trigger CI job runs the live suite against hosted E2B with the repository secret E2B_API_KEY_HOSTED. Its run 40808242984 on main succeeded (EVD-0258).",
+          "auditor": "claude-code/claude-opus-5-5 (M5 coordinator)",
+          "evidence_ids": [
+            "EVD-0258"
+          ],
+          "recorded_at": "2026-10-29T02:58:51.595421609Z",
+          "seal": {
+            "by": "server",
+            "mac": "61576087596032f345fbd9e9cd1d56558c810ed3d592868cc324bfbccd663409"
+          }
         }
       ],
       "created_at": "2026-10-26T22:12:45.325766859Z",
-      "updated_at": "2026-10-28T20:32:48.700549013Z",
+      "updated_at": "2026-10-29T02:58:51.595421609Z",
       "seal": {
         "by": "server",
-        "mac": "8a8028dc50fdf60bf88e85bd1d0757799ed3b716a12f167a6bed6f8b264f34d9"
+        "mac": "f8f714820de0cf2e669bec0ad7ec0fbfc2a640a3cf6890dbd1688bd26ae2ee82"
       }
     },
     {
@@ -8154,7 +8180,20 @@
       "status": {
         "state": "active"
       },
-      "evidence": [],
+      "evidence": [
+        {
+          "id": "EVD-0259",
+          "kind": "demonstration",
+          "locator": "`cargo publish --dry-run --locked --allow-dirty` on branch release-0.2.0 (base 1cbd1bb, version 0.2.0), 2026-10-29; Cargo.toml @ 7cacb3d (PR #139: publish = false removed, include list)",
+          "summary": "Cargo.toml no longer sets publish = false. The dry run exited 0: \"Packaged 29 files, 593.9KiB (142.6KiB compressed)\", \"Verifying e2b-client v0.2.0\", the packaged crate compiled, and it ended \"warning: aborting upload due to dry run\". `just package-check` printed \"package ok\", so only src/, README.md, CHANGELOG.md, the licences and cargo's own files are packaged.",
+          "stance": "supports",
+          "recorded_at": "2026-10-29T02:58:36.652017353Z",
+          "seal": {
+            "by": "server",
+            "mac": "3a63b2477a13a6c01b42dfc2e586ca7576ffcd1f9ec42b51671ba0b72a7e7c37"
+          }
+        }
+      ],
       "verdicts": [
         {
           "verdict": "not_enough_info",
@@ -8166,13 +8205,26 @@
             "by": "server",
             "mac": "c5cc37300ac682dc3dfcf0ffd487042af7feb94905b3d647ef03d68b4482826f"
           }
+        },
+        {
+          "verdict": "supported",
+          "rationale": "publish = false is gone, and `cargo publish --dry-run --locked` of 0.2.0 packaged, verified and stopped at the dry-run abort (EVD-0259).",
+          "auditor": "claude-code/claude-opus-5-5 (M5 coordinator)",
+          "evidence_ids": [
+            "EVD-0259"
+          ],
+          "recorded_at": "2026-10-29T02:58:53.247197714Z",
+          "seal": {
+            "by": "server",
+            "mac": "2680762b43a9a45ef5b0576a4cf69fbeccd46caf2005b55210398ada4920a692"
+          }
         }
       ],
       "created_at": "2026-10-26T22:12:45.325766859Z",
-      "updated_at": "2026-10-28T20:32:49.081562596Z",
+      "updated_at": "2026-10-29T02:58:53.247197714Z",
       "seal": {
         "by": "server",
-        "mac": "d7dd93bbb48b2f34c0ff18cd382b9ab7732d5d3093f55ed693590ee416c41d4e"
+        "mac": "a85d23107368c11fd4d1ecdade18935a06d38be3d10f8c4f8a5ba54854b23d8b"
       }
     },
     {
@@ -11713,13 +11765,53 @@
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0254",
+          "kind": "test",
+          "locator": "tests/rest_request_options.rs @ fd3087c (PR #134, M5.01), passing in CI and in `just test` on release-0.2.0 (523 passed)",
+          "summary": "Mock tests against wiremock with a 5 s configured timeout and routes that answer after 2 s:\n- a_per_call_request_timeout_overrides_the_configured_one: a 200 ms RequestOptions timeout fails get_sandbox_info with a transport timeout in under 1 s.\n- a_per_call_none_lifts_a_short_configured_timeout and a_zero_per_call_request_timeout_means_no_limit: None and zero mean no limit.\n- unset_options_keep_the_configured_timeout.\n- every_client_call_takes_a_per_call_request_timeout and every_sandbox_call_passes_its_request_timeout_through: every Client and Sandbox REST call (and Sandbox::is_running) times out on its own per-call value.\n- a_next_page_keeps_the_request_timeout: paging keeps the timeout.",
+          "stance": "supports",
+          "recorded_at": "2026-10-29T02:58:23.517586442Z",
+          "seal": {
+            "by": "server",
+            "mac": "a164acdd075974fbac9a26ff16c537e83e3204ad12e07585ce92f43e55b0e425"
+          }
+        },
+        {
+          "id": "EVD-0255",
+          "kind": "demonstration",
+          "locator": "clm_0182_a_one_millisecond_request_timeout_times_out_get_info @ hosted, docs/verification/runs/20261029T024539Z-hosted-2513.log (Actions run 40808242984 on main at d9c6401)",
+          "summary": "On hosted E2B, Sandbox::get_info with RequestOptions::new().request_timeout(Some(1 ms)) failed with a timeout error, and get_info with RequestOptions::new() (the configured timeout) succeeded. The test passed in the CI live run.",
+          "stance": "supports",
+          "recorded_at": "2026-10-29T02:58:25.753714773Z",
+          "seal": {
+            "by": "server",
+            "mac": "d1eeb27e979f2633bb100164ee02f97e063bcaedf23cdcc43262d9fef772b969"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "supported",
+          "rationale": "The mock tests cover every REST call on Client and Sandbox, plus is_running, with unset, None, zero and a duration (EVD-0254). The hosted live test shows a 1 ms per-call timeout timing out get_info while the configured one succeeds (EVD-0255).",
+          "auditor": "claude-code/claude-opus-5-5 (M5 coordinator)",
+          "evidence_ids": [
+            "EVD-0254",
+            "EVD-0255"
+          ],
+          "recorded_at": "2026-10-29T02:58:47.942727756Z",
+          "seal": {
+            "by": "server",
+            "mac": "cce69c8876aa38da11969aa283e1c005e0b699d79e5cf2043498ea0c5c1986f6"
+          }
+        }
+      ],
       "created_at": "2026-10-28T20:32:48.139871073Z",
-      "updated_at": "2026-10-28T20:32:48.139871073Z",
+      "updated_at": "2026-10-29T02:58:47.942727756Z",
       "seal": {
         "by": "server",
-        "mac": "02addce692a41f7afe7cd9ca6f12c770a448a93b379a089ab96671c211073899"
+        "mac": "c72dcc591115610513d0bf79c4bb7fcd7fa59da40ac63456d8001745dad45cbc"
       }
     },
     {
@@ -11743,13 +11835,53 @@
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0256",
+          "kind": "test",
+          "locator": "tests/envd_request_options.rs @ 0c4e82b (PR #135, M5.02), passing in CI and in `just test` on release-0.2.0",
+          "summary": "Mock tests with a 5 s configured timeout and process RPCs that answer after 2 s:\n- every_pid_only_call_takes_a_per_call_request_timeout: Commands::list, send_stdin, close_stdin, send_signal, kill and Pty::send_stdin, resize, kill each fail with a transport timeout on a 200 ms RequestOptions.\n- a_per_call_none_lifts_a_short_configured_timeout: None lifts a short configured timeout, and unset options keep it.\n- the_per_call_timeout_is_sent_as_connect_timeout_ms: the per-call value is sent to envd as Connect-Timeout-Ms.",
+          "stance": "supports",
+          "recorded_at": "2026-10-29T02:58:28.562576441Z",
+          "seal": {
+            "by": "server",
+            "mac": "8d92d658813e8fdae5288d0e7df6485419ad4f7d3dc74b920dc8e00bbf89a2b9"
+          }
+        },
+        {
+          "id": "EVD-0257",
+          "kind": "demonstration",
+          "locator": "clm_0183_a_one_millisecond_request_timeout_times_out_list @ hosted, docs/verification/runs/20261029T024539Z-hosted-2513.log (Actions run 40808242984 on main at d9c6401)",
+          "summary": "On hosted E2B, Commands::list with a 1 ms per-call request timeout failed with a timeout error, and Commands::list with RequestOptions::new() succeeded. The test passed in the CI live run.",
+          "stance": "supports",
+          "recorded_at": "2026-10-29T02:58:30.503428978Z",
+          "seal": {
+            "by": "server",
+            "mac": "859752db6060a90d7396ff59cea2e9a9ea58ec6eb38db9b1e7de0749199f068f"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "supported",
+          "rationale": "The mock tests cover every pid-only process and PTY call with a per-call timeout and its unset/None semantics, and show it sent as Connect-Timeout-Ms (EVD-0256). On hosted, a 1 ms timeout times out Commands::list (EVD-0257).",
+          "auditor": "claude-code/claude-opus-5-5 (M5 coordinator)",
+          "evidence_ids": [
+            "EVD-0256",
+            "EVD-0257"
+          ],
+          "recorded_at": "2026-10-29T02:58:49.899318099Z",
+          "seal": {
+            "by": "server",
+            "mac": "14d8f4ea50078e0ad704a0f8d465f40bedeb0c45813c5efae08f2747cf6ceb60"
+          }
+        }
+      ],
       "created_at": "2026-10-28T20:32:48.139871073Z",
-      "updated_at": "2026-10-28T20:32:48.139871073Z",
+      "updated_at": "2026-10-29T02:58:49.899318099Z",
       "seal": {
         "by": "server",
-        "mac": "3c37b178b1b7b7fd4d79bbd1d0c9f4515019b64c1506b767174ea079a8bc4111"
+        "mac": "1c6ebe2fead045e30c596dc13b662c58549da0507d409cec7932013820b6e65f"
       }
     },
     {
@@ -11773,13 +11905,40 @@
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0261",
+          "kind": "test",
+          "locator": "tests/readme_coverage.rs::readme_coverage_table_matches_the_ledger @ d9c6401 (PR #141, M5.08), passing in CI and in `just test` on release-0.2.0",
+          "summary": "The test recomputes the per-area table (s1 to s5 and root, by current verdict, active claims only) from claims.json, and asserts it equals the README's table between the coverage markers. It also fails on an unknown verdict, a claim with no area tag or with two, and markers in the wrong order. It passes on main.",
+          "stance": "supports",
+          "recorded_at": "2026-10-29T02:58:41.790128488Z",
+          "seal": {
+            "by": "server",
+            "mac": "6b2480ef3ea573b80c806465450ba49f725d9571f586016d1e7da2e108e337b2"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "supported",
+          "rationale": "tests/readme_coverage.rs recomputes the README coverage table from claims.json and passes (EVD-0261).",
+          "auditor": "claude-code/claude-opus-5-5 (M5 coordinator)",
+          "evidence_ids": [
+            "EVD-0261"
+          ],
+          "recorded_at": "2026-10-29T02:58:54.646747126Z",
+          "seal": {
+            "by": "server",
+            "mac": "6f97d875d9155ac0df9b9d55d92d1374cd8663e688a5189cef9d57b1542e6b61"
+          }
+        }
+      ],
       "created_at": "2026-10-28T20:32:48.139871073Z",
-      "updated_at": "2026-10-28T20:32:48.139871073Z",
+      "updated_at": "2026-10-29T02:58:54.646747126Z",
       "seal": {
         "by": "server",
-        "mac": "eaa31f7cb980e6729be5e148ef5d8a97c1a90e34d2551e39452a993f6e14673c"
+        "mac": "e7a414b6090b20916ade51eb7f6be8c2e6f62a40e174068b878358e09ef71fc4"
       }
     },
     {
@@ -11802,13 +11961,40 @@
       "status": {
         "state": "active"
       },
-      "evidence": [],
-      "verdicts": [],
+      "evidence": [
+        {
+          "id": "EVD-0260",
+          "kind": "inspection",
+          "locator": "CHANGELOG.md @ c55b962 (PR #140, M5.07), dated 2026-10-29 on release-0.2.0",
+          "summary": "CHANGELOG.md follows Keep a Changelog. It has a 0.2.0 entry with Added, Changed and Removed sections and \"Breaking changes since 0.1.0\": 53 old-call to new-call table rows and 6 behaviour bullets, which I counted on the release branch. The PR #140 agent matched each row of the sources (24 rows and 6 bullets from the M4 milestone changelog, 16 from M5 Task 1, 13 from M5 Task 2) against the file. It also has a 0.1.0 entry linking PR #2's merge 9e9bbd9.",
+          "stance": "supports",
+          "recorded_at": "2026-10-29T02:58:39.700824921Z",
+          "seal": {
+            "by": "server",
+            "mac": "df4d49458da3c85b2e6a3f3bb5097f7751610a6c2cd3a063c25cb69e664e3020"
+          }
+        }
+      ],
+      "verdicts": [
+        {
+          "verdict": "supported",
+          "rationale": "CHANGELOG.md documents 0.2.0, with 53 breaking-change rows and 6 behaviour bullets that cover the M4 milestone changelog and M5 Tasks 1 and 2 (EVD-0260).",
+          "auditor": "claude-code/claude-opus-5-5 (M5 coordinator)",
+          "evidence_ids": [
+            "EVD-0260"
+          ],
+          "recorded_at": "2026-10-29T02:58:56.166221958Z",
+          "seal": {
+            "by": "server",
+            "mac": "6366f72e879ade7f1a1eb548d5b3bf8fe86a28706ac94a1e5d523899a9e921ae"
+          }
+        }
+      ],
       "created_at": "2026-10-28T20:32:48.139871073Z",
-      "updated_at": "2026-10-28T20:32:48.139871073Z",
+      "updated_at": "2026-10-29T02:58:56.166221958Z",
       "seal": {
         "by": "server",
-        "mac": "5f47e658043fbb2e87b54e1f8ca36d3e3e1b13d53c20a6463e29adb1c47d26ef"
+        "mac": "c2c3230f06d11a781d6fa5ce4adc2fef3cc11cbb2e22a3ec62fad74577a3e146"
       }
     },
     {

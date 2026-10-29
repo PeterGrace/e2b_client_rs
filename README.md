@@ -5,12 +5,12 @@ sandbox lifecycle and envd's process and filesystem services. It speaks the
 standard E2B API the official Python and JavaScript SDKs use, so it works with
 hosted E2B and with E2B-compatible servers.
 
-The crate is `e2b-client` (library `e2b_client`). It is not on crates.io yet,
-and needs Rust 1.89 or newer; depend on it from git:
+The crate is [`e2b-client`](https://crates.io/crates/e2b-client) (library
+`e2b_client`) and needs Rust 1.89 or newer:
 
 ```toml
 [dependencies]
-e2b-client = { git = "https://github.com/PeterGrace/e2b_client_rs" }
+e2b-client = "0.2"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 ```
 
@@ -252,7 +252,7 @@ Every wire detail, with citations into the official SDK sources, is in
 ## Verification status
 
 Every behaviour listed above is backed by a claim in `claims.json`, the claims
-ledger. Each claim has a recorded verdict and the evidence behind it.
+ledger, with its verdicts and the evidence behind them.
 
 Claims by area, from `claims.json` (`tests/readme_coverage.rs` keeps this
 table in step with the ledger):
@@ -260,23 +260,22 @@ table in step with the ledger):
 <!-- coverage:begin -->
 | Area | Claims | Supported | Not enough info | Refuted | Unverified |
 |---|---|---|---|---|---|
-| S1 Lifecycle | 40 | 33 | 6 | 0 | 1 |
-| S2 Commands and PTY | 22 | 21 | 0 | 0 | 1 |
+| S1 Lifecycle | 40 | 34 | 6 | 0 | 0 |
+| S2 Commands and PTY | 22 | 22 | 0 | 0 | 0 |
 | S3 Filesystem | 23 | 23 | 0 | 0 | 0 |
 | S4 Wire protocol | 80 | 80 | 0 | 0 | 0 |
-| S5 Publishability | 18 | 12 | 3 | 0 | 3 |
+| S5 Publishability | 18 | 16 | 1 | 0 | 1 |
 | System (root) | 1 | 0 | 1 | 0 | 0 |
-| **All** | **184** | **169** | **10** | **0** | **5** |
+| **All** | **184** | **175** | **8** | **0** | **1** |
 <!-- coverage:end -->
 
-The runs behind those verdicts, as of milestone 4 (2026-10-28; the
-milestone 5 claims are still unverified):
+The runs behind those verdicts, as of milestone 5 (2026-10-29):
 
-- **Hosted E2B:** 76 of the 79 live tests passed (46 from milestone 1, 11
-  from milestone 2, 18 from milestone 3, 4 from milestone 4) in run
-  `20261028T153214Z-hosted-761165`. The 3 that did not are the volume
-  tests: volumes are not enabled for the test team (403), so those claims
-  stay `not_enough_info` rather than refuted.
+- **Hosted E2B:** 78 of the 81 live tests passed and 3 were skipped, through
+  the live CI job (`.github/workflows/live.yml`, Actions run 40808242984) in
+  run `20261029T024539Z-hosted-2513`. The 3 skipped are the volume tests:
+  volumes are not enabled for the test team (403), so those claims stay
+  `not_enough_info` rather than refuted.
 - **Wire-protocol claims:** all 79 wire claims under CLM-0005 (the S4 row
   counts those 79 plus CLM-0005 itself) are backed by passing mock and unit
   tests, as are CLM-0122 (`Debug` output never shows secrets) and CLM-0152
@@ -285,11 +284,12 @@ milestone 5 claims are still unverified):
   `claims.json`.
 - **Refuted claims:** 0. Two were refuted during M1 and fixed: empty config
   values, and the envd version gate on `close_stdin`.
-- **Not yet shown:** the egress proxy and IAM (unscheduled), volumes on a
-  team that has them, and the release itself (milestone 5: a live CI job and
-  a publish dry run) are tracked as `not_enough_info` claims.
+- **Not yet shown:** the egress proxy and IAM (unscheduled) and volumes on
+  a team that has them are tracked as `not_enough_info` claims. The one
+  unverified claim, CLM-0186, is the published 0.2.0 itself; it is decided
+  once crates.io and docs.rs show it.
 - **E2B-compatible servers:** a self-hosted sandbawks server passes 29 of the
-  79 in one paced run, `20261028T154205Z-sandbawks-paced-913873`, with no
+  79 in one paced run in milestone 4, `20261028T154205Z-sandbawks-paced-913873`, with no
   failure on capacity; every failure there is a server defect or a route it
   does not serve yet, filed upstream.
 - **API:** 0.2.0 ships the API milestone 4 settled plus milestone 5's

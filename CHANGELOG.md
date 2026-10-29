@@ -4,7 +4,7 @@ All notable changes to `e2b-client` are listed here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the crate
 follows [Semantic Versioning](https://semver.org) (README, "Versioning").
 
-## [0.2.0] - unreleased
+## [0.2.0] - 2026-10-29
 
 The first release on crates.io. It covers the official SDK's `Sandbox`
 surface (e2b 2.61) except what the README lists as "Not implemented yet",
