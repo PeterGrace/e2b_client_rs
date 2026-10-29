@@ -1468,13 +1468,17 @@ gh run download "$run_id" --name live-hosted-log --dir target/live-logs/ci-"$run
 > ```bash
 > before="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 > gh workflow run live.yml --ref main
-> run_id="$(gh run list --workflow live.yml --branch main --event workflow_dispatch \
+> run_ids="$(gh run list --workflow live.yml --branch main --event workflow_dispatch \
 >     --json databaseId,createdAt,headSha \
 >     --jq ".[] | select(.createdAt >= \"$before\" and .headSha == \"$(git rev-parse origin/main)\") | .databaseId")"
+> # Exactly one match, or stop: a second dispatch on the same head after
+> # $before (someone else's, or a retry) would make this a list.
+> [ "$(printf '%s\n' "$run_ids" | grep -c .)" -eq 1 ] || { echo "matching runs: ${run_ids:-none}" >&2; exit 1; }
+> run_id="$run_ids"
 > gh run watch "$run_id" --exit-status
 > ```
 >
-> (`gh workflow run` also printed the run's URL here, which agreed.) If `run_id` comes back empty, list again; never dispatch a second time.
+> (`gh workflow run` also printed the run's URL here, which agreed.) If no run matches yet, list again; if more than one does, pick by the URL `gh workflow run` printed, or ask the coordinator. Never dispatch a second time. (The exactly-one check was added in review of PR #142; issue #131's lookup found one run.)
 
 - [ ] **Step 3: Check the log**
 
