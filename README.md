@@ -5,12 +5,13 @@ sandbox lifecycle and envd's process and filesystem services. It speaks the
 standard E2B API the official Python and JavaScript SDKs use, so it works with
 hosted E2B and with E2B-compatible servers.
 
-The crate is [`e2b-client`](https://crates.io/crates/e2b-client) (library
-`e2b_client`) and needs Rust 1.89 or newer:
+The crate is `e2b-client` (library `e2b_client`). Release 0.2.0 is tagged
+(`v0.2.0`) but not on crates.io yet; it needs Rust 1.89 or newer. Depend on
+the tag from git:
 
 ```toml
 [dependencies]
-e2b-client = "0.2"
+e2b-client = { git = "https://github.com/PeterGrace/e2b_client_rs", tag = "v0.2.0" }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 ```
 
@@ -286,8 +287,9 @@ The runs behind those verdicts, as of milestone 5 (2026-10-29):
   values, and the envd version gate on `close_stdin`.
 - **Not yet shown:** the egress proxy and IAM (unscheduled) and volumes on
   a team that has them are tracked as `not_enough_info` claims. The one
-  unverified claim, CLM-0186, is the published 0.2.0 itself; it is decided
-  once crates.io and docs.rs show it.
+  unverified claim, CLM-0186, is 0.2.0 on crates.io; the release is tagged
+  but its publish is on hold, so it is decided once crates.io and docs.rs
+  show it.
 - **E2B-compatible servers:** a self-hosted sandbawks server passes 29 of the
   79 in one paced run in milestone 4, `20261028T154205Z-sandbawks-paced-913873`, with no
   failure on capacity; every failure there is a server defect or a route it
