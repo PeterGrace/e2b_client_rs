@@ -1463,6 +1463,23 @@ Run `gh run watch` in the background and wait for its exit, not a sleep loop. Ex
 gh run download "$run_id" --name live-hosted-log --dir target/live-logs/ci-"$run_id"
 ```
 
+> **Corrected (issue #131, 2026-10-29).** `sleep 5` then `--limit 1` races: it can pick up another dispatch, or miss this one if the run is not listed yet. What was run instead: record the time just before dispatching, then pick the `workflow_dispatch` run on `main` created at or after that time with `main`'s head as its `headSha`:
+>
+> ```bash
+> before="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+> gh workflow run live.yml --ref main
+> run_ids="$(gh run list --workflow live.yml --branch main --event workflow_dispatch \
+>     --json databaseId,createdAt,headSha \
+>     --jq ".[] | select(.createdAt >= \"$before\" and .headSha == \"$(git rev-parse origin/main)\") | .databaseId")"
+> # Exactly one match, or stop: a second dispatch on the same head after
+> # $before (someone else's, or a retry) would make this a list.
+> [ "$(printf '%s\n' "$run_ids" | grep -c .)" -eq 1 ] || { echo "matching runs: ${run_ids:-none}" >&2; exit 1; }
+> run_id="$run_ids"
+> gh run watch "$run_id" --exit-status
+> ```
+>
+> (`gh workflow run` also printed the run's URL here, which agreed.) If no run matches yet, list again; if more than one does, pick by the URL `gh workflow run` printed, or ask the coordinator. Never dispatch a second time. (The exactly-one check was added in review of PR #142; issue #131's lookup found one run.)
+
 - [ ] **Step 3: Check the log**
 
 The log starts with `commit: <main's head>` and `dirty: no`. The three sweeps report 0 leftovers. The three volume tests each print `SKIPPED (environment): volumes are not enabled ...` and pass. The secret check (M4 Task 16 Step 3, against the main checkout's `.env`) gives 0 for both keys, `GATEWAY_ACCESS_TOKEN=` and `"token"`.
