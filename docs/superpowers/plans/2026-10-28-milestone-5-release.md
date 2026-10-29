@@ -958,6 +958,8 @@ test clm_0148_volume_create_get_list_destroy ... ok
 Run: `just test-recipes`
 Expected: `FAIL SKIP--volumes-not-enabled: got PASS`.
 
+> **Corrected (issue #126, 2026-10-29).** The fixture shipped as the real libtest output of a hosted `clm_0148_volume_create_get_list_destroy` run: `--show-output` prints the skip line under `successes:` / `---- <test> stdout ----`, after `test ... ok` (review of PR #137). The classifier greps the whole file, so the order does not matter. Read the fixture.
+
 - [ ] **Step 2: `SKIP` in the classifier**
 
 In `_classify`, the first branch becomes:

@@ -31,7 +31,9 @@ never be green, though the crate was not at fault.
     without failing the run; the summary gains `N skipped`, counting
     `SKIP` and `SKIP (rerun)` through the `count` helper.
 - `tests/fixtures/live-pacing/SKIP--volumes-not-enabled.txt`: the seventh
-  recipe fixture.
+  recipe fixture, the libtest output of the hosted
+  `clm_0148_volume_create_get_list_destroy` run (`--show-output` puts the
+  skip line under `successes:`, after `test ... ok`; review of PR #137).
 - `docs/verification/live-pacing.md`: `SKIP` and `SKIP (rerun)` rows, a
   paragraph on what a skip means, `skipped` in the summary.
 - `CONTRIBUTING.md`, "Tests": a skipped live test passes, and its skip is
