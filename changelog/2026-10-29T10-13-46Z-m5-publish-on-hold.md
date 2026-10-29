@@ -12,3 +12,7 @@ pgrace chose not to publish yet (2026-10-29). Until 0.2.0 is published:
 - M5.11 (#133) and epic #124 stay open.
 
 When the publish goes ahead, the README goes back to `e2b-client = "0.2"`.
+
+`CHANGELOG.md` is left as tagged on purpose. It is the release notes of the
+`v0.2.0` tag, and its "The first release on crates.io" becomes true when
+the publish goes ahead.
