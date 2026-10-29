@@ -62,6 +62,18 @@ in scope.
   volumes disabled) prints `SKIPPED (environment): <why>` and passes; a run's
   skips are environment limits, never evidence for a claim.
 
+### Live CI job
+
+`.github/workflows/live.yml` runs `just test-live hosted` on GitHub Actions.
+It is manual only, because a run creates about 80 billed sandboxes: start it
+with `gh workflow run live.yml --ref main`, or from the Actions tab ("Live
+(hosted E2B)", "Run workflow"). It needs the repository secret
+`E2B_API_KEY_HOSTED`, which a maintainer sets with
+`gh secret set E2B_API_KEY_HOSTED`; without it the job fails at its first
+check. The key is passed only to the steps that need it, and the run log is
+checked for it before upload. The log is the artifact `live-hosted-log`
+(kept 30 days): `gh run download <run id> --name live-hosted-log`.
+
 ### Testing against a self-hosted E2B-compatible server
 
 The `sandbawks` target works for any E2B-compatible server whose API answers

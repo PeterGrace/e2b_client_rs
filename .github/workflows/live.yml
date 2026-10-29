@@ -1,0 +1,78 @@
+name: Live (hosted E2B)
+
+# Runs the live suite against hosted E2B (CLM-0123). Manual only: a run
+# creates about 80 billed sandboxes (M5 decision 1). It needs the
+# repository secret E2B_API_KEY_HOSTED. A workflow_dispatch run can only be
+# started by someone with write access, and secrets never reach pull
+# requests from forks, so the key stays with the repository.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One live run at a time: two would share the team's sandbox quota.
+concurrency:
+  group: live-hosted
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  live-hosted:
+    name: just test-live hosted
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    # The key is set only on the three steps that need it, never job-wide,
+    # so no action step gets it in its environment. That alone does not
+    # protect it: setup-just and rust-toolchain install the `just` and
+    # `cargo` that run with the key, so a moved tag could swap in code that
+    # reads it. The commit-SHA pins are what protect the key; keep them.
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        # Nothing after checkout needs git auth (`_stamp` only reads), so
+        # don't leave the GITHUB_TOKEN in .git/config for the tests to read.
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+      - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6 # v2
+      - name: Check the secret is set
+        env:
+          E2B_API_KEY_HOSTED: ${{ secrets.E2B_API_KEY_HOSTED }}
+        run: |
+          if [ -z "$E2B_API_KEY_HOSTED" ]; then
+            echo "::error::Set the repository secret E2B_API_KEY_HOSTED"
+            exit 1
+          fi
+      - name: Live tests
+        env:
+          E2B_API_KEY_HOSTED: ${{ secrets.E2B_API_KEY_HOSTED }}
+        run: just test-live hosted
+      # GitHub masks the secret in the job log, but not inside uploaded
+      # files, so the run log is checked for it before upload and deleted
+      # if it is there.
+      - name: Check the run log for the key
+        if: always()
+        env:
+          E2B_API_KEY_HOSTED: ${{ secrets.E2B_API_KEY_HOSTED }}
+        run: |
+          # An empty secret would match every line; the first step already failed.
+          [ -n "$E2B_API_KEY_HOSTED" ] || exit 0
+          shopt -s nullglob
+          for log in target/live-logs/*.log; do
+            if grep -qF -- "$E2B_API_KEY_HOSTED" "$log"; then
+              echo "::error::the API key appears in $(basename "$log"); not uploading it"
+              rm -f -- "$log"
+              exit 1
+            fi
+          done
+      - name: Upload the run log
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: live-hosted-log
+          path: target/live-logs/*.log
+          if-no-files-found: warn
+          retention-days: 30
