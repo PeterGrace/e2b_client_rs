@@ -25,10 +25,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     # The key is set only on the three steps that need it, never job-wide,
-    # so the third-party actions below can't read it; and those actions are
-    # pinned to commit SHAs, since this job holds a billing key.
+    # so no action step gets it in its environment. That alone does not
+    # protect it: setup-just and rust-toolchain install the `just` and
+    # `cargo` that run with the key, so a moved tag could swap in code that
+    # reads it. The commit-SHA pins are what protect the key; keep them.
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        # Nothing after checkout needs git auth (`_stamp` only reads), so
+        # don't leave the GITHUB_TOKEN in .git/config for the tests to read.
+        with:
+          persist-credentials: false
       - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
       - uses: extractions/setup-just@dd310ad5a97d8e7b41793f8ef055398d51ad4de6 # v2
