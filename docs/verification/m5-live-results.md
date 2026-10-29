@@ -169,6 +169,8 @@ hosted E2B using repository secrets on a manual or nightly trigger").
   Task 2's mock tests.
 
 The `live_lifecycle` and `live_commands` tests reach the calls Tasks 1 and 2
-gave a `RequestOptions` argument through the new signatures (66 uses in the
-two files at `d9c6401`; `live_files` calls none of them), and every one
-passed.
+gave a `RequestOptions` argument through the new signatures (64
+`RequestOptions::new()` arguments in the two files at `d9c6401`, 48 in
+`live_lifecycle` and 16 in `live_commands`, counted with
+`grep -o 'RequestOptions::new()'`; `live_files` calls none of them), and
+every one passed.
