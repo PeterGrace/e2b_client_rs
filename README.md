@@ -220,7 +220,7 @@ Every wire detail, with citations into the official SDK sources, is in
 - **Semver.** `e2b-client` follows [Semantic Versioning](https://semver.org).
   Before 1.0, a minor release (0.2 to 0.3) may break the API and a patch
   release (0.2.0 to 0.2.1) never does. Each release's breaking changes are
-  listed in its changelog entry.
+  listed in its [changelog](CHANGELOG.md) entry.
 - **Minimum supported Rust version: 1.89.** It is `rust-version` in
   `Cargo.toml` and is checked in CI. Raising it is a minor release, never a
   patch release. CI checks this repository's `Cargo.lock`, which Cargo
