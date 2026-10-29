@@ -127,7 +127,7 @@ pub(crate) enum InputKind {
 /// # Examples
 ///
 /// ```no_run
-/// use e2b_client::{CommandOptions, Sandbox, StreamInputOptions};
+/// use e2b_client::{CommandOptions, RequestOptions, Sandbox, StreamInputOptions};
 ///
 /// # async fn demo(sandbox: Sandbox) -> e2b_client::Result<()> {
 /// let handle = sandbox.commands().start("cat", &CommandOptions::new().stdin(true)).await?;
@@ -135,7 +135,7 @@ pub(crate) enum InputKind {
 /// input.send("a").await?;
 /// input.send("b\n").await?;
 /// input.close().await?;
-/// sandbox.commands().close_stdin(handle.pid()).await?;
+/// sandbox.commands().close_stdin(handle.pid(), &RequestOptions::new()).await?;
 /// assert_eq!(handle.wait().await?.stdout, "ab\n");
 /// # Ok(())
 /// # }

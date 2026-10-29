@@ -530,7 +530,11 @@ async fn list_processes_unary() {
         .mount(&server)
         .await;
 
-    let processes = sandbox.commands().list().await.expect("list");
+    let processes = sandbox
+        .commands()
+        .list(&RequestOptions::new())
+        .await
+        .expect("list");
 
     assert_eq!(processes.len(), 2);
     assert_eq!(processes[0].pid, 1);
@@ -580,13 +584,24 @@ async fn stdin_and_signal_calls_send_proto_json() {
         .await;
     let commands = sandbox.commands();
 
-    commands.send_stdin(9, b"hi\n").await.expect("stdin");
-    commands.close_stdin(9).await.expect("close stdin");
     commands
-        .send_signal(9, Signal::Sigterm)
+        .send_stdin(9, b"hi\n", &RequestOptions::new())
+        .await
+        .expect("stdin");
+    commands
+        .close_stdin(9, &RequestOptions::new())
+        .await
+        .expect("close stdin");
+    commands
+        .send_signal(9, Signal::Sigterm, &RequestOptions::new())
         .await
         .expect("signal");
-    assert!(commands.kill(9).await.expect("kill"));
+    assert!(
+        commands
+            .kill(9, &RequestOptions::new())
+            .await
+            .expect("kill")
+    );
 }
 
 #[tokio::test]
@@ -601,7 +616,10 @@ async fn close_stdin_is_refused_before_envd_0_5_2() {
         .await;
 
     // Act
-    let result = sandbox.commands().close_stdin(9).await;
+    let result = sandbox
+        .commands()
+        .close_stdin(9, &RequestOptions::new())
+        .await;
 
     // Assert: refused locally, like a depth-0 list, so no request is sent.
     // `InvalidArgument` is the crate's variant for a call refused before any
@@ -632,7 +650,13 @@ async fn kill_missing_process_returns_false() {
         .mount(&server)
         .await;
 
-    assert!(!sandbox.commands().kill(123).await.expect("kill"));
+    assert!(
+        !sandbox
+            .commands()
+            .kill(123, &RequestOptions::new())
+            .await
+            .expect("kill")
+    );
 }
 
 #[tokio::test]
@@ -645,7 +669,11 @@ async fn unary_plain_proxy_error_maps_status() {
         .mount(&server)
         .await;
 
-    let err = sandbox.commands().list().await.expect_err("error");
+    let err = sandbox
+        .commands()
+        .list(&RequestOptions::new())
+        .await
+        .expect_err("error");
 
     assert!(
         matches!(err, Error::Rpc { code: ConnectCode::Unavailable, ref message, .. }
@@ -1062,7 +1090,7 @@ async fn envd_requests_for_every_route(server: &MockServer, sandbox: &Sandbox) -
     // `let _ =` discards each call's result on purpose.
     let _ = commands.run("true", &CommandOptions::default()).await;
     let _ = commands.connect(1, &CommandConnectOptions::default()).await;
-    let _ = commands.list().await;
+    let _ = commands.list(&RequestOptions::new()).await;
     let _ = files.read("/a", &FileOptions::default()).await;
     let _ = files.write("/a", "x", &WriteOptions::default()).await;
     let _ = files.list("/", &ListOptions::default()).await;

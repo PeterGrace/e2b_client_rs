@@ -8,7 +8,7 @@ use common::{
     stream_response,
 };
 use e2b_client::{
-    CommandEvent, CommandOptions, PtyConnectOptions, PtyEvent, PtyOptions, PtySize,
+    CommandEvent, CommandOptions, PtyConnectOptions, PtyEvent, PtyOptions, PtySize, RequestOptions,
     StreamInputOptions,
 };
 use serde_json::json;
@@ -187,7 +187,11 @@ async fn send_stdin_uses_the_pty_input_member() {
         .mount(&server)
         .await;
 
-    sandbox.pty().send_stdin(11, "ls\r").await.expect("send");
+    sandbox
+        .pty()
+        .send_stdin(11, "ls\r", &RequestOptions::new())
+        .await
+        .expect("send");
 }
 
 #[tokio::test]
@@ -206,7 +210,7 @@ async fn resize_sends_update_with_the_new_size() {
 
     sandbox
         .pty()
-        .resize(11, PtySize::new(120, 40))
+        .resize(11, PtySize::new(120, 40), &RequestOptions::new())
         .await
         .expect("resize");
 }
@@ -237,8 +241,16 @@ async fn kill_sends_sigkill_and_reports_a_missing_pid_as_false() {
         .mount(&server)
         .await;
 
-    let killed = sandbox.pty().kill(11).await.expect("kill 11");
-    let missing = sandbox.pty().kill(12).await.expect("kill 12");
+    let killed = sandbox
+        .pty()
+        .kill(11, &RequestOptions::new())
+        .await
+        .expect("kill 11");
+    let missing = sandbox
+        .pty()
+        .kill(12, &RequestOptions::new())
+        .await
+        .expect("kill 12");
 
     assert!(killed);
     assert!(!missing);
